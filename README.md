@@ -30,7 +30,7 @@ MedLink consists of:
 
 ---
 
-### Web Application (Next.js)
+### Web Application (React.js)
 
 #### Hospital Dashboard
 - Emergency Queue Management
@@ -61,8 +61,8 @@ MedLink consists of:
 
 ### Web
 
-- Next.js
-- React
+- React.js
+- Vite
 - TypeScript
 
 ### Backend
@@ -91,28 +91,57 @@ MedLink consists of:
 medlink/
 │
 ├── apps/
-│   ├── mobile/
-│   ├── web/
-│   └── api/
+│   │
+│   ├── mobile/                 # React Native + Expo
+│   │
+│   ├── web/                    # React.js + Vite
+│   │   ├── src/
+│   │   │   ├── admin/
+│   │   │   ├── hospital/
+│   │   │   ├── shared/
+│   │   │   ├── routes/
+│   │   │   └── layouts/
+│   │   │
+│   │   └── public/
+│   │
+│   └── api/                    # Node.js + Express
+│       ├── src/
+│       │   ├── modules/
+│       │   ├── middleware/
+│       │   ├── config/
+│       │   ├── infrastructure/
+│       │   ├── shared/
+│       │   └── server.ts
+│       │
+│       └── prisma/             # Empty for now
 │
 ├── packages/
-│   ├── ui/
+│   │
 │   ├── shared-types/
 │   ├── shared-validation/
-│   ├── realtime-events/
-│   ├── env-config/
 │   ├── shared-utils/
 │   ├── api-client/
+│   ├── realtime-events/
+│   ├── env-config/
+│   ├── ui/
 │   ├── eslint-config/
 │   └── tsconfig/
 │
-├── tooling/
-│
 ├── docs/
+│   ├── architecture.md
+│   ├── api-spec.md
+│   ├── database.md
+│   └── conventions.md
+│
+├── tooling/
+│   ├── docker/
+│   └── scripts/
 │
 ├── docker-compose.yml
 ├── turbo.json
-└── package.json
+├── package.json
+├── LICENSE.md
+└── README.md
 ```
 
 ---
@@ -173,6 +202,28 @@ Push feature branch:
 ```bash
 git push origin feature/your-feature-name
 ```
+Commit Style:
+
+```bash
+feat: Adds a new feature to the code. This triggers a minor version bump.
+Example: feat: add emergency SOS button
+
+fix: Repairs a bug in the code. This triggers a patch version bump.
+Example: fix: resolve hospital search loading issue
+
+docs: Changes only documentation files, such as README or Markdown files.
+Example: docs: update project installation guide
+
+refactor: Rewrites or restructures code without changing its behavior, fixing bugs, or adding features.
+Example: refactor: simplify ambulance request logic
+
+test: Adds missing tests or corrects existing tests without changing production code.
+Example: test: add unit tests for SOS service
+
+chore: Handles routine maintenance, build tasks, dependencies, or configuration files that do not modify source or test files.
+Example: chore: update ESLint configuration
+```
+
 
 Create Pull Request on GitHub.
 
@@ -203,7 +254,7 @@ Development Database:
 
 ```env
 POSTGRES_USER=medlink
-POSTGRES_PASSWORD=MedLink2026
+POSTGRES_PASSWORD=MedLink@2026
 POSTGRES_DB=medlink
 ```
 
