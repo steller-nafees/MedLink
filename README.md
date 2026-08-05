@@ -61,8 +61,8 @@ MedLink consists of:
 
 ### Web
 
-- Next.js
-- React
+- React.js
+- Vite
 - TypeScript
 
 ### Backend
@@ -91,28 +91,57 @@ MedLink consists of:
 medlink/
 │
 ├── apps/
-│   ├── mobile/
-│   ├── web/
-│   └── api/
+│   │
+│   ├── mobile/                 # React Native + Expo
+│   │
+│   ├── web/                    # React.js + Vite
+│   │   ├── src/
+│   │   │   ├── admin/
+│   │   │   ├── hospital/
+│   │   │   ├── shared/
+│   │   │   ├── routes/
+│   │   │   └── layouts/
+│   │   │
+│   │   └── public/
+│   │
+│   └── api/                    # Node.js + Express
+│       ├── src/
+│       │   ├── modules/
+│       │   ├── middleware/
+│       │   ├── config/
+│       │   ├── infrastructure/
+│       │   ├── shared/
+│       │   └── server.ts
+│       │
+│       └── prisma/             # Empty for now
 │
 ├── packages/
-│   ├── ui/
+│   │
 │   ├── shared-types/
 │   ├── shared-validation/
-│   ├── realtime-events/
-│   ├── env-config/
 │   ├── shared-utils/
 │   ├── api-client/
+│   ├── realtime-events/
+│   ├── env-config/
+│   ├── ui/
 │   ├── eslint-config/
 │   └── tsconfig/
 │
-├── tooling/
-│
 ├── docs/
+│   ├── architecture.md
+│   ├── api-spec.md
+│   ├── database.md
+│   └── conventions.md
+│
+├── tooling/
+│   ├── docker/
+│   └── scripts/
 │
 ├── docker-compose.yml
 ├── turbo.json
-└── package.json
+├── package.json
+├── LICENSE.md
+└── README.md
 ```
 
 ---
