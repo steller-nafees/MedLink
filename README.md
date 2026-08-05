@@ -30,7 +30,7 @@ MedLink consists of:
 
 ---
 
-### Web Application (Next.js)
+### Web Application (React.js)
 
 #### Hospital Dashboard
 - Emergency Queue Management
