@@ -205,12 +205,23 @@ git push origin feature/your-feature-name
 Commit Style:
 
 ```bash
-feat:
-fix:
-docs:
-refactor:
-test:
-chore:
+feat: Adds a new feature to the code. This triggers a minor version bump.
+Example: feat: add emergency SOS button
+
+fix: Repairs a bug in the code. This triggers a patch version bump.
+Example: fix: resolve hospital search loading issue
+
+docs: Changes only documentation files, such as README or Markdown files.
+Example: docs: update project installation guide
+
+refactor: Rewrites or restructures code without changing its behavior, fixing bugs, or adding features.
+Example: refactor: simplify ambulance request logic
+
+test: Adds missing tests or corrects existing tests without changing production code.
+Example: test: add unit tests for SOS service
+
+chore: Handles routine maintenance, build tasks, dependencies, or configuration files that do not modify source or test files.
+Example: chore: update ESLint configuration
 ```
 
 
