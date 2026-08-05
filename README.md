@@ -173,6 +173,17 @@ Push feature branch:
 ```bash
 git push origin feature/your-feature-name
 ```
+Commit Style:
+
+```bash
+feat:
+fix:
+docs:
+refactor:
+test:
+chore:
+```
+
 
 Create Pull Request on GitHub.
 
