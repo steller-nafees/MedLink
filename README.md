@@ -67,7 +67,7 @@ MedLink consists of:
 
 ### Backend
 
-- Node.js
+- Javascript
 - Express.js
 
 ### Database
