@@ -39,13 +39,11 @@ export function MedlinkSplash({ next }: { next: string }) {
 
   return (
     <View style={styles.container}>
-      {/* Background glow */}
-      <View style={styles.glow} />
 
       {/* Logo */}
       <View style={styles.logoContainer}>
         <Image
-          source={require("../assets/medlink_full.png")}
+          source={require("../assets/images/logos/medlink_full.png")}
           accessibilityLabel="MedLink logo"
           style={styles.logo}
           resizeMode="contain"
@@ -71,6 +69,10 @@ export function MedlinkSplash({ next }: { next: string }) {
   );
 }
 
+export default function SplashScreen() {
+  return <MedlinkSplash next="/onboarding" />;
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -79,16 +81,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
 
     backgroundColor: "#F8FAFC",
-  },
-
-  glow: {
-    position: "absolute",
-    width: 288,
-    height: 288,
-    borderRadius: 144,
-
-    backgroundColor: "rgba(0, 150, 136, 0.10)",
-    opacity: 0.8,
   },
 
   logoContainer: {
