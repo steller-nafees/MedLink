@@ -67,7 +67,7 @@ MedLink consists of:
 
 ### Backend
 
-- Node.js
+- Javascript
 - Express.js
 
 ### Database
@@ -271,9 +271,8 @@ DATABASE_URL=postgresql://medlink:MedLink2026@localhost:5432/medlink
 ### Team MedLink
 
 - Project Lead - H M Nafees N Islam
-- Mobile Developers - H M Nafees N Islam, Shanjida Ahmed
+- Mobile & Web Developers - H M Nafees N Islam, Shanjida Ahmed
 - Backend Developers - Hasan Md. Turabi Rahman, Sanjida Sultana Iffat
-- Web Developers - H M Nafees N Islam, Shanjida Ahmed
 - UI/UX Designers - H M Nafees N Islam
 
 ---
