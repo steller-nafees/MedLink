@@ -7,7 +7,9 @@ import {
   Text,
   View,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { theme } from "../../../theme";
 import {
   ArrowRight,
   Bot,
@@ -73,7 +75,7 @@ export default function OnboardingScreen() {
       <View style={styles.shell} {...panResponder.panHandlers}>
         <View style={styles.headerRow}>
           <ProgressIndicator total={slides.length} current={index} />
-          <Pressable onPress={() => router.push("/login")}> 
+          <Pressable onPress={() => router.replace('/(auth)')}>
             <Text style={styles.skipText}>Skip</Text>
           </Pressable>
         </View>
@@ -85,7 +87,7 @@ export default function OnboardingScreen() {
 
           <View style={styles.copyBlock}>
             <View style={styles.stepPill}>
-              <Icon size={14} color="#0A8DFF" />
+              <Icon size={14} color={theme.colors.primary} />
               <Text style={styles.stepText}>
                 Step {index + 1} of {slides.length}
               </Text>
@@ -98,15 +100,19 @@ export default function OnboardingScreen() {
 
         <View style={styles.footer}>
           {last ? (
-            <Pressable style={styles.primaryButton} onPress={() => router.push("/login")}>
-              <Text style={styles.primaryText}>Get Started</Text>
-              <ArrowRight size={18} color="#FFFFFF" />
-            </Pressable>
+            <LinearGradient colors={[theme.colors.secondary, theme.colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryButton}>
+              <Pressable style={styles.buttonInner} onPress={() => router.replace('/(auth)')}>
+                <Text style={styles.primaryText}>Get Started</Text>
+                <ArrowRight size={18} color={theme.colors.primaryForeground} />
+              </Pressable>
+            </LinearGradient>
           ) : (
-            <Pressable style={styles.primaryButton} onPress={() => goTo(index + 1)}>
-              <Text style={styles.primaryText}>Next</Text>
-              <ArrowRight size={18} color="#FFFFFF" />
-            </Pressable>
+            <LinearGradient colors={[theme.colors.secondary, theme.colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryButton}>
+              <Pressable style={styles.buttonInner} onPress={() => goTo(index + 1)}>
+                <Text style={styles.primaryText}>Next</Text>
+                <ArrowRight size={18} color={theme.colors.primaryForeground} />
+              </Pressable>
+            </LinearGradient>
           )}
 
           <View style={styles.dotsRow}>
@@ -118,8 +124,6 @@ export default function OnboardingScreen() {
               />
             ))}
           </View>
-
-          <Text style={styles.swipeText}>Swipe to explore · dir {index > 0 ? "←" : "→"}</Text>
         </View>
       </View>
     </SafeAreaView>
@@ -237,10 +241,10 @@ function ConnectedArt() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F4FBFF" },
+  safeArea: { flex: 1, backgroundColor: theme.colors.background },
   shell: {
     flex: 1,
-    backgroundColor: "#F4FBFF",
+    backgroundColor: theme.colors.background,
     paddingHorizontal: 24,
     paddingTop: 12,
     paddingBottom: 20,
@@ -264,19 +268,19 @@ const styles = StyleSheet.create({
   },
   progressActiveBar: {
     flex: 1,
-    backgroundColor: "#0A8DFF",
+    backgroundColor: theme.colors.primary,
     minWidth: 22,
   },
   progressCompleteBar: {
     width: 6,
-    backgroundColor: "#72B7FF",
+    backgroundColor: theme.colors.accent,
   },
   progressIdleBar: {
     width: 6,
-    backgroundColor: "#D7E8F7",
+    backgroundColor: theme.colors.border,
   },
   skipText: {
-    color: "#6E7F97",
+    color: theme.colors.mutedForeground,
     fontSize: 13,
     fontWeight: "600",
     letterSpacing: 0.2,
@@ -288,10 +292,10 @@ const styles = StyleSheet.create({
   artCard: {
     borderRadius: 34,
     borderWidth: 1,
-    borderColor: "rgba(126, 149, 175, 0.3)",
-    backgroundColor: "#F9FDFF",
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceVariant,
     padding: 20,
-    shadowColor: "#0B1F33",
+    shadowColor: theme.colors.foreground,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
     shadowRadius: 18,
@@ -306,12 +310,12 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     gap: 6,
     borderRadius: 999,
-    backgroundColor: "#E4F1FF",
+    backgroundColor: theme.colors.primaryContainer,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   stepText: {
-    color: "#0A8DFF",
+    color: theme.colors.primary,
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 1.7,
@@ -323,34 +327,35 @@ const styles = StyleSheet.create({
     lineHeight: 34,
     fontWeight: "700",
     letterSpacing: -0.6,
-    color: "#12324A",
+    color: theme.colors.foreground,
   },
   description: {
     marginTop: 12,
     fontSize: 14.5,
     lineHeight: 22,
-    color: "#6E7F97",
+    color: theme.colors.mutedForeground,
   },
   footer: {
     marginTop: 10,
   },
   primaryButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
     width: "100%",
     borderRadius: 999,
-    backgroundColor: "#0A8DFF",
-    paddingVertical: 16,
-    shadowColor: "#0A8DFF",
+    shadowColor: theme.colors.primary,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.2,
     shadowRadius: 18,
     elevation: 5,
   },
+  buttonInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+  },
   primaryText: {
-    color: "#FFFFFF",
+    color: theme.colors.primaryForeground,
     fontSize: 15,
     fontWeight: "700",
     letterSpacing: 0.2,
@@ -364,30 +369,30 @@ const styles = StyleSheet.create({
   },
   dot: {
     borderRadius: 999,
-    backgroundColor: "#D7E8F7",
+    backgroundColor: theme.colors.border,
   },
   dotActive: {
     width: 24,
     height: 6,
-    backgroundColor: "#0A8DFF",
+    backgroundColor: theme.colors.primary,
   },
   dotInactive: {
     width: 6,
     height: 6,
-    backgroundColor: "#D7E8F7",
+    backgroundColor: theme.colors.border,
   },
   swipeText: {
     marginTop: 14,
     textAlign: "center",
     fontSize: 11.5,
     fontWeight: "500",
-    color: "#6E7F97",
+    color: theme.colors.mutedForeground,
   },
   illustrationBoxEmergency: {
     position: "relative",
     height: 224,
     borderRadius: 26,
-    backgroundColor: "#F0F7FF",
+    backgroundColor: theme.colors.surfaceVariant,
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
@@ -399,7 +404,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: "rgba(246, 91, 91, 0.10)",
+    backgroundColor: theme.colors.primary + "22",
   },
   softCircleRight: {
     position: "absolute",
@@ -408,7 +413,7 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: "rgba(10, 141, 255, 0.10)",
+    backgroundColor: theme.colors.accent + "22",
   },
   emergencyRow: {
     flexDirection: "row",
@@ -420,10 +425,10 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 18,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.colors.surface,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#0B1F33",
+    shadowColor: theme.colors.foreground,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
@@ -437,10 +442,10 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#F65B5B",
+    backgroundColor: theme.colors.destructive,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#F65B5B",
+    shadowColor: theme.colors.destructive,
     shadowOffset: { width: 0, height: 18 },
     shadowOpacity: 0.2,
     shadowRadius: 20,
@@ -464,7 +469,7 @@ const styles = StyleSheet.create({
     height: 24,
     borderRadius: 999,
     borderWidth: 2,
-    borderColor: "rgba(246, 91, 91, 0.5)",
+    borderColor: theme.colors.destructive + '80',
     borderTopWidth: 0,
     borderLeftWidth: 0,
     borderRightWidth: 0,
@@ -473,7 +478,7 @@ const styles = StyleSheet.create({
   illustrationBoxAi: {
     height: 224,
     borderRadius: 26,
-    backgroundColor: "#F0F7FF",
+    backgroundColor: theme.colors.surfaceVariant,
     justifyContent: "center",
     paddingHorizontal: 18,
     overflow: "hidden",
@@ -485,7 +490,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: "rgba(10, 141, 255, 0.10)",
+    backgroundColor: theme.colors.primary + '1A',
   },
   aiBubbleWrap: {
     width: "100%",
@@ -496,17 +501,17 @@ const styles = StyleSheet.create({
     maxWidth: "75%",
     borderRadius: 20,
     borderBottomRightRadius: 6,
-    backgroundColor: "#0A8DFF",
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    shadowColor: "#0B1F33",
+    shadowColor: theme.colors.foreground,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
     elevation: 3,
   },
   aiBubbleText: {
-    color: "#FFFFFF",
+    color: theme.colors.primaryForeground,
     fontSize: 12.5,
     lineHeight: 18,
   },
@@ -520,7 +525,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: "#E4F1FF",
+    backgroundColor: theme.colors.primaryContainer,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -528,17 +533,17 @@ const styles = StyleSheet.create({
     maxWidth: "74%",
     borderRadius: 20,
     borderBottomLeftRadius: 6,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    shadowColor: "#0B1F33",
+    shadowColor: theme.colors.foreground,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
     shadowRadius: 10,
     elevation: 3,
   },
   aiBubbleTextBot: {
-    color: "#12324A",
+    color: theme.colors.foreground,
     fontSize: 12.5,
     lineHeight: 18,
   },
@@ -552,7 +557,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#0A8DFF",
+    backgroundColor: theme.colors.primary,
     opacity: 0.8,
   },
   pulseDotFirst: {
@@ -567,7 +572,7 @@ const styles = StyleSheet.create({
   illustrationBoxConnected: {
     height: 224,
     borderRadius: 26,
-    backgroundColor: "#F0F7FF",
+    backgroundColor: theme.colors.surfaceVariant,
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
@@ -577,7 +582,7 @@ const styles = StyleSheet.create({
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: "rgba(10, 141, 255, 0.10)",
+    backgroundColor: theme.colors.primary + '1A',
   },
   gridWrap: {
     flexDirection: "row",
@@ -600,10 +605,10 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   connectedTileDefault: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: theme.colors.surface,
   },
   connectedTilePrimary: {
-    backgroundColor: "#0A8DFF",
+    backgroundColor: theme.colors.primary,
   },
   connectedTileText: {
     fontSize: 20,
@@ -617,7 +622,7 @@ const styles = StyleSheet.create({
   trendIconLine: {
     width: 18,
     height: 18,
-    borderColor: "#FFFFFF",
+    borderColor: theme.colors.primaryForeground,
     borderWidth: 2,
     borderTopWidth: 0,
     borderLeftWidth: 0,

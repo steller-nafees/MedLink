@@ -10,10 +10,21 @@ import {
 import { useRouter } from "expo-router";
 
 const logoImage = require("../../../assets/images/logos/medlink_full.png");
-
 const DURATION_MS = 1800;
 
-export default function SplashScreen() {
+// Design tokens ported from :root in the web theme
+const colors = {
+  background: "#F7FBFB",
+  surface: "#FFFFFF",
+  primary: "#16A89C",
+  primaryForeground: "#FFFFFF",
+  accent: "#69D2CA",
+  border: "#D7E4E5",
+  mutedForeground: "#6B7280",
+  foreground: "#17252F",
+};
+
+export default function SplashScreen({ next = "/onboarding" }: { next?: string }) {
   const router = useRouter();
   const progress = useRef(new Animated.Value(0)).current;
 
@@ -25,31 +36,36 @@ export default function SplashScreen() {
       useNativeDriver: false,
     });
 
-    animation.start(({ finished }) => {
-      if (finished) {
-        router.replace("/onboarding");
-      }
-    });
+    animation.start();
 
-    return () => animation.stop();
-  }, [progress, router]);
+    const timeout = setTimeout(() => {
+      router.replace(next as any);
+    }, DURATION_MS);
 
-  const progressWidth = progress.interpolate({
+    return () => {
+      animation.stop();
+      clearTimeout(timeout);
+    };
+  }, [progress, router, next]);
+
+  const barWidth = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 240],
   });
 
   return (
     <View style={styles.container}>
-      <View style={styles.glow} />
+      {/* gradient-hero: soft radial glows top-left (primary) and bottom-right (accent) */}
+      <View style={[styles.glow, styles.glowPrimary]} />
+      <View style={[styles.glow, styles.glowAccent]} />
 
-      <View style={styles.main}>
+      <View style={styles.logoWrap}>
         <Image source={logoImage} style={styles.logo} resizeMode="contain" />
       </View>
 
-      <View style={styles.footer}>
+      <View style={styles.progressWrap}>
         <View style={styles.progressTrack}>
-          <Animated.View style={[styles.progress, { width: progressWidth }]} />
+          <Animated.View style={[styles.progressFill, { width: barWidth }]} />
         </View>
 
         <Text style={styles.brand}>SyntheticMinds</Text>
@@ -64,56 +80,60 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 32,
-    backgroundColor: "#F4FBFF",
+    backgroundColor: colors.background,
+    overflow: "hidden",
   },
-
   glow: {
     position: "absolute",
-    width: 288,
-    height: 288,
-    borderRadius: 144,
-    backgroundColor: "rgba(10, 141, 255, 0.10)",
+    width: 320,
+    height: 320,
+    borderRadius: 160,
+    opacity: 0.22,
   },
-
-  main: {
+  glowPrimary: {
+    top: -80,
+    left: -100,
+    backgroundColor: colors.primary,
+  },
+  glowAccent: {
+    bottom: -100,
+    right: -100,
+    backgroundColor: colors.accent,
+  },
+  logoWrap: {
     flex: 1,
-    width: "100%",
     alignItems: "center",
     justifyContent: "center",
   },
-
   logo: {
     width: 224,
     height: 224,
   },
-
-  footer: {
+  progressWrap: {
     width: "100%",
     maxWidth: 240,
+    alignItems: "center",
+    justifyContent: "center",
     paddingBottom: 40,
   },
-
   progressTrack: {
     width: "100%",
     height: 6,
     borderRadius: 999,
+    backgroundColor: colors.border,
     overflow: "hidden",
-    backgroundColor: "#D7E8F7",
   },
-
-  progress: {
+  progressFill: {
     height: "100%",
     borderRadius: 999,
-    backgroundColor: "#0A8DFF",
+    backgroundColor: colors.primary,
   },
-
   brand: {
     marginTop: 24,
     fontSize: 11,
-    fontWeight: "600",
-    letterSpacing: 3.52,
-    textAlign: "center",
-    color: "#6E7F97",
+    fontWeight: "700",
+    letterSpacing: 4.6,
+    color: colors.mutedForeground,
     textTransform: "uppercase",
   },
 });

@@ -1,14 +1,5 @@
-import { View, Text, StyleSheet } from "react-native";
+import LoginScreen from "../../features/auth/login/LoginScreen";
 
-export default function LoginScreen() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Login (coming soon)</Text>
-    </View>
-  );
+export default function LoginRoute() {
+  return <LoginScreen />;
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "center" },
-  text: { fontSize: 16, color: "#12324A" },
-});
