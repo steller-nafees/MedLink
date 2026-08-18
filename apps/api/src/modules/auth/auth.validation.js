@@ -2,6 +2,7 @@ const { z } = require("zod");
 
 const signupSchema = z.object({
   email: z
+    .string()
     .email("Please provide a valid email address")
     .trim()
     .toLowerCase(),
@@ -24,17 +25,12 @@ const signupSchema = z.object({
       "Password must contain at least one special character"
     ),
 
-  userType: z.enum([
-    "CUSTOMER",
-    "SUPER_ADMIN",
-    "HOSPITAL_ADMIN",
-    "AMBULANCE_ADMIN",
-  ]),
-});
+}).strict();
 
 const loginSchema = z
   .object({
     email: z
+      .string()
       .email("Please provide a valid email address")
       .trim()
       .optional(),

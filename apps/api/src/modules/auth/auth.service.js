@@ -1,4 +1,5 @@
 const bcrypt = require("bcrypt");
+const crypto = require("crypto");
 
 const {
   findUserByEmail,
@@ -6,7 +7,13 @@ const {
   createUser,
   updateLastLogin,
   hasUserProfile,
+  createEmergencyUser,
 } = require("./auth.repository");
+
+const {
+  createEmergencyProfile,
+  upsertUserLocation,
+} = require("../user/user.repository");
 
 const {
   generateAccessToken,
@@ -79,7 +86,6 @@ const signup = async ({
   email,
   phone,
   password,
-  userType,
 }) => {
   const existingEmail = await findUserByEmail(email);
 
@@ -102,7 +108,7 @@ const signup = async ({
   const passwordHash = await bcrypt.hash(password, 12);
 
   const user = await createUser({
-    roleType: userType,
+    roleType: "CUSTOMER",
     email,
     phone,
     passwordHash,
@@ -127,7 +133,93 @@ const signup = async ({
   };
 };
 
+const startEmergencySession = async ({
+  name,
+  phone,
+  latitude,
+  longitude,
+}) => {
+  let user = await findUserByPhone(phone);
+
+  let temporaryPassword = null;
+  let isNewEmergencyUser = false;
+
+  if (user) {
+    if (!user.is_active) {
+      const error = new Error("Account has been deactivated");
+      error.statusCode = 403;
+      error.errorCode = "ACCOUNT_DISABLED";
+      throw error;
+    }
+  } else {
+    temporaryPassword = `SOS-${crypto.randomBytes(6).toString("hex")}`;
+
+    const passwordHash = await bcrypt.hash(
+      temporaryPassword,
+      12
+    );
+
+    user = await createEmergencyUser({
+      phone,
+      passwordHash,
+    });
+
+    isNewEmergencyUser = true;
+
+    await createEmergencyProfile({
+      userId: user.id,
+      name,
+    });
+  }
+
+  const location = await upsertUserLocation({
+    userId: user.id,
+    latitude,
+    longitude,
+  });
+
+  const updatedLogin = await updateLastLogin(user.id);
+
+  const payload = {
+    userId: user.id,
+    role: user.role_type,
+    sessionType: "EMERGENCY",
+    isEmergency: true,
+  };
+
+  const accessToken = generateAccessToken(payload);
+
+  return {
+    user: {
+      id: user.id,
+      phone: user.phone,
+      roleType: user.role_type,
+      lastLogin: updatedLogin.last_login,
+    },
+    name,
+    location: {
+      latitude: location.latitude,
+      longitude: location.longitude,
+    },
+    isEmergency: true,
+    isNewEmergencyUser,
+    temporaryPassword,
+    token: {
+      accessToken,
+      expiresIn:
+        Number(process.env.JWT_ACCESS_EXPIRES_IN_SECONDS) || 3600,
+      tokenType: "Bearer",
+    },
+  };
+};
+
+const logout = async () => {
+  return true;
+};
+
 module.exports = {
   signup,
   login,
+  startEmergencySession,
+  logout,
 };
