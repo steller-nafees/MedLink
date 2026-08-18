@@ -1,14 +1,5 @@
-import { View, Text, StyleSheet } from "react-native";
+import { DriverSignupScreen } from "../../features/auth/driver-signup";
 
-export default function DriverSignupScreen() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.text}>DriverSignup (coming soon)</Text>
-    </View>
-  );
+export default function DriverSignupRoute() {
+  return <DriverSignupScreen />;
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "center" },
-  text: { fontSize: 16, color: "#12324A" },
-});

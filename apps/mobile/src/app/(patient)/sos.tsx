@@ -1,14 +1,5 @@
-import { View, Text, StyleSheet } from "react-native";
+import { SOSScreen } from '../../features/sos';
 
-export default function SosScreen() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Sos (coming soon)</Text>
-    </View>
-  );
+export default function PatientSosRoute() {
+  return <SOSScreen />;
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "center" },
-  text: { fontSize: 16, color: "#12324A" },
-});
