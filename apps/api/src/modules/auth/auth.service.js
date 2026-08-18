@@ -7,6 +7,7 @@ const {
   updateLastLogin,
   hasUserProfile,
 } = require("./auth.repository");
+const { createUserProfile } = require("../user/user.repository");
 
 const {
   generateAccessToken,
@@ -80,6 +81,15 @@ const signup = async ({
   phone,
   password,
   userType,
+  firstName,
+  lastName,
+  gender,
+  dateOfBirth,
+  nationalId,
+  address,
+  emergencyContactName,
+  emergencyContactPhone,
+  bloodGroup,
 }) => {
   const existingEmail = await findUserByEmail(email);
 
@@ -106,6 +116,19 @@ const signup = async ({
     email,
     phone,
     passwordHash,
+  });
+
+  await createUserProfile({
+    userId: user.id,
+    firstName,
+    lastName,
+    gender,
+    dateOfBirth,
+    nationalId,
+    address,
+    emergencyContactName,
+    emergencyContactPhone,
+    bloodGroup,
   });
 
   const payload = {
