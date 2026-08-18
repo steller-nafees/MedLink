@@ -7,6 +7,7 @@ const ambulanceRoutes = require("./modules/ambulance/ambulance.routes");
 const reservationRoutes = require("./modules/reservation/reservation.routes");
 const eventRoutes = require("./modules/event/event.routes");
 const paymentRoutes = require("./modules/payment/payment.routes");
+const aiMedicalRoutes = require("./modules/ai-medical/ai-medical.routes");
 
 const app = express();
 
@@ -26,5 +27,6 @@ app.use("/api/v1/ambulances", ambulanceRoutes);
 app.use("/api/v1/reservations", reservationRoutes);
 app.use("/api/v1/events", eventRoutes);
 app.use("/api/v1/payments", paymentRoutes);
+app.use("/api/v1/ai-medical", aiMedicalRoutes);
 
 module.exports = app;
