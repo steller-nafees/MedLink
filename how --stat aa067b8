@@ -1,0 +1,303 @@
+[33mcommit cb69ef6d188da7ecd993052d4275cb9747ad162e[m
+Author: H M Nafees N Islam <151987640+steller-nafees@users.noreply.github.com>
+Date:   Sun Aug 16 12:37:53 2026 +0600
+
+    Feature/mobile app structure (#4)
+    
+    * chore: backup current MedLink state
+    
+    * feat(api) : migrate auth module to new architecture
+    
+    * chore: update package lock
+    
+    * feat(api): migrate user module foundation
+    
+    * chore(mobile): add patient and ambulance screen placeholders
+    
+    * feat: setup mobile app structure and splash screen
+    
+    * chore: rebuild mobile app foundation
+
+ .agent.md                                          |  103 [32m++[m
+ AGENTS.md                                          |    0
+ apps/api/src/app.js                                |    2 [32m+[m
+ apps/api/src/modules/user/user.controller.js       |   23 [32m+[m
+ apps/api/src/modules/user/user.repository.js       |  429 [32m+++++++[m
+ apps/api/src/modules/user/user.routes.js           |   10 [32m+[m
+ apps/api/src/modules/user/user.service.js          |    5 [32m+[m
+ apps/api/src/modules/user/user.validation.js       |    0
+ apps/mobile/.gitignore                             |    2 [31m-[m
+ apps/mobile/App.tsx                                |   20 [32m+[m
+ apps/mobile/LICENSE                                |   21 [32m+[m
+ apps/mobile/README.md                              |   56 [31m-[m
+ apps/mobile/app.json                               |   39 [32m+[m[31m-[m
+ .../{images => }/android-icon-background.png       |  Bin
+ .../{images => }/android-icon-foreground.png       |  Bin
+ .../{images => }/android-icon-monochrome.png       |  Bin
+ apps/mobile/assets/expo.icon/Assets/expo-icon.svg  |   11 [31m-[m
+ apps/mobile/assets/expo.icon/Assets/grid.png       |  Bin [31m53681[m -> [32m0[m bytes
+ apps/mobile/assets/expo.icon/icon.json             |   40 [31m-[m
+ apps/mobile/assets/favicon.png                     |  Bin [31m0[m -> [32m1129[m bytes
+ apps/mobile/assets/icon.png                        |  Bin [31m0[m -> [32m393493[m bytes
+ apps/mobile/assets/images/adaptive-icon.png        |  Bin [31m128127[m -> [32m0[m bytes
+ apps/mobile/assets/images/expo-badge-white.png     |  Bin [31m4129[m -> [32m0[m bytes
+ apps/mobile/assets/images/expo-badge.png           |  Bin [31m4137[m -> [32m0[m bytes
+ apps/mobile/assets/images/expo-logo.png            |  Bin [31m128127[m -> [32m0[m bytes
+ apps/mobile/assets/images/favicon.png              |  Bin [31m3863[m -> [32m0[m bytes
+ apps/mobile/assets/images/icon.png                 |  Bin [31m128127[m -> [32m0[m bytes
+ apps/mobile/assets/images/logo-glow.png            |  Bin [31m331624[m -> [32m0[m bytes
+ apps/mobile/assets/images/react-logo.png           |  Bin [31m6341[m -> [32m0[m bytes
+ apps/mobile/assets/images/react-logo@2x.png        |  Bin [31m14225[m -> [32m0[m bytes
+ apps/mobile/assets/images/react-logo@3x.png        |  Bin [31m21252[m -> [32m0[m bytes
+ apps/mobile/assets/images/tabIcons/explore.png     |  Bin [31m215[m -> [32m0[m bytes
+ apps/mobile/assets/images/tabIcons/explore@2x.png  |  Bin [31m347[m -> [32m0[m bytes
+ apps/mobile/assets/images/tabIcons/explore@3x.png  |  Bin [31m468[m -> [32m0[m bytes
+ apps/mobile/assets/images/tabIcons/home.png        |  Bin [31m253[m -> [32m0[m bytes
+ apps/mobile/assets/images/tabIcons/home@2x.png     |  Bin [31m343[m -> [32m0[m bytes
+ apps/mobile/assets/images/tabIcons/home@3x.png     |  Bin [31m479[m -> [32m0[m bytes
+ apps/mobile/assets/images/tutorial-web.png         |  Bin [31m58959[m -> [32m0[m bytes
+ apps/mobile/assets/splash-icon.png                 |  Bin [31m0[m -> [32m17547[m bytes
+ apps/mobile/index.ts                               |    8 [32m+[m
+ apps/mobile/package.json                           |   27 [32m+[m[31m-[m
+ apps/mobile/scripts/reset-project.js               |  114 [31m--[m
+ apps/mobile/src/app/(ambulance)/dispatch.tsx       |    0
+ apps/mobile/src/app/(ambulance)/history.tsx        |    9 [31m-[m
+ apps/mobile/src/app/(ambulance)/index.tsx          |    9 [31m-[m
+ apps/mobile/src/app/(ambulance)/navigate.tsx       |    9 [31m-[m
+ apps/mobile/src/app/(ambulance)/notifications.tsx  |    9 [31m-[m
+ apps/mobile/src/app/(ambulance)/profile.tsx        |    9 [31m-[m
+ apps/mobile/src/app/(ambulance)/settings.tsx       |    0
+ apps/mobile/src/app/(ambulance)/trip.tsx           |    9 [31m-[m
+ apps/mobile/src/app/(auth)/account-type.tsx        |    9 [31m-[m
+ apps/mobile/src/app/(auth)/driver-signup.tsx       |    9 [31m-[m
+ apps/mobile/src/app/(auth)/forgot-password.tsx     |    9 [31m-[m
+ apps/mobile/src/app/(auth)/login.tsx               |    9 [31m-[m
+ apps/mobile/src/app/(auth)/onboarding.tsx          |    9 [31m-[m
+ apps/mobile/src/app/(auth)/signup.tsx              |    9 [31m-[m
+ apps/mobile/src/app/(patient)/activity.tsx         |    9 [31m-[m
+ apps/mobile/src/app/(patient)/ai.tsx               |    9 [31m-[m
+ apps/mobile/src/app/(patient)/blood.tsx            |    0
+ apps/mobile/src/app/(patient)/hospitals/[id].tsx   |    9 [31m-[m
+ apps/mobile/src/app/(patient)/hospitals/index.tsx  |    9 [31m-[m
+ apps/mobile/src/app/(patient)/index.tsx            |    9 [31m-[m
+ apps/mobile/src/app/(patient)/notifications.tsx    |    9 [31m-[m
+ apps/mobile/src/app/(patient)/preferences.tsx      |    9 [31m-[m
+ apps/mobile/src/app/(patient)/profile.tsx          |    9 [31m-[m
+ apps/mobile/src/app/(patient)/reservations.tsx     |    0
+ apps/mobile/src/app/(patient)/settings.tsx         |    9 [31m-[m
+ apps/mobile/src/app/(patient)/sos.tsx              |    9 [31m-[m
+ apps/mobile/src/app/(patient)/tracking.tsx         |    9 [31m-[m
+ apps/mobile/src/app/_layout.tsx                    |   11 [31m-[m
+ apps/mobile/src/app/index.tsx                      |   11 [31m-[m
+ apps/mobile/src/app/splash.tsx                     |  138 [31m---[m
+ apps/mobile/src/assets/fonts/.gitkeep              |    0
+ apps/mobile/src/assets/images/.gitkeep             |    0
+ apps/mobile/src/assets/images/logos/.gitkeep       |    0
+ .../mobile/src/components/animated-icon.module.css |    6 [31m-[m
+ apps/mobile/src/components/animated-icon.tsx       |  148 [31m---[m
+ apps/mobile/src/components/animated-icon.web.tsx   |  108 [31m--[m
+ apps/mobile/src/components/app-tabs.tsx            |   32 [31m-[m
+ apps/mobile/src/components/app-tabs.web.tsx        |  115 [31m--[m
+ apps/mobile/src/components/external-link.tsx       |   25 [31m-[m
+ apps/mobile/src/components/hint-row.tsx            |   35 [31m-[m
+ apps/mobile/src/components/shared/.gitkeep         |    0
+ apps/mobile/src/components/splash.tsx              |  138 [31m---[m
+ apps/mobile/src/components/themed-text.tsx         |   73 [31m--[m
+ apps/mobile/src/components/themed-view.tsx         |   16 [31m-[m
+ apps/mobile/src/components/ui/.gitkeep             |    0
+ apps/mobile/src/components/ui/collapsible.tsx      |   65 [31m-[m
+ apps/mobile/src/components/web-badge.tsx           |   43 [31m-[m
+ apps/mobile/src/constants/.gitkeep                 |    0
+ apps/mobile/src/constants/theme.ts                 |   65 [31m-[m
+ apps/mobile/src/features/ai/index.ts               |    0
+ .../src/features/ambulance/dashboard/.gitkeep      |    0
+ .../src/features/ambulance/dispatch/.gitkeep       |    0
+ .../mobile/src/features/ambulance/history/.gitkeep |    0
+ apps/mobile/src/features/ambulance/index.ts        |    0
+ .../src/features/ambulance/navigate/.gitkeep       |    0
+ .../src/features/ambulance/notifications/.gitkeep  |    0
+ .../mobile/src/features/ambulance/profile/.gitkeep |    0
+ .../src/features/ambulance/settings/.gitkeep       |    0
+ .../src/features/ambulance/tracking/.gitkeep       |    0
+ apps/mobile/src/features/ambulance/trip/.gitkeep   |    0
+ .../mobile/src/features/auth/account-type/.gitkeep |    0
+ apps/mobile/src/features/auth/components/.gitkeep  |    0
+ .../src/features/auth/driver-signup/.gitkeep       |    0
+ .../src/features/auth/forgot-password/.gitkeep     |    0
+ apps/mobile/src/features/auth/index.ts             |    0
+ apps/mobile/src/features/auth/login/.gitkeep       |    0
+ apps/mobile/src/features/auth/onboarding/.gitkeep  |    0
+ apps/mobile/src/features/auth/signup/.gitkeep      |    0
+ apps/mobile/src/features/blood/index.ts            |    0
+ apps/mobile/src/features/patient/activity/.gitkeep |    0
+ apps/mobile/src/features/patient/ai/.gitkeep       |    0
+ apps/mobile/src/features/patient/blood/.gitkeep    |    0
+ apps/mobile/src/features/patient/home/.gitkeep     |    0
+ .../mobile/src/features/patient/hospitals/.gitkeep |    0
+ apps/mobile/src/features/patient/index.ts          |    0
+ .../src/features/patient/notifications/.gitkeep    |    0
+ .../src/features/patient/preferences/.gitkeep      |    0
+ apps/mobile/src/features/patient/profile/.gitkeep  |    0
+ .../src/features/patient/reservations/.gitkeep     |    0
+ apps/mobile/src/features/patient/settings/.gitkeep |    0
+ apps/mobile/src/features/patient/sos/.gitkeep      |    0
+ apps/mobile/src/features/patient/tracking/.gitkeep |    0
+ apps/mobile/src/features/sos/index.ts              |    0
+ apps/mobile/src/global.css                         |    9 [31m-[m
+ apps/mobile/src/hooks/.gitkeep                     |    0
+ apps/mobile/src/hooks/use-color-scheme.ts          |    1 [31m-[m
+ apps/mobile/src/hooks/use-color-scheme.web.ts      |   21 [31m-[m
+ apps/mobile/src/hooks/use-theme.ts                 |   14 [31m-[m
+ apps/mobile/src/lib/.gitkeep                       |    0
+ apps/mobile/src/lib/utils.ts                       |    0
+ apps/mobile/src/services/.gitkeep                  |    0
+ apps/mobile/src/store/.gitkeep                     |    0
+ apps/mobile/src/types/.gitkeep                     |    0
+ apps/mobile/tsconfig.json                          |   18 [32m+[m[31m-[m
+ package-lock.json                                  |  935 [32m+++++++[m[31m--------[m
+ ui-kit/src/assets/medlink-dashboard-logo.png       |  Bin [31m0[m -> [32m105017[m bytes
+ ui-kit/src/assets/medlink-logo.png.asset.json      |   11 [32m+[m
+ ui-kit/src/assets/medlink-mark.png.asset.json      |   11 [32m+[m
+ .../src/assets/medlink_full.png                    |  Bin
+ ui-kit/src/assets/medlink_without_tagline.png      |  Bin [31m0[m -> [32m115628[m bytes
+ ui-kit/src/components/medlink/admin/admin-kit.tsx  |  290 [32m+++++[m
+ ui-kit/src/components/medlink/ambulance-card.tsx   |  147 [32m+++[m
+ .../components/medlink/auth/account-type-cards.tsx |   45 [32m+[m
+ ui-kit/src/components/medlink/auth/auth-kit.tsx    |  357 [32m++++++[m
+ .../components/medlink/auth/guest-sos-modal.tsx    |  170 [32m+++[m
+ ui-kit/src/components/medlink/blood/blood-kit.tsx  |  274 [32m+++++[m
+ ui-kit/src/components/medlink/driver-shell.tsx     |  124 [32m++[m
+ ui-kit/src/components/medlink/driver-ui.tsx        |  210 [32m++++[m
+ ui-kit/src/components/medlink/hospital-kit.tsx     |   95 [32m++[m
+ ui-kit/src/components/medlink/logo.tsx             |   14 [32m+[m
+ ui-kit/src/components/medlink/patient-shell.tsx    |  170 [32m+++[m
+ ui-kit/src/components/medlink/phone-frame.tsx      |  142 [32m+++[m
+ ui-kit/src/components/medlink/profile-ui.tsx       |  385 [32m++++++[m
+ .../src/components/medlink/profile/profile-kit.tsx |  531 [32m+++++++++[m
+ ui-kit/src/components/medlink/request-kit.tsx      |   87 [32m++[m
+ ui-kit/src/components/medlink/sos/offline-kit.tsx  |  239 [32m++++[m
+ ui-kit/src/components/medlink/splash.tsx           |   56 [32m+[m
+ ui-kit/src/components/medlink/stylized-map.tsx     |  115 [32m++[m
+ ui-kit/src/components/medlink/web-shell.tsx        |  149 [32m+++[m
+ ui-kit/src/components/ui/accordion.tsx             |   51 [32m+[m
+ ui-kit/src/components/ui/alert-dialog.tsx          |  115 [32m++[m
+ ui-kit/src/components/ui/alert.tsx                 |   49 [32m+[m
+ ui-kit/src/components/ui/aspect-ratio.tsx          |    5 [32m+[m
+ ui-kit/src/components/ui/avatar.tsx                |   47 [32m+[m
+ ui-kit/src/components/ui/badge.tsx                 |   32 [32m+[m
+ ui-kit/src/components/ui/breadcrumb.tsx            |  101 [32m++[m
+ ui-kit/src/components/ui/button.tsx                |   49 [32m+[m
+ ui-kit/src/components/ui/calendar.tsx              |  177 [32m+++[m
+ ui-kit/src/components/ui/card.tsx                  |   55 [32m+[m
+ ui-kit/src/components/ui/carousel.tsx              |  240 [32m++++[m
+ ui-kit/src/components/ui/chart.tsx                 |  331 [32m++++++[m
+ ui-kit/src/components/ui/checkbox.tsx              |   26 [32m+[m
+ ui-kit/src/components/ui/collapsible.tsx           |   11 [32m+[m
+ ui-kit/src/components/ui/command.tsx               |  143 [32m+++[m
+ ui-kit/src/components/ui/context-menu.tsx          |  187 [32m+++[m
+ ui-kit/src/components/ui/dialog.tsx                |  104 [32m++[m
+ ui-kit/src/components/ui/drawer.tsx                |   98 [32m++[m
+ ui-kit/src/components/ui/dropdown-menu.tsx         |  188 [32m+++[m
+ ui-kit/src/components/ui/form.tsx                  |  171 [32m+++[m
+ ui-kit/src/components/ui/hover-card.tsx            |   27 [32m+[m
+ ui-kit/src/components/ui/input-otp.tsx             |   69 [32m++[m
+ ui-kit/src/components/ui/input.tsx                 |   22 [32m+[m
+ ui-kit/src/components/ui/label.tsx                 |   21 [32m+[m
+ ui-kit/src/components/ui/menubar.tsx               |  229 [32m++++[m
+ ui-kit/src/components/ui/navigation-menu.tsx       |  120 [32m++[m
+ ui-kit/src/components/ui/pagination.tsx            |   98 [32m++[m
+ ui-kit/src/components/ui/popover.tsx               |   31 [32m+[m
+ ui-kit/src/components/ui/progress.tsx              |   25 [32m+[m
+ ui-kit/src/components/ui/radio-group.tsx           |   36 [32m+[m
+ ui-kit/src/components/ui/resizable.tsx             |   37 [32m+[m
+ ui-kit/src/components/ui/scroll-area.tsx           |   44 [32m+[m
+ ui-kit/src/components/ui/select.tsx                |  152 [32m+++[m
+ ui-kit/src/components/ui/separator.tsx             |   24 [32m+[m
+ ui-kit/src/components/ui/sheet.tsx                 |  122 [32m++[m
+ ui-kit/src/components/ui/sidebar.tsx               |  744 [32m++++++++++++[m
+ ui-kit/src/components/ui/skeleton.tsx              |    7 [32m+[m
+ ui-kit/src/components/ui/slider.tsx                |   23 [32m+[m
+ ui-kit/src/components/ui/sonner.tsx                |   23 [32m+[m
+ ui-kit/src/components/ui/switch.tsx                |   27 [32m+[m
+ ui-kit/src/components/ui/table.tsx                 |   94 [32m++[m
+ ui-kit/src/components/ui/tabs.tsx                  |   53 [32m+[m
+ ui-kit/src/components/ui/textarea.tsx              |   21 [32m+[m
+ ui-kit/src/components/ui/toggle-group.tsx          |   57 [32m+[m
+ ui-kit/src/components/ui/toggle.tsx                |   42 [32m+[m
+ ui-kit/src/components/ui/tooltip.tsx               |   32 [32m+[m
+ ui-kit/src/hooks/use-mobile.tsx                    |   19 [32m+[m
+ ui-kit/src/lib/error-capture.ts                    |   27 [32m+[m
+ ui-kit/src/lib/error-page.ts                       |   30 [32m+[m
+ ui-kit/src/lib/lovable-error-reporting.ts          |   57 [32m+[m
+ ui-kit/src/lib/medlink/admin-data.ts               |  223 [32m++++[m
+ ui-kit/src/lib/medlink/app-settings.tsx            |  175 [32m+++[m
+ ui-kit/src/lib/medlink/auth-roles.ts               |   48 [32m+[m
+ ui-kit/src/lib/medlink/blood.ts                    |  190 [32m+++[m
+ ui-kit/src/lib/medlink/data.ts                     |  340 [32m++++++[m
+ ui-kit/src/lib/medlink/driver-i18n.tsx             |  133 [32m+++[m
+ ui-kit/src/lib/medlink/offline-sync.ts             |  220 [32m++++[m
+ ui-kit/src/lib/utils.ts                            |    6 [32m+[m
+ ui-kit/src/routeTree.gen.ts                        | 1255 [32m++++++++++++++++++++[m
+ ui-kit/src/router.tsx                              |   16 [32m+[m
+ ui-kit/src/routes/README.md                        |   21 [32m+[m
+ ui-kit/src/routes/__root.tsx                       |  131 [32m++[m
+ ui-kit/src/routes/admin.analytics.tsx              |  214 [32m++++[m
+ ui-kit/src/routes/admin.audit.tsx                  |   71 [32m++[m
+ ui-kit/src/routes/admin.drivers.tsx                |  106 [32m++[m
+ ui-kit/src/routes/admin.health.tsx                 |  102 [32m++[m
+ ui-kit/src/routes/admin.hospitals.tsx              |  106 [32m++[m
+ ui-kit/src/routes/admin.index.tsx                  |  196 [32m+++[m
+ ui-kit/src/routes/admin.notifications.tsx          |   67 [32m++[m
+ ui-kit/src/routes/admin.revenue.tsx                |  143 [32m+++[m
+ ui-kit/src/routes/admin.tsx                        |   59 [32m+[m
+ ui-kit/src/routes/admin.users.tsx                  |  101 [32m++[m
+ ui-kit/src/routes/admin.verification.tsx           |  137 [32m+++[m
+ ui-kit/src/routes/ambulance.history.tsx            |   59 [32m+[m
+ ui-kit/src/routes/ambulance.index.tsx              |  338 [32m++++++[m
+ ui-kit/src/routes/ambulance.navigate.tsx           |   79 [32m++[m
+ ui-kit/src/routes/ambulance.notifications.tsx      |   36 [32m+[m
+ ui-kit/src/routes/ambulance.profile.tsx            |  204 [32m++++[m
+ ui-kit/src/routes/ambulance.splash.tsx             |   14 [32m+[m
+ ui-kit/src/routes/ambulance.trip.tsx               |  119 [32m++[m
+ ui-kit/src/routes/ambulance.tsx                    |   20 [32m+[m
+ ui-kit/src/routes/auth.tsx                         |  452 [32m+++++++[m
+ ui-kit/src/routes/hospital.ambulances.tsx          |  262 [32m++++[m
+ ui-kit/src/routes/hospital.analytics.tsx           |   97 [32m++[m
+ ui-kit/src/routes/hospital.beds.tsx                |   97 [32m++[m
+ ui-kit/src/routes/hospital.blood.tsx               |  218 [32m++++[m
+ ui-kit/src/routes/hospital.consultations.tsx       |   45 [32m+[m
+ ui-kit/src/routes/hospital.diagnostics.tsx         |   44 [32m+[m
+ ui-kit/src/routes/hospital.emergencies.tsx         |  139 [32m+++[m
+ ui-kit/src/routes/hospital.index.tsx               |  162 [32m+++[m
+ ui-kit/src/routes/hospital.payments.tsx            |   84 [32m++[m
+ ui-kit/src/routes/hospital.requests.tsx            |  244 [32m++++[m
+ ui-kit/src/routes/hospital.reservations.tsx        |   63 [32m+[m
+ ui-kit/src/routes/hospital.staff.tsx               |   68 [32m++[m
+ ui-kit/src/routes/hospital.tsx                     |   87 [32m++[m
+ ui-kit/src/routes/index.tsx                        |   99 [32m++[m
+ ui-kit/src/routes/patient.activity.tsx             |   80 [32m++[m
+ ui-kit/src/routes/patient.ai.tsx                   |  931 [32m+++++++++++++++[m
+ ui-kit/src/routes/patient.auth.account-type.tsx    |   70 [32m++[m
+ ui-kit/src/routes/patient.auth.driver-signup.tsx   |   79 [32m++[m
+ ui-kit/src/routes/patient.auth.forgot.tsx          |  104 [32m++[m
+ ui-kit/src/routes/patient.auth.index.tsx           |   67 [32m++[m
+ ui-kit/src/routes/patient.auth.login.tsx           |  130 [32m++[m
+ ui-kit/src/routes/patient.auth.onboarding.tsx      |  187 [32m+++[m
+ ui-kit/src/routes/patient.auth.signup.tsx          |   85 [32m++[m
+ ui-kit/src/routes/patient.auth.splash.tsx          |   14 [32m+[m
+ ui-kit/src/routes/patient.auth.states.tsx          |   85 [32m++[m
+ ui-kit/src/routes/patient.auth.tsx                 |   13 [32m+[m
+ ui-kit/src/routes/patient.hospitals.$id.tsx        |  126 [32m++[m
+ ui-kit/src/routes/patient.hospitals.index.tsx      |   98 [32m++[m
+ ui-kit/src/routes/patient.index.tsx                |  260 [32m++++[m
+ ui-kit/src/routes/patient.notifications.tsx        |   57 [32m+[m
+ ui-kit/src/routes/patient.preferences.tsx          |  312 [32m+++++[m
+ ui-kit/src/routes/patient.profile.tsx              |  310 [32m+++++[m
+ ui-kit/src/routes/patient.settings.tsx             |  129 [32m++[m
+ ui-kit/src/routes/patient.sos.tsx                  |  705 [32m+++++++++++[m
+ ui-kit/src/routes/patient.tracking.tsx             |   94 [32m++[m
+ ui-kit/src/routes/patient.tsx                      |   17 [32m+[m
+ ui-kit/src/server.ts                               |   61 [32m+[m
+ ui-kit/src/start.ts                                |   22 [32m+[m
+ ui-kit/src/styles.css                              |  251 [32m++++[m
+ 282 files changed, 20587 insertions(+), 2049 deletions(-)
