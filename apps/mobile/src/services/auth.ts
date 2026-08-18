@@ -7,7 +7,6 @@ export type SignupRequest = {
   email: string;
   phone: string;
   password: string;
-  userType?: "CUSTOMER";
   firstName?: string;
   lastName?: string;
   gender?: string;
@@ -78,16 +77,7 @@ export async function signUpCustomer(payload: SignupRequest): Promise<SignupResp
         email: payload.email.trim().toLowerCase(),
         phone: payload.phone.trim(),
         password: payload.password,
-        userType: payload.userType ?? "CUSTOMER",
-        firstName: payload.firstName,
-        lastName: payload.lastName,
-        gender: payload.gender,
-        dateOfBirth: payload.dateOfBirth,
-        nationalId: payload.nationalId,
-        address: payload.address,
-        emergencyContactName: payload.emergencyContactName,
-        emergencyContactPhone: payload.emergencyContactPhone,
-        bloodGroup: payload.bloodGroup,
+        userType: "CUSTOMER",
       }),
       signal: controller.signal,
     });

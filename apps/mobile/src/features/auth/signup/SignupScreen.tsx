@@ -196,7 +196,6 @@ export default function SignupScreen() {
         email: email.trim().toLowerCase(),
         phone: `+880${phoneLocal}`,
         password,
-        userType: "CUSTOMER",
       });
 
       await saveAuthToken(response.token.accessToken);
