@@ -37,3 +37,9 @@ ios
 
 # Prisma
 prisma/dev.db
+
+#Agent
+AGENTS.md
+
+#UI Kit
+ui-kit
