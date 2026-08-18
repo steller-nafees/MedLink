@@ -30,21 +30,6 @@ const signupSchema = z.object({
     "HOSPITAL_ADMIN",
     "AMBULANCE_ADMIN",
   ]),
-
-  firstName: z.string().trim().min(1).optional(),
-  lastName: z.string().trim().min(1).optional(),
-  gender: z.enum(["MALE", "FEMALE", "OTHER"]).optional(),
-  dateOfBirth: z.string().trim().optional(),
-  nationalId: z.string().trim().optional(),
-  address: z.string().trim().optional(),
-  emergencyContactName: z.string().trim().optional(),
-  emergencyContactPhone: z
-    .string()
-    .regex(/^\+8801[3-9]\d{8}$/,
-      "Emergency contact phone number must be in the format +8801XXXXXXXXX"
-    )
-    .optional(),
-  bloodGroup: z.string().trim().optional(),
 });
 
 const loginSchema = z
