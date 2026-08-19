@@ -3,30 +3,31 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   Pressable,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   User,
   Phone,
   Mail,
   Lock,
   Check,
-  Ambulance,
   IdCard,
-  ChevronLeft,
 } from "lucide-react-native";
 import { theme } from "../../../theme";
+import { Header } from "../../../components/ui/Header";
 import { ambulanceTypes } from "../../../lib/auth-roles";
 import { AuthInput } from "../../../components/ui/AuthInput";
 import { AuthSelect } from "../../../components/ui/AuthSelect";
+import { Button } from "../../../components/ui/Button";
 
 export function DriverSignupScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [done, setDone] = useState(false);
 
   // Form fields
@@ -87,10 +88,8 @@ export function DriverSignupScreen() {
       return;
     }
 
-    // Mock submission - in real app, call signUpDriver API
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 800));
       setDone(true);
     } catch (error) {
       console.error("Signup error:", error);
@@ -98,166 +97,166 @@ export function DriverSignupScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.container}
       >
         {done ? (
           // Success state
           <ScrollView
-            contentContainerStyle={styles.successContent}
+            contentContainerStyle={[
+              styles.successContent,
+              { paddingBottom: insets.bottom + theme.spacing.xxxl },
+            ]}
             showsVerticalScrollIndicator={false}
           >
-              <View style={styles.successIcon}>
-                <Check size={36} color={theme.colors.success} />
-              </View>
-              <Text style={styles.successTitle}>Driver account created</Text>
-              <Text style={styles.successSubtitle}>
-                Your ambulance is registered. You can start receiving emergency
-                requests.
-              </Text>
+            <View style={styles.successIcon}>
+              <Check size={40} color={theme.colors.success} />
+            </View>
+            <Text style={styles.successTitle}>Driver account created</Text>
+            <Text style={styles.successSubtitle}>
+              Your ambulance is registered. You can start receiving emergency requests.
+            </Text>
 
-              <Pressable
-                style={styles.primaryButton}
-                onPress={() => router.push("/(ambulance)")}
-              >
-                <Text style={styles.primaryButtonText}>
-                  Open driver dashboard
-                </Text>
-              </Pressable>
-            </ScrollView>
+            <Button
+              variant="primary"
+              size="lg"
+              onPress={() => router.push("/(ambulance)")}
+              style={{ width: "100%" }}
+            >
+              Open driver dashboard
+            </Button>
+          </ScrollView>
         ) : (
           // Form state
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Header */}
-            <View style={styles.header}>
-              <Pressable style={styles.backButton} onPress={handleGoBack}>
-                <ChevronLeft size={20} color={theme.colors.foreground} />
-              </Pressable>
-            </View>
+          <View style={styles.container}>
+            <Header onBack={handleGoBack} />
 
-            {/* Title section */}
-            <View style={styles.titleSection}>
-              <Text style={styles.badge}>🚑 Ambulance Driver</Text>
-              <Text style={styles.title}>Register your ambulance</Text>
-              <Text style={styles.subtitle}>
-                Your details and vehicle information.
-              </Text>
-            </View>
-
-            {/* Personal Details Section */}
-            <View style={styles.section}>
-              <View style={styles.fieldsContainer}>
-                <AuthInput
-                  icon={User}
-                  label="Full name"
-                  placeholder="Abdul Karim"
-                  value={fullName}
-                  onChangeText={setFullName}
-                />
-
-                <AuthInput
-                  icon={Phone}
-                  label="Phone number"
-                  placeholder="+880 17XX-XXXXXX"
-                  type="tel"
-                  value={phone}
-                  onChangeText={setPhone}
-                  error={phoneError}
-                  style={styles.input}
-                />
-
-                <AuthInput
-                  icon={Mail}
-                  label="Email"
-                  placeholder="driver@example.com"
-                  type="email"
-                  value={email}
-                  onChangeText={setEmail}
-                  error={emailError}
-                  style={styles.input}
-                />
-
-                <AuthInput
-                  icon={Lock}
-                  label="Password"
-                  placeholder="Create a password"
-                  type="password"
-                  value={password}
-                  onChangeText={setPassword}
-                  error={passwordError}
-                  style={styles.input}
-                />
-
-                <AuthInput
-                  icon={Lock}
-                  label="Confirm Password"
-                  placeholder="Confirm your password"
-                  type="password"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  error={confirmMismatch}
-                  style={styles.input}
-                />
-              </View>
-            </View>
-
-            {/* Vehicle Information Section */}
-            <View style={styles.vehicleSection}>
-              <Text style={styles.sectionLabel}>Vehicle information</Text>
-
-              <View style={styles.fieldsContainer}>
-                <AuthInput
-                  icon={IdCard}
-                  label="Vehicle registration number"
-                  placeholder="Dhaka Metro Cha 11-1111"
-                  value={vehicleRegistration}
-                  onChangeText={setVehicleRegistration}
-                  style={styles.input}
-                />
-
-                <AuthSelect
-                  icon={Ambulance}
-                  label="Ambulance type"
-                  options={ambulanceTypes}
-                  value={ambulanceType}
-                  onChange={setAmbulanceType}
-                  style={styles.input}
-                />
-              </View>
-            </View>
-
-            {/* Button Section */}
-            <View style={styles.buttonSection}>
-              <Pressable
-                style={[
-                  styles.primaryButton,
-                  !canSubmit && styles.primaryButtonDisabled,
-                ]}
-                onPress={handleCreateAccount}
-                disabled={!canSubmit}
-              >
-                <Text style={styles.primaryButtonText}>Create Driver Account</Text>
-              </Pressable>
-
-              <Text style={styles.loginPrompt}>
-                Already have an account?{" "}
-                <Text
-                  style={styles.loginLink}
-                  onPress={() => router.push("/(auth)/login")}
-                >
-                  Login
+            <ScrollView
+              contentContainerStyle={[
+                styles.scrollContent,
+                { paddingBottom: insets.bottom + theme.spacing.xxxl },
+              ]}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Title section */}
+              <View style={styles.titleSection}>
+                <Text style={styles.badge}>Ambulance Driver</Text>
+                <Text style={styles.title}>Register your ambulance</Text>
+                <Text style={styles.subtitle}>
+                  Enter your details and vehicle information.
                 </Text>
-              </Text>
-            </View>
-          </ScrollView>
+              </View>
+
+              {/* Personal Details Section */}
+              <View style={styles.section}>
+                <View style={styles.fieldsContainer}>
+                  <AuthInput
+                    icon={User}
+                    label="Full name"
+                    placeholder="Abdul Karim"
+                    value={fullName}
+                    onChangeText={setFullName}
+                  />
+
+                  <AuthInput
+                    icon={Phone}
+                    label="Phone number"
+                    placeholder="+880 17XX-XXXXXX"
+                    type="tel"
+                    value={phone}
+                    onChangeText={setPhone}
+                    error={phoneError}
+                    style={styles.input}
+                  />
+
+                  <AuthInput
+                    icon={Mail}
+                    label="Email"
+                    placeholder="driver@example.com"
+                    type="email"
+                    value={email}
+                    onChangeText={setEmail}
+                    error={emailError}
+                    style={styles.input}
+                  />
+
+                  <AuthInput
+                    icon={Lock}
+                    label="Password"
+                    placeholder="Create a password"
+                    type="password"
+                    value={password}
+                    onChangeText={setPassword}
+                    error={passwordError}
+                    style={styles.input}
+                  />
+
+                  <AuthInput
+                    icon={Lock}
+                    label="Confirm Password"
+                    placeholder="Confirm your password"
+                    type="password"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    error={confirmMismatch}
+                    style={styles.input}
+                  />
+                </View>
+              </View>
+
+              {/* Vehicle Information Section */}
+              <View style={styles.vehicleSection}>
+                <Text style={styles.sectionLabel}>Vehicle information</Text>
+
+                <View style={styles.fieldsContainer}>
+                  <AuthInput
+                    icon={IdCard}
+                    label="Vehicle registration number"
+                    placeholder="Dhaka Metro Cha 11-1111"
+                    value={vehicleRegistration}
+                    onChangeText={setVehicleRegistration}
+                    style={styles.input}
+                  />
+
+                  <AuthSelect
+                    label="Ambulance type"
+                    options={ambulanceTypes}
+                    value={ambulanceType}
+                    onChange={setAmbulanceType}
+                    style={styles.input}
+                  />
+                </View>
+              </View>
+
+              {/* Button section */}
+              <View style={styles.buttonSection}>
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onPress={handleCreateAccount}
+                  disabled={!canSubmit}
+                >
+                  Create driver account
+                </Button>
+
+                <Text style={styles.loginPrompt}>
+                  Already have an account?{" "}
+                  <Text
+                    style={styles.loginLink}
+                    onPress={() => router.push("/(auth)/login")}
+                  >
+                    Log In
+                  </Text>
+                </Text>
+              </View>
+            </ScrollView>
+          </View>
         )}
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -270,106 +269,61 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-    marginBottom: 12,
-  },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: theme.radii.xxxl,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-    ...theme.shadows.shadowCard,
+    paddingHorizontal: theme.spacing.xxl,
+    paddingTop: theme.spacing.xs,
   },
   titleSection: {
-    marginTop: 24,
-    marginBottom: 28,
+    marginBottom: theme.spacing.xxl,
   },
   badge: {
-    fontSize: 12,
-    fontWeight: "700",
+    ...theme.typography.label,
     color: theme.colors.primary,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 8,
+    marginBottom: theme.spacing.xs,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "700",
+    ...theme.typography.display,
     color: theme.colors.foreground,
-    lineHeight: 32,
-    marginBottom: 6,
+    marginBottom: theme.spacing.xs,
   },
   subtitle: {
-    fontSize: 13.5,
-    color: theme.colors.mutedForeground,
+    ...theme.typography.body,
+    color: theme.colors.textMuted,
   },
   section: {
-    marginBottom: 28,
+    marginBottom: theme.spacing.xxl,
   },
   fieldsContainer: {
-    gap: 12,
+    gap: theme.spacing.md,
   },
   input: {
     marginTop: 0,
   },
   vehicleSection: {
-    marginBottom: 32,
+    marginBottom: theme.spacing.xxl,
   },
   sectionLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: theme.colors.mutedForeground,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 12,
-    paddingHorizontal: 4,
+    ...theme.typography.label,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.xxs,
   },
   buttonSection: {
-    gap: 10,
-    marginTop: 8,
-  },
-  primaryButton: {
-    paddingVertical: 16,
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.radii.pill,
-    alignItems: "center",
-    justifyContent: "center",
-    ...theme.shadows.shadowFloat,
-  },
-  primaryButtonDisabled: {
-    opacity: 0.4,
-  },
-  primaryButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: theme.colors.primaryForeground,
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.sm,
   },
   loginPrompt: {
-    fontSize: 13,
-    color: theme.colors.mutedForeground,
+    ...theme.typography.body,
+    color: theme.colors.textMuted,
     textAlign: "center",
-    marginTop: 8,
+    marginTop: theme.spacing.xs,
   },
   loginLink: {
-    fontWeight: "600",
+    fontWeight: "700",
     color: theme.colors.primary,
   },
-  // Success state styles
   successContent: {
     flexGrow: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: theme.spacing.xxl,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -377,23 +331,22 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: `${theme.colors.success}20`,
+    backgroundColor: theme.colors.successLight,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 24,
+    marginBottom: theme.spacing.xl,
   },
   successTitle: {
-    fontSize: 26,
-    fontWeight: "700",
+    ...theme.typography.display,
     color: theme.colors.foreground,
-    marginBottom: 8,
+    marginBottom: theme.spacing.sm,
     textAlign: "center",
   },
   successSubtitle: {
-    fontSize: 13.5,
-    color: theme.colors.mutedForeground,
+    ...theme.typography.body,
+    color: theme.colors.textMuted,
     textAlign: "center",
-    marginBottom: 32,
-    maxWidth: 260,
+    marginBottom: theme.spacing.xxxl,
+    maxWidth: 280,
   },
 });

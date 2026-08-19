@@ -35,7 +35,7 @@ const RegPlate: React.FC<RegPlateProps> = ({ reg, tone = 'default' }) => {
       <Text
         style={{
           fontSize: 14.5,
-          fontWeight: 'extrabold',
+          fontWeight: '800',
           color: isLive ? theme.colors.success : theme.colors.foreground,
           letterSpacing: 0.02,
           textTransform: 'uppercase',

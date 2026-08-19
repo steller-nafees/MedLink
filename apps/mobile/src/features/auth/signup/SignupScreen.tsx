@@ -5,13 +5,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
@@ -36,11 +36,6 @@ import {
   signUpCustomer,
 } from "../../../services/auth";
 
-// NOTE: signUpCustomer's TS signature in services/auth.ts previously only
-// accepted { email, phone, password }. It now receives the full profile
-// payload below — widen that type (or accept Record<string, unknown>) so
-// this compiles cleanly.
-
 type Gender = "MALE" | "FEMALE" | "OTHER";
 
 const genderOptions: { label: string; value: Gender }[] = [
@@ -55,20 +50,19 @@ const STEPS = [
   { key: "security", title: "Secure your account", subtitle: "Choose a strong password." },
 ] as const;
 
-// Kept separate from theme.colors since the palette has no dedicated
-// warning/success tokens today — swap these for theme tokens if/when added.
 const strengthScale = [
-  { label: "Very weak", color: "#DC2626" },
-  { label: "Weak", color: "#EA580C" },
-  { label: "Fair", color: "#D97706" },
-  { label: "Good", color: "#65A30D" },
-  { label: "Strong", color: "#16A34A" },
+  { label: "Very weak", color: theme.colors.error },
+  { label: "Weak", color: theme.colors.warningDark },
+  { label: "Fair", color: theme.colors.warning },
+  { label: "Good", color: theme.colors.secondaryDark },
+  { label: "Strong", color: theme.colors.success },
 ];
 
 const BD_PHONE_LOCAL = /^1[3-9]\d{8}$/; // local part after +880
 
 export default function SignupScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
 
   // Personal
@@ -214,15 +208,21 @@ export default function SignupScreen() {
   const isLastStep = step === STEPS.length - 1;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.safeArea, { paddingTop: insets.top }]}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 12 : 0}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.flex}
       >
         <View style={styles.headerWrap}>
-          <Pressable onPress={goBack} style={styles.backButton}>
-            <ChevronLeft size={18} color={theme.colors.foreground} />
+          <Pressable
+            onPress={goBack}
+            style={styles.backButton}
+            android_ripple={{ color: "rgba(22, 168, 156, 0.12)", borderless: true, radius: 20 }}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <ChevronLeft size={20} color={theme.colors.foreground} />
           </Pressable>
           <StepProgress currentStep={step} />
           <View style={styles.backButtonSpacer} />
@@ -230,7 +230,10 @@ export default function SignupScreen() {
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: insets.bottom + theme.spacing.xxxl },
+          ]}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
         >
@@ -438,7 +441,7 @@ export default function SignupScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 

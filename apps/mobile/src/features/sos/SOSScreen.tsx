@@ -4,6 +4,7 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   TextInput,
   ActivityIndicator,
   Linking,
@@ -1032,9 +1033,9 @@ const CommandPhase: React.FC<CommandPhaseProps> = ({
       <View
         style={{
           borderRadius: theme.radii.xxxl,
-          borderWidth: 1,
-          borderColor: `${theme.colors.border}B3`,
-          backgroundColor: theme.colors.card,
+          borderWidth: hospitalSelected ? 2 : 1,
+          borderColor: hospitalSelected ? theme.colors.primaryDark : `${theme.colors.border}B3`,
+          backgroundColor: hospitalSelected ? theme.colors.primary : theme.colors.card,
           padding: 16,
           marginBottom: 20,
           ...theme.shadows.shadowCard,
@@ -1052,9 +1053,9 @@ const CommandPhase: React.FC<CommandPhaseProps> = ({
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
               <Text
                 style={{
-                  fontSize: 15,
+                  fontSize: 16,
                   fontWeight: 'bold',
-                  color: theme.colors.foreground,
+                  color: hospitalSelected ? '#FFFFFF' : theme.colors.foreground,
                 }}
               >
                 {primary.name}
@@ -1066,17 +1067,21 @@ const CommandPhase: React.FC<CommandPhaseProps> = ({
                     alignItems: 'center',
                     gap: 3,
                     borderRadius: 999,
-                    backgroundColor: `${theme.colors.primary}1A`,
+                    backgroundColor: hospitalSelected ? 'rgba(255,255,255,0.25)' : `${theme.colors.primary}1A`,
                     paddingHorizontal: 6,
                     paddingVertical: 2,
                   }}
                 >
-                  <Star size={10} color={theme.colors.primary} fill={theme.colors.primary} />
+                  <Star
+                    size={10}
+                    color={hospitalSelected ? '#FFFFFF' : theme.colors.primary}
+                    fill={hospitalSelected ? '#FFFFFF' : theme.colors.primary}
+                  />
                   <Text
                     style={{
                       fontSize: 9,
                       fontWeight: 'bold',
-                      color: theme.colors.primary,
+                      color: hospitalSelected ? '#FFFFFF' : theme.colors.primary,
                     }}
                   >
                     PREFERRED
@@ -1087,7 +1092,7 @@ const CommandPhase: React.FC<CommandPhaseProps> = ({
             <Text
               style={{
                 fontSize: 12,
-                color: theme.colors.mutedForeground,
+                color: hospitalSelected ? 'rgba(255,255,255,0.85)' : theme.colors.mutedForeground,
               }}
             >
               {primary.address} · {primary.distanceKm} km
@@ -1096,7 +1101,7 @@ const CommandPhase: React.FC<CommandPhaseProps> = ({
           <View
             style={{
               borderRadius: 999,
-              backgroundColor: `${theme.colors.success}1A`,
+              backgroundColor: hospitalSelected ? 'rgba(255,255,255,0.25)' : `${theme.colors.success}1A`,
               paddingHorizontal: 10,
               paddingVertical: 4,
             }}
@@ -1105,10 +1110,10 @@ const CommandPhase: React.FC<CommandPhaseProps> = ({
               style={{
                 fontSize: 10.5,
                 fontWeight: 'bold',
-                color: theme.colors.success,
+                color: hospitalSelected ? '#FFFFFF' : theme.colors.success,
               }}
             >
-              Ready
+              {hospitalSelected ? 'Selected ✓' : 'Ready'}
             </Text>
           </View>
         </View>
@@ -1122,9 +1127,9 @@ const CommandPhase: React.FC<CommandPhaseProps> = ({
             gap: 8,
           }}
         >
-          <MiniStat label="Beds" value={primary.beds.available} icon={BedDouble} />
-          <MiniStat label="ICU" value={primary.icu.available} icon={Activity} tone="emergency" />
-          <MiniStat label="Blood O-" value="✓" icon={Droplet} tone="info" />
+          <MiniStat label="Beds" value={primary.beds.available} icon={BedDouble} selected={hospitalSelected} />
+          <MiniStat label="ICU" value={primary.icu.available} icon={Activity} tone="emergency" selected={hospitalSelected} />
+          <MiniStat label="Blood O-" value="✓" icon={Droplet} tone="info" selected={hospitalSelected} />
         </View>
 
         {/* Action buttons */}
@@ -1135,7 +1140,7 @@ const CommandPhase: React.FC<CommandPhaseProps> = ({
               setSelectedHospitalId(primary.id);
               setBloodRequired(null);
             }}
-            label={hospitalSelected ? 'Hospital selected' : 'Select this hospital'}
+            label={hospitalSelected ? 'Hospital selected ✓' : 'Select this hospital'}
             icon={Check}
           />
           <ActionButton
@@ -1502,29 +1507,35 @@ interface HospitalListItemProps {
 
 const HospitalListItem: React.FC<HospitalListItemProps> = ({ hospital: h, selected, onSelect }) => {
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={onSelect}
+      android_ripple={{
+        color: selected ? "rgba(255, 255, 255, 0.2)" : "rgba(22, 168, 156, 0.12)",
+        borderless: false,
+      }}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={`${h.name}, ${h.address}, ${h.distanceKm} km, ETA ${h.etaMin} minutes. ${selected ? "Currently selected" : "Tap to select"}`}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         borderRadius: theme.radii.xxl,
-        borderWidth: 1,
-        borderColor: selected ? `${theme.colors.primary}7F` : `${theme.colors.border}B3`,
-        backgroundColor: selected ? `${theme.colors.primary}66` : theme.colors.card,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
+        borderWidth: selected ? 2 : 1,
+        borderColor: selected ? theme.colors.primaryDark : `${theme.colors.border}B3`,
+        backgroundColor: selected ? theme.colors.primary : theme.colors.card,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
         ...theme.shadows.shadowCard,
       }}
-      activeOpacity={0.6}
     >
       <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
           <Text
             style={{
-              fontSize: 13.5,
+              fontSize: 14.5,
               fontWeight: 'bold',
-              color: theme.colors.foreground,
+              color: selected ? '#FFFFFF' : theme.colors.foreground,
             }}
             numberOfLines={1}
           >
@@ -1534,7 +1545,7 @@ const HospitalListItem: React.FC<HospitalListItemProps> = ({ hospital: h, select
             <View
               style={{
                 borderRadius: 999,
-                backgroundColor: `${theme.colors.primary}1A`,
+                backgroundColor: selected ? 'rgba(255,255,255,0.25)' : `${theme.colors.primary}1A`,
                 paddingHorizontal: 6,
                 paddingVertical: 2,
               }}
@@ -1543,7 +1554,7 @@ const HospitalListItem: React.FC<HospitalListItemProps> = ({ hospital: h, select
                 style={{
                   fontSize: 9,
                   fontWeight: 'bold',
-                  color: theme.colors.primary,
+                  color: selected ? '#FFFFFF' : theme.colors.primary,
                 }}
               >
                 PREFERRED
@@ -1553,8 +1564,8 @@ const HospitalListItem: React.FC<HospitalListItemProps> = ({ hospital: h, select
         </View>
         <Text
           style={{
-            fontSize: 11.5,
-            color: theme.colors.mutedForeground,
+            fontSize: 12,
+            color: selected ? 'rgba(255, 255, 255, 0.85)' : theme.colors.mutedForeground,
           }}
           numberOfLines={1}
         >
@@ -1562,29 +1573,28 @@ const HospitalListItem: React.FC<HospitalListItemProps> = ({ hospital: h, select
         </Text>
       </View>
 
-      <TouchableOpacity
+      <View
         style={{
           borderRadius: 999,
+          backgroundColor: selected ? '#FFFFFF' : 'transparent',
           borderWidth: 1,
-          borderColor: `${theme.colors.primary}4D`,
+          borderColor: selected ? '#FFFFFF' : `${theme.colors.primary}66`,
           paddingHorizontal: 12,
           paddingVertical: 6,
           marginLeft: 10,
         }}
-        onPress={onSelect}
-        activeOpacity={0.6}
       >
         <Text
           style={{
             fontSize: 11.5,
             fontWeight: 'bold',
-            color: theme.colors.primary,
+            color: selected ? theme.colors.primaryDark : theme.colors.primary,
           }}
         >
-          {selected ? 'Selected' : 'Select'}
+          {selected ? '✓ Selected' : 'Select'}
         </Text>
-      </TouchableOpacity>
-    </TouchableOpacity>
+      </View>
+    </Pressable>
   );
 };
 
@@ -1593,17 +1603,21 @@ interface MiniStatProps {
   value: any;
   icon: any;
   tone?: 'primary' | 'emergency' | 'info';
+  selected?: boolean;
 }
 
-const MiniStat: React.FC<MiniStatProps> = ({ label, value, icon: Icon, tone = 'primary' }) => {
-  const toneBg =
-    tone === 'emergency'
+const MiniStat: React.FC<MiniStatProps> = ({ label, value, icon: Icon, tone = 'primary', selected = false }) => {
+  const toneBg = selected
+    ? 'rgba(255, 255, 255, 0.2)'
+    : tone === 'emergency'
       ? `${theme.colors.emergency}1A`
       : tone === 'info'
         ? `${theme.colors.info}1A`
         : `${theme.colors.primary}1A`;
-  const toneColor =
-    tone === 'emergency' ? theme.colors.emergency : tone === 'info' ? theme.colors.info : theme.colors.primary;
+
+  const toneColor = selected
+    ? '#FFFFFF'
+    : tone === 'emergency' ? theme.colors.emergency : tone === 'info' ? theme.colors.info : theme.colors.primary;
 
   return (
     <View
@@ -1611,7 +1625,7 @@ const MiniStat: React.FC<MiniStatProps> = ({ label, value, icon: Icon, tone = 'p
         flex: 1,
         alignItems: 'center',
         borderRadius: theme.radii.xxl,
-        backgroundColor: theme.colors.surfaceVariant,
+        backgroundColor: selected ? 'rgba(255, 255, 255, 0.15)' : theme.colors.surfaceVariant,
         paddingVertical: 10,
         gap: 4,
       }}
@@ -1632,7 +1646,7 @@ const MiniStat: React.FC<MiniStatProps> = ({ label, value, icon: Icon, tone = 'p
         style={{
           fontSize: 14,
           fontWeight: 'bold',
-          color: theme.colors.foreground,
+          color: selected ? '#FFFFFF' : theme.colors.foreground,
         }}
       >
         {value}
@@ -1642,7 +1656,7 @@ const MiniStat: React.FC<MiniStatProps> = ({ label, value, icon: Icon, tone = 'p
           fontSize: 10,
           textTransform: 'uppercase',
           letterSpacing: 0.5,
-          color: theme.colors.mutedForeground,
+          color: selected ? 'rgba(255, 255, 255, 0.85)' : theme.colors.mutedForeground,
         }}
       >
         {label}

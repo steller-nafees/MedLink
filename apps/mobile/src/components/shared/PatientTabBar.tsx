@@ -1,6 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
-  Dimensions,
   Pressable,
   StyleSheet,
   Text,
@@ -9,12 +8,9 @@ import {
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  useAnimatedScrollHandler,
   withTiming,
   withSpring,
   interpolate,
-  interpolateColor,
-  Extrapolation,
   Easing,
 } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
@@ -28,11 +24,8 @@ import {
   X,
   Bot,
   Siren,
-  ArrowRight,
 } from "lucide-react-native";
-import { theme } from "../../../theme";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+import { theme } from "../../theme";
 
 /* ─── Tab definitions ─── */
 
@@ -71,258 +64,6 @@ const rightTabs = [
 
 /* ─── Spring config approximating cubic-bezier(0.34,1.56,0.64,1) ─── */
 const FAN_SPRING = { stiffness: 120, damping: 14, mass: 1 };
-
-/* ─── Onboarding content ─── */
-
-const ACCENT = "#C7EA6E"; // lime accent for the next button, matching the reference
-
-const onboardingSlides = [
-  {
-    title: "Emergency Help When Every Second Matters",
-    description: "Find hospitals, ambulances, and emergency care faster during critical situations.",
-    icon: Siren,
-    cardColor: "#F4DFEA",
-    iconColor: "#D64545",
-    iconBg: "#FFFFFF",
-  },
-  {
-    title: "Your AI Medical Assistant",
-    description: "Get help finding specialists, tests, hospitals, and healthcare information.",
-    icon: Bot,
-    cardColor: "#DAD4F5",
-    iconColor: "#6C5CE7",
-    iconBg: "#FFFFFF",
-  },
-  {
-    title: "Healthcare Connected in One Place",
-    description: "Access care, consultations, reservations, and emergency support from one platform.",
-    icon: Building2,
-    cardColor: "#FBF0C8",
-    iconColor: "#16A89C",
-    iconBg: "#FFFFFF",
-  },
-] as const;
-
-const SLIDE_COUNT = onboardingSlides.length;
-const AUTOPLAY_INTERVAL = 4500;
-
-export default function OnboardingScreen() {
-  const router = useRouter();
-  const scrollRef = useRef<Animated.ScrollView>(null);
-  const indexRef = useRef(0);
-  const autoplayTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const [index, setIndex] = useState(0);
-  const scrollX = useSharedValue(0);
-  const isLastSlide = index === SLIDE_COUNT - 1;
-
-  const scrollToIndex = useCallback((nextIndex: number, animated = true) => {
-    scrollRef.current?.scrollTo({ x: nextIndex * SCREEN_WIDTH, animated });
-  }, []);
-
-  const stopAutoplay = useCallback(() => {
-    if (autoplayTimer.current) {
-      clearInterval(autoplayTimer.current);
-      autoplayTimer.current = null;
-    }
-  }, []);
-
-  const startAutoplay = useCallback(() => {
-    stopAutoplay();
-    autoplayTimer.current = setInterval(() => {
-      const next = (indexRef.current + 1) % SLIDE_COUNT;
-      scrollToIndex(next);
-    }, AUTOPLAY_INTERVAL);
-  }, [scrollToIndex, stopAutoplay]);
-
-  useEffect(() => {
-    startAutoplay();
-    return stopAutoplay;
-  }, [startAutoplay, stopAutoplay]);
-
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollX.value = event.contentOffset.x;
-    },
-  });
-
-  const onMomentumScrollEnd = useCallback(
-    (event: any) => {
-      const nextIndex = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-      indexRef.current = nextIndex;
-      setIndex(nextIndex);
-    },
-    [],
-  );
-
-  const handleSkip = useCallback(() => {
-    stopAutoplay();
-    router.replace("/(auth)");
-  }, [router, stopAutoplay]);
-
-  const handleNext = useCallback(() => {
-    if (isLastSlide) {
-      stopAutoplay();
-      router.replace("/(auth)");
-      return;
-    }
-    stopAutoplay();
-    const next = indexRef.current + 1;
-    scrollToIndex(next);
-    startAutoplay();
-  }, [isLastSlide, router, scrollToIndex, startAutoplay, stopAutoplay]);
-
-  const handleDotPress = useCallback(
-    (i: number) => {
-      stopAutoplay();
-      scrollToIndex(i);
-      startAutoplay();
-    },
-    [scrollToIndex, startAutoplay, stopAutoplay],
-  );
-
-  return (
-    <View style={styles.onboardingScreen}>
-      {/* Top progress indicator */}
-      <View style={styles.onboardingProgress}>
-        {onboardingSlides.map((_, i) => (
-          <ProgressSegment key={i} index={i} scrollX={scrollX} onPress={() => handleDotPress(i)} />
-        ))}
-      </View>
-
-      {/* Swipeable slides */}
-      <Animated.ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        decelerationRate="fast"
-        showsHorizontalScrollIndicator={false}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
-        onScrollBeginDrag={stopAutoplay}
-        onMomentumScrollEnd={(e) => {
-          onMomentumScrollEnd(e);
-          startAutoplay();
-        }}
-        style={styles.onboardingScroll}
-      >
-        {onboardingSlides.map((slide, i) => (
-          <Slide key={i} slide={slide} index={i} scrollX={scrollX} />
-        ))}
-      </Animated.ScrollView>
-
-      {/* Bottom controls */}
-      <View style={styles.onboardingFooter}>
-        <Pressable onPress={handleSkip} accessibilityRole="button" hitSlop={8}>
-          <Text style={styles.onboardingSkip}>Skip</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={handleNext}
-          accessibilityRole="button"
-          accessibilityLabel={isLastSlide ? "Get started" : "Next"}
-          style={styles.onboardingNextButton}
-        >
-          <ArrowRight size={22} color={theme.colors.foreground} strokeWidth={2.4} />
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-/* ─── Individual progress segment ─── */
-function ProgressSegment({
-  index,
-  scrollX,
-  onPress,
-}: {
-  index: number;
-  scrollX: Animated.SharedValue<number>;
-  onPress: () => void;
-}) {
-  const segmentStyle = useAnimatedStyle(() => {
-    const width = interpolate(
-      scrollX.value,
-      [(index - 1) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 1) * SCREEN_WIDTH],
-      [16, 28, 16],
-      Extrapolation.CLAMP,
-    );
-    const backgroundColor = interpolateColor(
-      scrollX.value,
-      [(index - 0.5) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 0.5) * SCREEN_WIDTH],
-      [theme.colors.border, theme.colors.primary, theme.colors.border],
-    );
-    return { width, backgroundColor };
-  });
-
-  return (
-    <Pressable onPress={onPress} hitSlop={8}>
-      <Animated.View style={[styles.onboardingProgressSegment, segmentStyle]} />
-    </Pressable>
-  );
-}
-
-/* ─── Individual slide ─── */
-function Slide({
-  slide,
-  index,
-  scrollX,
-}: {
-  slide: (typeof onboardingSlides)[number];
-  index: number;
-  scrollX: Animated.SharedValue<number>;
-}) {
-  const Icon = slide.icon;
-
-  const inputRange = [
-    (index - 1) * SCREEN_WIDTH,
-    index * SCREEN_WIDTH,
-    (index + 1) * SCREEN_WIDTH,
-  ];
-
-  const cardStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollX.value, inputRange, [0, 1, 0], Extrapolation.CLAMP),
-    transform: [
-      {
-        scale: interpolate(scrollX.value, inputRange, [0.9, 1, 0.9], Extrapolation.CLAMP),
-      },
-      {
-        translateY: interpolate(scrollX.value, inputRange, [16, 0, 16], Extrapolation.CLAMP),
-      },
-    ],
-  }));
-
-  const textStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollX.value, inputRange, [0, 1, 0], Extrapolation.CLAMP),
-    transform: [
-      {
-        translateY: interpolate(scrollX.value, inputRange, [12, 0, 12], Extrapolation.CLAMP),
-      },
-    ],
-  }));
-
-  return (
-    <View style={styles.slide}>
-      <Animated.View style={[styles.illustrationCard, { backgroundColor: slide.cardColor }, cardStyle]}>
-        <View style={[styles.illustrationIconWrap, { backgroundColor: slide.iconBg }]}>
-          <Icon size={56} color={slide.iconColor} strokeWidth={1.8} />
-        </View>
-        {/* decorative floating badges, echoing the reference illustration style */}
-        <View style={[styles.illustrationBadge, styles.illustrationBadgeTopLeft]}>
-          <Icon size={16} color={slide.iconColor} strokeWidth={2} />
-        </View>
-        <View style={[styles.illustrationBadge, styles.illustrationBadgeBottomRight]}>
-          <Icon size={16} color={slide.iconColor} strokeWidth={2} />
-        </View>
-      </Animated.View>
-
-      <Animated.View style={[styles.slideTextWrap, textStyle]}>
-        <Text style={styles.onboardingTitle}>{slide.title}</Text>
-        <Text style={styles.onboardingDescription}>{slide.description}</Text>
-      </Animated.View>
-    </View>
-  );
-}
 
 /* ─── Tab Item ─── */
 function TabItem({
@@ -368,7 +109,7 @@ function TabItem({
 }
 
 /* ─── Patient Tab Bar ─── */
-function PatientTabBar({ hideNav = false }: { hideNav?: boolean }) {
+export function PatientTabBar({ hideNav = false }: { hideNav?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -563,109 +304,6 @@ function PatientTabBar({ hideNav = false }: { hideNav?: boolean }) {
 
 /* ─── Styles ─── */
 const styles = StyleSheet.create({
-  onboardingScreen: {
-    flex: 1,
-    paddingTop: 56,
-    paddingBottom: 32,
-    backgroundColor: theme.colors.background,
-  },
-
-  /* Top progress segments */
-  onboardingProgress: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 8,
-  },
-  onboardingProgressSegment: {
-    height: 6,
-    borderRadius: 999,
-    backgroundColor: theme.colors.border,
-  },
-
-  /* Slides */
-  onboardingScroll: {
-    flex: 1,
-  },
-  slide: {
-    width: SCREEN_WIDTH,
-    paddingHorizontal: 24,
-    justifyContent: "center",
-  },
-  illustrationCard: {
-    aspectRatio: 1,
-    borderRadius: 32,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "visible",
-  },
-  illustrationIconWrap: {
-    width: 128,
-    height: 128,
-    borderRadius: 64,
-    alignItems: "center",
-    justifyContent: "center",
-    ...theme.shadows.shadowCard,
-  },
-  illustrationBadge: {
-    position: "absolute",
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    ...theme.shadows.shadowCard,
-  },
-  illustrationBadgeTopLeft: {
-    top: 20,
-    left: 20,
-  },
-  illustrationBadgeBottomRight: {
-    bottom: 20,
-    right: 20,
-  },
-
-  slideTextWrap: {
-    marginTop: 40,
-  },
-  onboardingTitle: {
-    color: theme.colors.foreground,
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: "700",
-  },
-  onboardingDescription: {
-    marginTop: 12,
-    color: theme.colors.mutedForeground,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-
-  /* Footer */
-  onboardingFooter: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 24,
-    marginTop: 20,
-  },
-  onboardingSkip: {
-    color: theme.colors.mutedForeground,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  onboardingNextButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: ACCENT,
-    ...theme.shadows.shadowFanButton,
-  },
-
   /* Backdrop */
   backdrop: {
     ...StyleSheet.absoluteFill,

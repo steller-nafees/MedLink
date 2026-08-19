@@ -28,7 +28,7 @@ export const BloodDrop: React.FC<BloodDropProps> = ({ group, size = 'md', tone =
       <Text
         style={{
           fontSize: isSm ? 12 : 13,
-          fontWeight: 'extrabold',
+          fontWeight: '800',
           color: isEmergency ? theme.colors.emergency : theme.colors.foreground,
           opacity: isEmergency ? 1 : 0.7,
         }}

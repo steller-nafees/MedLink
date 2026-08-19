@@ -1,6 +1,14 @@
 import React, { useMemo } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Pressable, useColorScheme } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  useColorScheme,
+  StyleSheet,
+} from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Bell,
   Bot,
@@ -29,6 +37,7 @@ export default function PatientHomeScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   // Compute data
   const recent = useMemo(() => serviceRequests.filter((r) => r.kind === "emergency").slice(0, 3), []);
@@ -37,893 +46,878 @@ export default function PatientHomeScreen() {
 
   const eligibility = eligibilityFrom(myDonation.lastDonation);
 
-  // Dynamic colors
-  const bgColor = isDark ? theme.colors.background : theme.colors.background;
-  const cardBg = isDark ? theme.colors.card : theme.colors.card;
-  const textColor = isDark ? theme.colors.foreground : theme.colors.foreground;
-  const mutedText = isDark ? "#9CA3AF" : theme.colors.mutedForeground;
-  const borderColor = isDark ? "rgba(255,255,255,0.1)" : theme.colors.border;
-
   return (
-    <ScrollView
-      style={[{ flex: 1, backgroundColor: bgColor }]}
-      contentContainerStyle={{ paddingBottom: 200 }}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 16, marginBottom: 24 }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          {/* Left: Avatar + Greeting */}
-          <View style={{ flexDirection: "row", gap: 12, alignItems: "center", flex: 1 }}>
-            <View
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: theme.colors.primary,
-                justifyContent: "center",
-                alignItems: "center",
-                ...theme.shadows.shadowCard,
-              }}
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: insets.top + theme.spacing.sm,
+            paddingBottom: insets.bottom + theme.spacing.xxxl,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerRow}>
+            {/* Left: Avatar + Greeting */}
+            <Pressable
+              style={styles.profileRow}
+              onPress={() => router.push("/profile")}
+              android_ripple={{ color: "rgba(22, 168, 156, 0.1)", borderless: false }}
+              accessibilityRole="button"
+              accessibilityLabel="View profile"
             >
-              <Text style={{ fontSize: 14, fontWeight: "bold", color: theme.colors.primaryForeground }}>
-                {patient.initials}
-              </Text>
-            </View>
-            <View>
-              <Text style={{ fontSize: 12, color: mutedText, marginBottom: 2 }}>Good morning</Text>
-              <Text style={{ fontSize: 16, fontWeight: "bold", color: textColor }}>{patient.name}</Text>
-            </View>
-          </View>
+              <View style={[styles.avatar, theme.shadows.shadowCard]}>
+                <Text style={styles.avatarText}>{patient.initials}</Text>
+              </View>
+              <View>
+                <Text style={styles.greetingText}>Good morning</Text>
+                <Text style={styles.userName}>{patient.name}</Text>
+              </View>
+            </Pressable>
 
-          {/* Right: Bell + Settings */}
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            <TouchableOpacity
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                borderWidth: 1,
-                borderColor: borderColor,
-                backgroundColor: cardBg,
-                justifyContent: "center",
-                alignItems: "center",
-                ...theme.shadows.shadowCard,
-              }}
-              onPress={() => router.push("/notifications")}
-            >
-              <Bell size={16} color={textColor} strokeWidth={2} />
-              {/* Notification dot */}
-              <View
-                style={{
-                  position: "absolute",
-                  top: 10,
-                  right: 10,
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: theme.colors.emergency,
-                  borderWidth: 2,
-                  borderColor: cardBg,
-                }}
-              />
-            </TouchableOpacity>
+            {/* Right: Bell + Settings */}
+            <View style={styles.headerActions}>
+              <Pressable
+                style={[styles.iconButton, theme.shadows.sm]}
+                onPress={() => router.push("/notifications")}
+                android_ripple={{ color: "rgba(22, 168, 156, 0.15)", borderless: true, radius: 22 }}
+                accessibilityRole="button"
+                accessibilityLabel="Notifications"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Bell size={18} color={theme.colors.foreground} strokeWidth={2} />
+                <View style={styles.notificationDot} />
+              </Pressable>
 
-            <TouchableOpacity
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                borderWidth: 1,
-                borderColor: borderColor,
-                backgroundColor: cardBg,
-                justifyContent: "center",
-                alignItems: "center",
-                ...theme.shadows.shadowCard,
-              }}
-              onPress={() => router.push("/settings")}
-            >
-              <Settings size={17} color={mutedText} strokeWidth={2} />
-            </TouchableOpacity>
+              <Pressable
+                style={[styles.iconButton, theme.shadows.sm]}
+                onPress={() => router.push("/settings")}
+                android_ripple={{ color: "rgba(22, 168, 156, 0.15)", borderless: true, radius: 22 }}
+                accessibilityRole="button"
+                accessibilityLabel="Settings"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Settings size={18} color={theme.colors.textSecondary} strokeWidth={2} />
+              </Pressable>
+            </View>
           </View>
         </View>
-      </View>
 
-      {/* Hero Cards Section */}
-      <View style={{ paddingHorizontal: 20, marginBottom: 28, gap: 12 }}>
-        {/* Emergency SOS Hero */}
-        <Pressable
-          style={({ pressed }) => [
-            {
-              borderRadius: 28,
-              backgroundColor: theme.colors.emergency,
-              padding: 20,
-              ...theme.shadows.shadowFloat,
-              opacity: pressed ? 0.8 : 1,
-            },
-          ]}
-          onPress={() => router.push("/sos")}
-        >
-          <View
-            style={{
-              position: "absolute",
-              width: 140,
-              height: 140,
-              borderRadius: 70,
-              backgroundColor: "rgba(255,255,255,0.1)",
-              right: -50,
-              top: -50,
-            }}
-          />
-          <View style={{ position: "relative", zIndex: 1 }}>
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 16,
-                backgroundColor: "rgba(255,255,255,0.2)",
-                justifyContent: "center",
-                alignItems: "center",
-                marginBottom: 16,
-              }}
+        {/* Hero Cards Section */}
+        <View style={styles.heroSection}>
+          {/* Emergency SOS Hero */}
+          <View style={[styles.heroCardWrap, theme.shadows.shadowEmergency]}>
+            <Pressable
+              style={styles.heroCardEmergency}
+              onPress={() => router.push("/sos")}
+              android_ripple={{ color: "rgba(255, 255, 255, 0.2)", borderless: false }}
+              accessibilityRole="button"
+              accessibilityLabel="Emergency SOS - Request an ambulance or hospital"
             >
-              <Siren size={24} color="#FFFFFF" strokeWidth={2} />
-            </View>
-            <Text style={{ fontSize: 20, fontWeight: "bold", color: "#FFFFFF", marginBottom: 8 }}>
-              Emergency SOS
-            </Text>
-            <Text
-              style={{
-                fontSize: 13,
-                color: "rgba(255,255,255,0.9)",
-                marginBottom: 16,
-                maxWidth: 250,
-                lineHeight: 18,
-              }}
-            >
-              Request an ambulance, find hospitals, and reserve a bed or ICU instantly.
-            </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-                backgroundColor: "#FFFFFF",
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                borderRadius: 24,
-                alignSelf: "flex-start",
-              }}
-            >
-              <Text style={{ fontSize: 13, fontWeight: "600", color: theme.colors.emergency }}>
-                Activate SOS
-              </Text>
-              <ArrowUpRight size={16} color={theme.colors.emergency} strokeWidth={2} />
-            </View>
-          </View>
-        </Pressable>
-
-        {/* AI Medical Assistant Hero */}
-        <Pressable
-          style={({ pressed }) => [
-            {
-              borderRadius: 28,
-              backgroundColor: cardBg,
-              borderWidth: 1,
-              borderColor: borderColor,
-              padding: 20,
-              ...theme.shadows.shadowCard,
-              opacity: pressed ? 0.8 : 1,
-            },
-          ]}
-          onPress={() => router.push("/ai")}
-        >
-          <View
-            style={{
-              position: "absolute",
-              width: 140,
-              height: 140,
-              borderRadius: 70,
-              backgroundColor: `${theme.colors.primaryContainer}70`,
-              right: -50,
-              top: -50,
-            }}
-          />
-          <View style={{ position: "relative", zIndex: 1 }}>
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 16,
-                backgroundColor: theme.colors.primaryContainer,
-                justifyContent: "center",
-                alignItems: "center",
-                marginBottom: 16,
-              }}
-            >
-              <Bot size={24} color={theme.colors.primary} strokeWidth={2} />
-            </View>
-            <Text style={{ fontSize: 20, fontWeight: "bold", color: textColor, marginBottom: 8 }}>
-              AI Medical Assistant
-            </Text>
-            <Text
-              style={{
-                fontSize: 13,
-                color: mutedText,
-                marginBottom: 16,
-                maxWidth: 240,
-                lineHeight: 18,
-              }}
-            >
-              Ask health questions, find specialists or tests, and understand your reports.
-            </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-                backgroundColor: theme.colors.primary,
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                borderRadius: 24,
-                alignSelf: "flex-start",
-              }}
-            >
-              <Text style={{ fontSize: 13, fontWeight: "600", color: theme.colors.primaryForeground }}>
-                Ask AI Assistant
-              </Text>
-              <ArrowUpRight size={16} color={theme.colors.primaryForeground} strokeWidth={2} />
-            </View>
-          </View>
-        </Pressable>
-      </View>
-
-      {/* Quick Access Section */}
-      <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
-        <Text
-          style={{
-            fontSize: 13,
-            fontWeight: "bold",
-            color: mutedText,
-            textTransform: "uppercase",
-            letterSpacing: 1.5,
-            marginBottom: 12,
-          }}
-        >
-          Quick Access
-        </Text>
-        <View style={{ flexDirection: "row", gap: 10 }}>
-          {quickAccessItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <TouchableOpacity
-                key={item.label}
-                style={{
-                  flex: 1,
-                  alignItems: "center",
-                  borderRadius: 24,
-                  borderWidth: 1,
-                  borderColor: borderColor,
-                  backgroundColor: cardBg,
-                  paddingVertical: 14,
-                  paddingHorizontal: 6,
-                  ...theme.shadows.shadowCard,
-                }}
-                onPress={() => router.push(item.href)}
-              >
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 14,
-                    backgroundColor: theme.colors.primaryContainer,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    marginBottom: 8,
-                  }}
-                >
-                  <Icon size={18} color={theme.colors.primary} strokeWidth={2} />
+              <View style={styles.glowCircleEmergency} />
+              <View style={styles.heroCardContent}>
+                <View style={styles.heroIconEmergency}>
+                  <Siren size={24} color="#FFFFFF" strokeWidth={2} />
                 </View>
-                <Text
-                  style={{
-                    fontSize: 10.5,
-                    fontWeight: "600",
-                    color: textColor,
-                    textAlign: "center",
-                  }}
-                >
-                  {item.label}
+                <Text style={styles.heroTitleEmergency}>Emergency SOS</Text>
+                <Text style={styles.heroDescEmergency}>
+                  Request an ambulance, find hospitals, and reserve a bed or ICU instantly.
                 </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Blood Donation Card */}
-      <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
-        <Text
-          style={{
-            fontSize: 13,
-            fontWeight: "bold",
-            color: mutedText,
-            textTransform: "uppercase",
-            letterSpacing: 1.5,
-            marginBottom: 12,
-          }}
-        >
-          Blood Donation
-        </Text>
-        <View
-          style={{
-            borderRadius: 28,
-            borderWidth: 1,
-            borderColor: borderColor,
-            backgroundColor: cardBg,
-            padding: 16,
-            ...theme.shadows.shadowCard,
-          }}
-        >
-          <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 14,
-                backgroundColor: "rgba(214, 69, 69, 0.1)",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "900",
-                  color: theme.colors.emergency,
-                }}
-              >
-                {myDonation.group}
-              </Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14.5, fontWeight: "bold", color: textColor, marginBottom: 4 }}>
-                Blood donation
-              </Text>
-              <Text style={{ fontSize: 11.5, color: mutedText }}>
-                Last donated · {formatDate(myDonation.lastDonation)}
-              </Text>
-              <View style={{ marginTop: 8, flexDirection: "row", alignItems: "center" }}>
-                <View
-                  style={{
-                    paddingHorizontal: 10,
-                    paddingVertical: 4,
-                    borderRadius: 12,
-                    backgroundColor: myDonation.available
-                      ? `${theme.colors.primary}20`
-                      : `${theme.colors.muted}20`,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 10.5,
-                      fontWeight: "bold",
-                      color: myDonation.available ? theme.colors.primary : mutedText,
-                    }}
-                  >
-                    {myDonation.available ? "Available" : "Paused"}
-                  </Text>
-                </View>
-                <View
-                  style={{
-                    marginLeft: "auto",
-                    paddingHorizontal: 14,
-                    paddingVertical: 6,
-                    borderRadius: 16,
-                    backgroundColor: theme.colors.primaryContainer,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "bold",
-                      color: theme.colors.primary,
-                    }}
-                  >
-                    Manage
-                  </Text>
+                <View style={styles.heroActionEmergency}>
+                  <Text style={styles.heroActionTextEmergency}>Activate SOS</Text>
+                  <ArrowUpRight size={16} color={theme.colors.emergency} strokeWidth={2.5} />
                 </View>
               </View>
-            </View>
+            </Pressable>
           </View>
-        </View>
-      </View>
 
-      {/* Future Services Section */}
-      <View style={{ paddingHorizontal: 20, marginBottom: 28, gap: 12 }}>
-        <Text
-          style={{
-            fontSize: 13,
-            fontWeight: "bold",
-            color: mutedText,
-            textTransform: "uppercase",
-            letterSpacing: 1.5,
-            marginBottom: 4,
-          }}
-        >
-          Future Services
-        </Text>
-
-        {/* Live Medical Support Card */}
-        <View
-          style={{
-            borderRadius: 28,
-            borderWidth: 1,
-            borderColor: borderColor,
-            backgroundColor: cardBg,
-            padding: 20,
-            ...theme.shadows.shadowCard,
-          }}
-        >
-          <View
-            style={{
-              position: "absolute",
-              width: 140,
-              height: 140,
-              borderRadius: 70,
-              backgroundColor: `${theme.colors.primaryContainer}70`,
-              right: -50,
-              top: -50,
-            }}
-          />
-          <View style={{ position: "relative", zIndex: 1 }}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-              <View
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 16,
-                  backgroundColor: theme.colors.primaryContainer,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <Stethoscope size={24} color={theme.colors.primary} strokeWidth={2} />
-              </View>
-              <View
-                style={{
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                  borderRadius: 12,
-                  backgroundColor: theme.colors.primaryContainer,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 10,
-                    fontWeight: "bold",
-                    color: theme.colors.primary,
-                    textTransform: "uppercase",
-                    letterSpacing: 0.5,
-                  }}
-                >
-                  Coming Soon
-                </Text>
-              </View>
-            </View>
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: "bold",
-                color: textColor,
-                marginTop: 16,
-                marginBottom: 8,
-              }}
+          {/* AI Medical Assistant Hero */}
+          <View style={[styles.heroCardWrap, theme.shadows.shadowCard]}>
+            <Pressable
+              style={styles.heroCardAi}
+              onPress={() => router.push("/ai")}
+              android_ripple={{ color: "rgba(22, 168, 156, 0.08)", borderless: false }}
+              accessibilityRole="button"
+              accessibilityLabel="Ask AI Medical Assistant"
             >
-              Live Medical Support
-            </Text>
-            <Text
-              style={{
-                fontSize: 13,
-                color: mutedText,
-                marginBottom: 16,
-                maxWidth: 280,
-                lineHeight: 18,
-              }}
-            >
-              Speak with licensed healthcare professionals in real time for medical guidance, symptom clarification, and treatment advice.
-            </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                borderRadius: 24,
-                backgroundColor: theme.colors.muted,
-                alignSelf: "flex-start",
-              }}
-            >
-              <Lock size={16} color={theme.colors.mutedForeground} strokeWidth={2} />
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: "600",
-                  color: theme.colors.mutedForeground,
-                }}
-              >
-                Coming Soon
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Appointments & Tests Card */}
-        <View
-          style={{
-            borderRadius: 28,
-            borderWidth: 1,
-            borderColor: borderColor,
-            backgroundColor: cardBg,
-            padding: 20,
-            ...theme.shadows.shadowCard,
-          }}
-        >
-          <View
-            style={{
-              position: "absolute",
-              width: 140,
-              height: 140,
-              borderRadius: 70,
-              backgroundColor: `${theme.colors.primaryContainer}70`,
-              right: -50,
-              top: -50,
-            }}
-          />
-          <View style={{ position: "relative", zIndex: 1 }}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-              <View
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 16,
-                  backgroundColor: theme.colors.primaryContainer,
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <CalendarCheck size={24} color={theme.colors.primary} strokeWidth={2} />
-              </View>
-              <View
-                style={{
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                  borderRadius: 12,
-                  backgroundColor: theme.colors.primaryContainer,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 10,
-                    fontWeight: "bold",
-                    color: theme.colors.primary,
-                    textTransform: "uppercase",
-                    letterSpacing: 0.5,
-                  }}
-                >
-                  Coming Soon
-                </Text>
-              </View>
-            </View>
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: "bold",
-                color: textColor,
-                marginTop: 16,
-                marginBottom: 8,
-              }}
-            >
-              Appointments & Tests
-            </Text>
-            <Text
-              style={{
-                fontSize: 13,
-                color: mutedText,
-                marginBottom: 16,
-                maxWidth: 280,
-                lineHeight: 18,
-              }}
-            >
-              Book doctor consultations, specialist appointments, and diagnostic tests directly through MedLink.
-            </Text>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                borderRadius: 24,
-                backgroundColor: theme.colors.muted,
-                alignSelf: "flex-start",
-              }}
-            >
-              <Lock size={16} color={theme.colors.mutedForeground} strokeWidth={2} />
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: "600",
-                  color: theme.colors.mutedForeground,
-                }}
-              >
-                Coming Soon
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-
-      {/* Recent Activity Section */}
-      {recent.length > 0 && (
-        <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <Text
-              style={{
-                fontSize: 13,
-                fontWeight: "bold",
-                color: mutedText,
-                textTransform: "uppercase",
-                letterSpacing: 1.5,
-              }}
-            >
-              Recent Activity
-            </Text>
-            <TouchableOpacity onPress={() => router.push("/activity")}>
-              <Text style={{ fontSize: 12.5, fontWeight: "600", color: theme.colors.primary }}>View all</Text>
-            </TouchableOpacity>
-          </View>
-          <View
-            style={{
-              borderRadius: 24,
-              borderWidth: 1,
-              borderColor: borderColor,
-              backgroundColor: cardBg,
-              overflow: "hidden",
-              ...theme.shadows.shadowCard,
-            }}
-          >
-            {recent.map((r, i) => (
-              <TouchableOpacity
-                key={r.id}
-                style={{
-                  paddingVertical: 14,
-                  paddingHorizontal: 16,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 14,
-                  borderTopWidth: i > 0 ? 1 : 0,
-                  borderTopColor: borderColor,
-                }}
-                onPress={() => router.push("/activity")}
-              >
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 14,
-                    backgroundColor: `${theme.colors.emergency}20`,
-                    justifyContent: "center",
-                    alignItems: "center",
-                  }}
-                >
-                  <Siren size={18} color={theme.colors.emergency} strokeWidth={2} />
+              <View style={styles.glowCircleAi} />
+              <View style={styles.heroCardContent}>
+                <View style={styles.heroIconAi}>
+                  <Bot size={24} color={theme.colors.primary} strokeWidth={2} />
                 </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: "600",
-                      color: textColor,
-                    }}
-                    numberOfLines={1}
-                  >
-                    {r.title}
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 11.5,
-                      color: mutedText,
-                    }}
-                  >
-                    {requestKindLabel[r.kind]} · {r.date}
-                  </Text>
+                <Text style={styles.heroTitleAi}>AI Medical Assistant</Text>
+                <Text style={styles.heroDescAi}>
+                  Ask health questions, find specialists or tests, and understand your reports.
+                </Text>
+                <View style={styles.heroActionAi}>
+                  <Text style={styles.heroActionTextAi}>Ask AI Assistant</Text>
+                  <ArrowUpRight size={16} color={theme.colors.primaryForeground} strokeWidth={2.5} />
                 </View>
-                <View
-                  style={{
-                    paddingHorizontal: 8,
-                    paddingVertical: 4,
-                    borderRadius: 10,
-                    backgroundColor: `${theme.colors.primary}20`,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      fontWeight: "600",
-                      color: theme.colors.primary,
-                    }}
-                  >
-                    {statusStyle(r.status).label}
-                  </Text>
-                </View>
-                <ChevronRight size={16} color={mutedText} strokeWidth={2} />
-              </TouchableOpacity>
-            ))}
+              </View>
+            </Pressable>
           </View>
         </View>
-      )}
 
-      {/* My Requests Summary Section */}
-      <View style={{ paddingHorizontal: 20, marginBottom: 28 }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <Text
-            style={{
-              fontSize: 13,
-              fontWeight: "bold",
-              color: mutedText,
-              textTransform: "uppercase",
-              letterSpacing: 1.5,
-            }}
-          >
-            My Requests
-          </Text>
-          <TouchableOpacity onPress={() => router.push("/activity")}>
-            <Text style={{ fontSize: 12.5, fontWeight: "600", color: theme.colors.primary }}>Manage</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Stats Grid */}
-        <View style={{ gap: 10, marginBottom: 10 }}>
-          <TouchableOpacity
-            style={{
-              borderRadius: 24,
-              borderWidth: 1,
-              borderColor: borderColor,
-              backgroundColor: cardBg,
-              padding: 16,
-              ...theme.shadows.shadowCard,
-            }}
-            onPress={() => router.push("/activity")}
-          >
-            <Text style={{ fontSize: 28, fontWeight: "bold", color: textColor, marginBottom: 8 }}>
-              {active.length}
-            </Text>
-            <Text style={{ fontSize: 12.5, color: mutedText }}>Active requests</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={{
-              borderRadius: 24,
-              borderWidth: 1,
-              borderColor: borderColor,
-              backgroundColor: cardBg,
-              padding: 16,
-              ...theme.shadows.shadowCard,
-            }}
-            onPress={() => router.push("/activity")}
-          >
-            <Text style={{ fontSize: 28, fontWeight: "bold", color: textColor, marginBottom: 8 }}>
-              {due.length}
-            </Text>
-            <Text style={{ fontSize: 12.5, color: mutedText }}>Pending payment</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Due Payment Card */}
-        {due[0] && (
-          <View
-            style={{
-              borderRadius: 24,
-              borderWidth: 1,
-              borderColor: borderColor,
-              backgroundColor: cardBg,
-              padding: 16,
-              ...theme.shadows.shadowCard,
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: "600",
-                    color: textColor,
-                  }}
-                  numberOfLines={1}
-                >
-                  {due[0].title}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    color: mutedText,
-                  }}
-                  numberOfLines={1}
-                >
-                  {due[0].hospital}
-                </Text>
-                <View style={{ marginTop: 8 }}>
-                  <View
-                    style={{
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      borderRadius: 10,
-                      backgroundColor: `${theme.colors.emergency}20`,
-                      alignSelf: "flex-start",
-                    }}
+        {/* Quick Access Section */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionLabel}>Quick Access</Text>
+          <View style={styles.quickAccessGrid}>
+            {quickAccessItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <View key={item.label} style={[styles.quickAccessCardWrap, theme.shadows.sm]}>
+                  <Pressable
+                    style={styles.quickAccessCard}
+                    onPress={() => router.push(item.href as any)}
+                    android_ripple={{ color: "rgba(22, 168, 156, 0.1)", borderless: false }}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.label}
                   >
-                    <Text
-                      style={{
-                        fontSize: 11,
-                        fontWeight: "600",
-                        color: theme.colors.emergency,
-                      }}
+                    <View style={styles.quickAccessIconWrap}>
+                      <Icon size={20} color={theme.colors.primary} strokeWidth={2} />
+                    </View>
+                    <Text style={styles.quickAccessText}>{item.label}</Text>
+                  </Pressable>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Blood Donation Card */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionLabel}>Blood Donation</Text>
+          <View style={[styles.cardWrapper, theme.shadows.shadowCard]}>
+            <Pressable
+              style={styles.bloodCard}
+              onPress={() => router.push("/blood")}
+              android_ripple={{ color: "rgba(22, 168, 156, 0.08)", borderless: false }}
+              accessibilityRole="button"
+              accessibilityLabel={`Blood donation status: group ${myDonation.group}`}
+            >
+              <View style={styles.bloodRow}>
+                <View style={styles.bloodGroupBadge}>
+                  <Text style={styles.bloodGroupText}>{myDonation.group}</Text>
+                </View>
+                <View style={styles.bloodInfoWrap}>
+                  <Text style={styles.bloodTitle}>Blood donation</Text>
+                  <Text style={styles.bloodSubtitle}>
+                    Last donated · {formatDate(myDonation.lastDonation)}
+                  </Text>
+                  <View style={styles.bloodStatusRow}>
+                    <View
+                      style={[
+                        styles.statusChip,
+                        {
+                          backgroundColor: myDonation.available
+                            ? theme.colors.successLight
+                            : theme.colors.muted,
+                        },
+                      ]}
                     >
-                      {paymentStyle(due[0].payment).label}
+                      <Text
+                        style={[
+                          styles.statusChipText,
+                          {
+                            color: myDonation.available
+                              ? theme.colors.successDark
+                              : theme.colors.textMuted,
+                          },
+                        ]}
+                      >
+                        {myDonation.available ? "Available" : "Paused"}
+                      </Text>
+                    </View>
+                    <View style={styles.manageButton}>
+                      <Text style={styles.manageButtonText}>Manage</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Future Services Section */}
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionLabel}>Future Services</Text>
+          <View style={styles.futureServicesGrid}>
+            {/* Live Medical Support Card */}
+            <View style={[styles.cardWrapper, theme.shadows.shadowCard]}>
+              <View style={styles.futureCard}>
+                <View style={styles.futureHeader}>
+                  <View style={styles.futureIconWrap}>
+                    <Stethoscope size={22} color={theme.colors.primary} strokeWidth={2} />
+                  </View>
+                  <View style={styles.comingSoonBadge}>
+                    <Text style={styles.comingSoonText}>Coming Soon</Text>
+                  </View>
+                </View>
+                <Text style={styles.futureTitle}>Live Medical Support</Text>
+                <Text style={styles.futureDesc}>
+                  Speak with licensed healthcare professionals in real time for guidance and treatment advice.
+                </Text>
+                <View style={styles.lockedPill}>
+                  <Lock size={14} color={theme.colors.textMuted} strokeWidth={2} />
+                  <Text style={styles.lockedText}>Coming Soon</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Appointments & Tests Card */}
+            <View style={[styles.cardWrapper, theme.shadows.shadowCard]}>
+              <View style={styles.futureCard}>
+                <View style={styles.futureHeader}>
+                  <View style={styles.futureIconWrap}>
+                    <CalendarCheck size={22} color={theme.colors.primary} strokeWidth={2} />
+                  </View>
+                  <View style={styles.comingSoonBadge}>
+                    <Text style={styles.comingSoonText}>Coming Soon</Text>
+                  </View>
+                </View>
+                <Text style={styles.futureTitle}>Appointments & Tests</Text>
+                <Text style={styles.futureDesc}>
+                  Book doctor consultations, specialist appointments, and diagnostic tests directly in MedLink.
+                </Text>
+                <View style={styles.lockedPill}>
+                  <Lock size={14} color={theme.colors.textMuted} strokeWidth={2} />
+                  <Text style={styles.lockedText}>Coming Soon</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Recent Activity Section */}
+        {recent.length > 0 && (
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionLabel}>Recent Activity</Text>
+              <Pressable
+                onPress={() => router.push("/activity")}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+              >
+                <Text style={styles.viewAllText}>View all</Text>
+              </Pressable>
+            </View>
+            <View style={[styles.cardWrapper, theme.shadows.shadowCard]}>
+              {recent.map((r, i) => (
+                <Pressable
+                  key={r.id}
+                  style={[
+                    styles.activityItem,
+                    i > 0 && styles.activityItemBorder,
+                  ]}
+                  onPress={() => router.push("/activity")}
+                  android_ripple={{ color: "rgba(22, 168, 156, 0.08)", borderless: false }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Activity: ${r.title}`}
+                >
+                  <View style={styles.activityIconWrap}>
+                    <Siren size={18} color={theme.colors.emergency} strokeWidth={2} />
+                  </View>
+                  <View style={styles.activityTextWrap}>
+                    <Text style={styles.activityTitle} numberOfLines={1}>
+                      {r.title}
                     </Text>
+                    <Text style={styles.activitySubtitle}>
+                      {requestKindLabel[r.kind]} · {r.date}
+                    </Text>
+                  </View>
+                  <View style={styles.statusBadgeSmall}>
+                    <Text style={styles.statusBadgeSmallText}>
+                      {statusStyle(r.status).label}
+                    </Text>
+                  </View>
+                  <ChevronRight size={16} color={theme.colors.textMuted} strokeWidth={2} />
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* My Requests Summary Section */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionLabel}>My Requests</Text>
+            <Pressable
+              onPress={() => router.push("/activity")}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+            >
+              <Text style={styles.viewAllText}>Manage</Text>
+            </Pressable>
+          </View>
+
+          {/* Stats Grid */}
+          <View style={styles.statsGrid}>
+            <View style={[styles.statCardWrap, theme.shadows.shadowCard]}>
+              <Pressable
+                style={styles.statCard}
+                onPress={() => router.push("/activity")}
+                android_ripple={{ color: "rgba(22, 168, 156, 0.08)", borderless: false }}
+                accessibilityRole="button"
+                accessibilityLabel={`${active.length} active requests`}
+              >
+                <Text style={styles.statNumber}>{active.length}</Text>
+                <Text style={styles.statLabel}>Active requests</Text>
+              </Pressable>
+            </View>
+
+            <View style={[styles.statCardWrap, theme.shadows.shadowCard]}>
+              <Pressable
+                style={styles.statCard}
+                onPress={() => router.push("/activity")}
+                android_ripple={{ color: "rgba(22, 168, 156, 0.08)", borderless: false }}
+                accessibilityRole="button"
+                accessibilityLabel={`${due.length} pending payments`}
+              >
+                <Text style={styles.statNumber}>{due.length}</Text>
+                <Text style={styles.statLabel}>Pending payment</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Due Payment Card */}
+          {due[0] && (
+            <View style={[styles.cardWrapper, theme.shadows.shadowCard, { marginTop: theme.spacing.md }]}>
+              <View style={styles.dueCard}>
+                <View style={styles.dueHeader}>
+                  <View style={styles.dueTextWrap}>
+                    <Text style={styles.dueTitle} numberOfLines={1}>
+                      {due[0].title}
+                    </Text>
+                    <Text style={styles.dueHospital} numberOfLines={1}>
+                      {due[0].hospital}
+                    </Text>
+                    <View style={styles.paymentBadgeWrap}>
+                      <View style={styles.paymentBadge}>
+                        <Text style={styles.paymentBadgeText}>
+                          {paymentStyle(due[0].payment).label}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.payButtonWrap}>
+                  <Text style={styles.payButtonText}>Pay in App</Text>
+                  <View style={styles.comingSoonMiniBadge}>
+                    <Text style={styles.comingSoonMiniText}>Coming Soon</Text>
                   </View>
                 </View>
               </View>
             </View>
-
-            <TouchableOpacity
-              disabled
-              style={{
-                marginTop: 16,
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-                borderRadius: 24,
-                backgroundColor: theme.colors.muted,
-                flexDirection: "row",
-                justifyContent: "center",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 13.5,
-                  fontWeight: "600",
-                  color: theme.colors.mutedForeground,
-                }}
-              >
-                Pay in App
-              </Text>
-              <View
-                style={{
-                  paddingHorizontal: 8,
-                  paddingVertical: 3,
-                  borderRadius: 8,
-                  backgroundColor: theme.colors.primaryContainer,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 9.5,
-                    fontWeight: "bold",
-                    color: theme.colors.primary,
-                    textTransform: "uppercase",
-                    letterSpacing: 0.3,
-                  }}
-                >
-                  Coming Soon
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    </ScrollView>
+          )}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: theme.spacing.xl,
+  },
+  header: {
+    marginBottom: theme.spacing.xxl,
+    paddingTop: theme.spacing.xs,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  profileRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.md,
+    flex: 1,
+    borderRadius: theme.radii.pill,
+    paddingVertical: theme.spacing.xs,
+  },
+  avatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: theme.colors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarText: {
+    ...theme.typography.button,
+    color: theme.colors.primaryForeground,
+    fontWeight: "700",
+  },
+  greetingText: {
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
+  },
+  userName: {
+    ...theme.typography.h3,
+    color: theme.colors.foreground,
+  },
+  headerActions: {
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+    alignItems: "center",
+  },
+  iconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    backgroundColor: theme.colors.surface,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  notificationDot: {
+    position: "absolute",
+    top: 11,
+    right: 11,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.emergency,
+    borderWidth: 1.5,
+    borderColor: theme.colors.surface,
+  },
+  heroSection: {
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.xxl,
+  },
+  heroCardWrap: {
+    borderRadius: theme.radii.xxxl,
+    overflow: "hidden",
+  },
+  heroCardEmergency: {
+    borderRadius: theme.radii.xxxl,
+    backgroundColor: theme.colors.emergency,
+    padding: theme.spacing.xl,
+    position: "relative",
+    overflow: "hidden",
+  },
+  glowCircleEmergency: {
+    position: "absolute",
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: "rgba(255, 255, 255, 0.12)",
+    right: -40,
+    top: -40,
+  },
+  heroCardAi: {
+    borderRadius: theme.radii.xxxl,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    padding: theme.spacing.xl,
+    position: "relative",
+    overflow: "hidden",
+  },
+  glowCircleAi: {
+    position: "absolute",
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: theme.colors.primaryLight,
+    right: -40,
+    top: -40,
+  },
+  heroCardContent: {
+    position: "relative",
+    zIndex: 1,
+  },
+  heroIconEmergency: {
+    width: 48,
+    height: 48,
+    borderRadius: theme.radii.lg,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: theme.spacing.md,
+  },
+  heroIconAi: {
+    width: 48,
+    height: 48,
+    borderRadius: theme.radii.lg,
+    backgroundColor: theme.colors.primaryLight,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: theme.spacing.md,
+  },
+  heroTitleEmergency: {
+    ...theme.typography.h2,
+    color: "#FFFFFF",
+    marginBottom: 6,
+  },
+  heroDescEmergency: {
+    ...theme.typography.bodySmall,
+    color: "rgba(255, 255, 255, 0.9)",
+    marginBottom: theme.spacing.lg,
+    maxWidth: 260,
+    lineHeight: 20,
+  },
+  heroActionEmergency: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.xs,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radii.pill,
+    alignSelf: "flex-start",
+  },
+  heroActionTextEmergency: {
+    ...theme.typography.button,
+    color: theme.colors.emergency,
+    fontSize: 13,
+  },
+  heroTitleAi: {
+    ...theme.typography.h2,
+    color: theme.colors.foreground,
+    marginBottom: 6,
+  },
+  heroDescAi: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.textMuted,
+    marginBottom: theme.spacing.lg,
+    maxWidth: 260,
+    lineHeight: 20,
+  },
+  heroActionAi: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.xs,
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radii.pill,
+    alignSelf: "flex-start",
+  },
+  heroActionTextAi: {
+    ...theme.typography.button,
+    color: theme.colors.primaryForeground,
+    fontSize: 13,
+  },
+  sectionContainer: {
+    marginBottom: theme.spacing.xxl,
+  },
+  sectionLabel: {
+    ...theme.typography.label,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xxs,
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: theme.spacing.sm,
+  },
+  viewAllText: {
+    ...theme.typography.caption,
+    fontWeight: "700",
+    color: theme.colors.primary,
+  },
+  quickAccessGrid: {
+    flexDirection: "row",
+    gap: theme.spacing.md,
+  },
+  quickAccessCardWrap: {
+    flex: 1,
+    borderRadius: theme.radii.xxl,
+    overflow: "hidden",
+  },
+  quickAccessCard: {
+    alignItems: "center",
+    borderRadius: theme.radii.xxl,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    backgroundColor: theme.colors.surface,
+    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.xs,
+  },
+  quickAccessIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.radii.lg,
+    backgroundColor: theme.colors.primaryLight,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: theme.spacing.sm,
+  },
+  quickAccessText: {
+    ...theme.typography.caption,
+    fontWeight: "600",
+    color: theme.colors.foreground,
+    textAlign: "center",
+  },
+  cardWrapper: {
+    borderRadius: theme.radii.xxl,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    backgroundColor: theme.colors.surface,
+    overflow: "hidden",
+  },
+  bloodCard: {
+    padding: theme.spacing.lg,
+  },
+  bloodRow: {
+    flexDirection: "row",
+    gap: theme.spacing.lg,
+    alignItems: "flex-start",
+  },
+  bloodGroupBadge: {
+    width: 52,
+    height: 52,
+    borderRadius: theme.radii.lg,
+    backgroundColor: theme.colors.emergencyLight,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  bloodGroupText: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: theme.colors.emergency,
+  },
+  bloodInfoWrap: {
+    flex: 1,
+  },
+  bloodTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.foreground,
+    marginBottom: 2,
+  },
+  bloodSubtitle: {
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
+  },
+  bloodStatusRow: {
+    marginTop: theme.spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  statusChip: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 4,
+    borderRadius: theme.radii.pill,
+  },
+  statusChipText: {
+    ...theme.typography.caption,
+    fontWeight: "700",
+  },
+  manageButton: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: 6,
+    borderRadius: theme.radii.pill,
+    backgroundColor: theme.colors.primaryLight,
+  },
+  manageButtonText: {
+    ...theme.typography.caption,
+    fontWeight: "700",
+    color: theme.colors.primary,
+  },
+  futureServicesGrid: {
+    gap: theme.spacing.md,
+  },
+  futureCard: {
+    padding: theme.spacing.xl,
+  },
+  futureHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  futureIconWrap: {
+    width: 46,
+    height: 46,
+    borderRadius: theme.radii.lg,
+    backgroundColor: theme.colors.primaryLight,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  comingSoonBadge: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 4,
+    borderRadius: theme.radii.pill,
+    backgroundColor: theme.colors.primaryLight,
+  },
+  comingSoonText: {
+    ...theme.typography.label,
+    color: theme.colors.primary,
+    fontSize: 10,
+  },
+  futureTitle: {
+    ...theme.typography.h3,
+    color: theme.colors.foreground,
+    marginTop: theme.spacing.lg,
+    marginBottom: 4,
+  },
+  futureDesc: {
+    ...theme.typography.bodySmall,
+    color: theme.colors.textMuted,
+    lineHeight: 20,
+    marginBottom: theme.spacing.lg,
+  },
+  lockedPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radii.pill,
+    backgroundColor: theme.colors.muted,
+    alignSelf: "flex-start",
+  },
+  lockedText: {
+    ...theme.typography.caption,
+    fontWeight: "600",
+    color: theme.colors.textMuted,
+  },
+  activityItem: {
+    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.md,
+  },
+  activityItemBorder: {
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+  },
+  activityIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: theme.radii.lg,
+    backgroundColor: theme.colors.emergencyLight,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  activityTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  activityTitle: {
+    ...theme.typography.bodyLarge,
+    fontWeight: "600",
+    color: theme.colors.foreground,
+  },
+  activitySubtitle: {
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
+    marginTop: 2,
+  },
+  statusBadgeSmall: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 3,
+    borderRadius: theme.radii.sm,
+    backgroundColor: theme.colors.primaryLight,
+  },
+  statusBadgeSmallText: {
+    ...theme.typography.caption,
+    fontWeight: "700",
+    color: theme.colors.primary,
+    fontSize: 11,
+  },
+  statsGrid: {
+    flexDirection: "row",
+    gap: theme.spacing.md,
+  },
+  statCardWrap: {
+    flex: 1,
+    borderRadius: theme.radii.xxl,
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
+    backgroundColor: theme.colors.surface,
+    overflow: "hidden",
+  },
+  statCard: {
+    padding: theme.spacing.lg,
+  },
+  statNumber: {
+    ...theme.typography.display,
+    color: theme.colors.foreground,
+    marginBottom: 4,
+  },
+  statLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
+  },
+  dueCard: {
+    padding: theme.spacing.lg,
+  },
+  dueHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  dueTextWrap: {
+    flex: 1,
+  },
+  dueTitle: {
+    ...theme.typography.bodyLarge,
+    fontWeight: "600",
+    color: theme.colors.foreground,
+  },
+  dueHospital: {
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
+    marginTop: 2,
+  },
+  paymentBadgeWrap: {
+    marginTop: theme.spacing.sm,
+  },
+  paymentBadge: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 3,
+    borderRadius: theme.radii.sm,
+    backgroundColor: theme.colors.emergencyLight,
+    alignSelf: "flex-start",
+  },
+  paymentBadgeText: {
+    ...theme.typography.caption,
+    fontWeight: "700",
+    color: theme.colors.emergency,
+    fontSize: 11,
+  },
+  payButtonWrap: {
+    marginTop: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.radii.pill,
+    backgroundColor: theme.colors.muted,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: theme.spacing.sm,
+  },
+  payButtonText: {
+    ...theme.typography.button,
+    color: theme.colors.textMuted,
+  },
+  comingSoonMiniBadge: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: theme.radii.sm,
+    backgroundColor: theme.colors.primaryLight,
+  },
+  comingSoonMiniText: {
+    ...theme.typography.label,
+    color: theme.colors.primary,
+    fontSize: 9,
+  },
+});

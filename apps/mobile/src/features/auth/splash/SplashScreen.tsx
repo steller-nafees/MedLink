@@ -8,21 +8,10 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { theme } from "../../../theme";
 
 const logoImage = require("../../../assets/images/logos/medlink_full.png");
 const DURATION_MS = 1800;
-
-// Design tokens ported from :root in the web theme
-const colors = {
-  background: "#F7FBFB",
-  surface: "#FFFFFF",
-  primary: "#16A89C",
-  primaryForeground: "#FFFFFF",
-  accent: "#69D2CA",
-  border: "#D7E4E5",
-  mutedForeground: "#6B7280",
-  foreground: "#17252F",
-};
 
 export default function SplashScreen({ next = "/onboarding" }: { next?: string }) {
   const router = useRouter();
@@ -55,7 +44,7 @@ export default function SplashScreen({ next = "/onboarding" }: { next?: string }
 
   return (
     <View style={styles.container}>
-      {/* gradient-hero: soft radial glows top-left (primary) and bottom-right (accent) */}
+      {/* Soft radial glow circles */}
       <View style={[styles.glow, styles.glowPrimary]} />
       <View style={[styles.glow, styles.glowAccent]} />
 
@@ -79,8 +68,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 32,
-    backgroundColor: colors.background,
+    paddingHorizontal: theme.spacing.xxxl,
+    backgroundColor: theme.colors.background,
     overflow: "hidden",
   },
   glow: {
@@ -93,12 +82,12 @@ const styles = StyleSheet.create({
   glowPrimary: {
     top: -80,
     left: -100,
-    backgroundColor: colors.primary,
+    backgroundColor: theme.colors.primary,
   },
   glowAccent: {
     bottom: -100,
     right: -100,
-    backgroundColor: colors.accent,
+    backgroundColor: theme.colors.accent,
   },
   logoWrap: {
     flex: 1,
@@ -114,26 +103,24 @@ const styles = StyleSheet.create({
     maxWidth: 240,
     alignItems: "center",
     justifyContent: "center",
-    paddingBottom: 40,
+    paddingBottom: theme.spacing.huge,
   },
   progressTrack: {
     width: "100%",
     height: 6,
-    borderRadius: 999,
-    backgroundColor: colors.border,
+    borderRadius: theme.radii.pill,
+    backgroundColor: theme.colors.border,
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
-    borderRadius: 999,
-    backgroundColor: colors.primary,
+    borderRadius: theme.radii.pill,
+    backgroundColor: theme.colors.primary,
   },
   brand: {
-    marginTop: 24,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 4.6,
-    color: colors.mutedForeground,
-    textTransform: "uppercase",
+    ...theme.typography.label,
+    marginTop: theme.spacing.xxl,
+    letterSpacing: 4,
+    color: theme.colors.textMuted,
   },
 });
