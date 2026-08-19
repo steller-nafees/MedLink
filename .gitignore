@@ -1,45 +1,47 @@
 # Dependencies
-node_modules
-
-# Expo
-.expo
-dist
-web-build
+node_modules/
 
 # Environment
 .env
 .env.local
 .env.*.local
+!.env.example
+
+# Expo
+.expo/
+web-build/
+dist/
+
+# Build
+build/
+coverage/
 
 # Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.log
 
 # OS
 .DS_Store
 Thumbs.db
 
 # IDE
-.vscode
-.idea
+.vscode/
+.idea/
 
 # Turbo
-.turbo
-
-# Build
-build
-coverage
+.turbo/
 
 # Expo Native
-android
-ios
+android/
+ios/
 
 # Prisma
 prisma/dev.db
 
-#Agent
+# Agent
 AGENTS.md
 
-#UI Kit
-ui-kit
+# UI Kit
+ui-kit/
