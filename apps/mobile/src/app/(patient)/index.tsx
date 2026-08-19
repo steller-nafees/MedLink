@@ -1,9 +1,3 @@
-import { View, Text } from "react-native";
+import PatientHomeScreen from "../../features/patient/home/PatientHomeScreen";
 
-export default function PatientDashboard() {
-  return (
-    <View>
-      <Text>Patient Dashboard</Text>
-    </View>
-  );
-}
+export default PatientHomeScreen;

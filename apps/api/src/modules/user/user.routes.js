@@ -23,6 +23,7 @@ const {
     deleteUserAccount,
     getMyLocation,
     updateMyLocation,
+    getUserById,
 } = require("./user.controller");
 
 router.post(
@@ -98,5 +99,8 @@ router.put(
     validate(locationSchema),
     updateMyLocation
 );
+
+// Route from main
+router.get("/:id", getUserById);
 
 module.exports = router;

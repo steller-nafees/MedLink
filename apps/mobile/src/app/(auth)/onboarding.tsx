@@ -1,9 +1,5 @@
-import { View, Text } from 'react-native';
+import OnboardingScreen from "../../features/auth/onboarding/OnboardingScreen";
 
-export default function Screen() {
-    return (
-        <View>
-            <Text>onboarding</Text>
-        </View>
-    );
+export default function OnboardingRoute() {
+  return <OnboardingScreen />;
 }

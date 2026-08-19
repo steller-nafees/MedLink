@@ -1,9 +1,5 @@
-import { View, Text } from 'react-native';
+import AccountTypeScreen from "../../features/auth/account-type/AccountTypeScreen";
 
-export default function Screen() {
-    return (
-        <View>
-            <Text>account-type</Text>
-        </View>
-    );
+export default function AccountTypeRoute() {
+  return <AccountTypeScreen />;
 }

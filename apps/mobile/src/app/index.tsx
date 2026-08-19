@@ -1,11 +1,5 @@
-import { View, Text } from "react-native";
+import { Redirect } from "expo-router";
 
-export default function SplashScreen() {
-  return (
-    <View>
-      <Text>MedLink Splash Screen is shown here</Text>
-      <Text>MedLink Splash Screen is shown here</Text>
-      <Text>MedLink Splash Screen is shown here</Text>
-    </View>
-  );
+export default function Index() {
+  return <Redirect href="/splash" />;
 }

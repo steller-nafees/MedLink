@@ -1,9 +1,5 @@
-import { View, Text } from 'react-native';
+import { DriverSignupScreen } from "../../features/auth/driver-signup";
 
-export default function Screen() {
-    return (
-        <View>
-            <Text>driver-signup</Text>
-        </View>
-    );
+export default function DriverSignupRoute() {
+  return <DriverSignupScreen />;
 }

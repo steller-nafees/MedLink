@@ -1,9 +1,5 @@
-import { View, Text } from 'react-native';
+import { SOSScreen } from '../../features/sos';
 
-export default function Screen() {
-    return (
-        <View>
-            <Text>sos</Text>
-        </View>
-    );
+export default function PatientSosRoute() {
+  return <SOSScreen />;
 }
