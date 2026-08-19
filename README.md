@@ -92,40 +92,53 @@ medlink/
 │
 ├── apps/
 │   │
-│   ├── mobile/                 # React Native + Expo
+│   ├── mobile/                         # React Native + Expo
+│   │   ├── src/
+│   │   ├── app/
+│   │   └── ...
 │   │
-│   ├── web/                    # React.js + Vite
+│   ├── web/                            # React.js + Vite
 │   │   ├── src/
 │   │   │   ├── admin/
 │   │   │   ├── hospital/
 │   │   │   ├── shared/
 │   │   │   ├── routes/
 │   │   │   └── layouts/
-│   │   │
-│   │   └── public/
+│   │   ├── public/
+│   │   └── ...
 │   │
-│   └── api/                    # Node.js + Express
+│   └── api/                            # Node.js + Express
 │       ├── src/
 │       │   ├── modules/
-│       │   ├── middleware/
-│       │   ├── config/
-│       │   ├── infrastructure/
+│       │   │   ├── auth/
+│       │   │   ├── user/
+│       │   │   ├── hospital/
+│       │   │   ├── hospital-admin/
+│       │   │   ├── ambulance/
+│       │   │   ├── ambulance-admin/
+│       │   │   ├── reservation/
+│       │   │   ├── event/
+│       │   │   ├── payment/
+│       │   │   └── ai-medical/
+│       │   │
 │       │   ├── shared/
-│       │   └── server.ts
+│       │   ├── infrastructure/
+│       │   └── app.js
 │       │
-│       └── prisma/             # Empty for now
+│       ├── prisma/
+│       └── package.json
 │
 ├── packages/
 │   │
-│   ├── shared-types/
-│   ├── shared-validation/
-│   ├── shared-utils/
-│   ├── api-client/
-│   ├── realtime-events/
-│   ├── env-config/
-│   ├── ui/
-│   ├── eslint-config/
-│   └── tsconfig/
+│   ├── shared-types/                    # Shared TypeScript types
+│   ├── shared-validation/               # Shared validation schemas
+│   ├── shared-utils/                    # Shared utilities
+│   ├── api-client/                      # API client
+│   ├── realtime-events/                 # Realtime event definitions
+│   ├── env-config/                      # Environment configuration
+│   ├── ui/                              # Shared UI components
+│   ├── eslint-config/                   # Shared ESLint configuration
+│   └── tsconfig/                         # Shared TypeScript configuration
 │
 ├── docs/
 │   ├── architecture.md
@@ -137,9 +150,12 @@ medlink/
 │   ├── docker/
 │   └── scripts/
 │
+├── .env.example
+├── .gitignore
 ├── docker-compose.yml
 ├── turbo.json
 ├── package.json
+├── package-lock.json
 ├── LICENSE.md
 └── README.md
 ```
