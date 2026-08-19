@@ -254,7 +254,7 @@ Development Database:
 
 ```env
 POSTGRES_USER=medlink
-POSTGRES_PASSWORD=MedLink@2026
+POSTGRES_PASSWORD=YOUR_DB_PASSWORD
 POSTGRES_DB=medlink
 ```
 
