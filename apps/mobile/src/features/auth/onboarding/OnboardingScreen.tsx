@@ -31,6 +31,7 @@ import {
   ArrowRight,
 } from "lucide-react-native";
 import { theme } from "../../../theme";
+import type { SharedValue } from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -237,7 +238,7 @@ function ProgressSegment({
   onPress,
 }: {
   index: number;
-  scrollX: Animated.SharedValue<number>;
+  scrollX: SharedValue<number>;
   onPress: () => void;
 }) {
   const segmentStyle = useAnimatedStyle(() => {
@@ -270,7 +271,7 @@ function Slide({
 }: {
   slide: (typeof onboardingSlides)[number];
   index: number;
-  scrollX: Animated.SharedValue<number>;
+  scrollX: SharedValue<number>;
 }) {
   const Icon = slide.icon;
 
