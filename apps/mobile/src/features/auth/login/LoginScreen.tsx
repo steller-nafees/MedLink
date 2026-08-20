@@ -31,6 +31,20 @@ import {
   saveAuthToken,
 } from "../../../services/auth";
 
+function normalizeLoginPhone(value: string) {
+  const phone = value.replace(/[\s-]/g, "");
+
+  if (/^01[3-9]\d{8}$/.test(phone)) {
+    return `+880${phone.slice(1)}`;
+  }
+
+  if (/^8801[3-9]\d{8}$/.test(phone)) {
+    return `+${phone}`;
+  }
+
+  return phone;
+}
+
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -56,11 +70,11 @@ export default function LoginScreen() {
       const response = await loginCustomer({
         ...(trimmedIdentifier.includes("@")
           ? { email: trimmedIdentifier }
-          : { phone: trimmedIdentifier }),
+          : { phone: normalizeLoginPhone(trimmedIdentifier) }),
         password,
       });
 
-      await saveAuthToken(response.token.accessToken);
+      await saveAuthToken(response.token.accessToken, response.data.userId);
       router.replace("/(patient)");
     } catch (error) {
       const message =

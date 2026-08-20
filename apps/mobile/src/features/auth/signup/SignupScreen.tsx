@@ -192,7 +192,7 @@ export default function SignupScreen() {
         password,
       });
 
-      await saveAuthToken(response.token.accessToken);
+      await saveAuthToken(response.token.accessToken, response.data.userId);
       router.replace("/(patient)");
     } catch (error) {
       const message =
