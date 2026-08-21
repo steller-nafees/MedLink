@@ -1,14 +1,3 @@
-import { View, Text, StyleSheet } from "react-native";
+import AiMedicalAssistantScreen from "../../features/patient/ai/AiMedicalAssistantScreen";
 
-export default function AiScreen() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Ai (coming soon)</Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "center" },
-  text: { fontSize: 16, color: "#12324A" },
-});
+export default AiMedicalAssistantScreen;

@@ -14,22 +14,21 @@ import { useRouter } from "expo-router";
 import {
   Loader2,
   LocateFixed,
-  MapPin,
   Phone,
   Siren,
   UserRound,
   X,
 } from "lucide-react-native";
 import { theme } from "../../theme";
+import { AuthRequestError, saveAuthToken, startEmergencySession } from "../../services/auth";
 
 export function GuestSosModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [mode, setMode] = useState<"auto" | "manual">("auto");
-  const [manualLocation, setManualLocation] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   const detect = () => {
@@ -54,21 +53,41 @@ export function GuestSosModal({ onClose }: { onClose: () => void }) {
     );
   };
 
-  const hasLocation = mode === "auto" ? !!coords : manualLocation.trim().length > 0;
-  const canSubmit = name.trim().length > 0 && phone.trim().length > 0 && hasLocation;
+  const canSubmit = name.trim().length >= 2 && phone.trim().length > 0 && !!coords && !submitting;
 
-  const activate = () => {
-    router.push({
-      pathname: "/(patient)/sos",
-      params: {
-        guest: "1",
+  const activate = async () => {
+    if (!canSubmit || !coords) return;
+
+    setSubmitting(true);
+    setError("");
+
+    try {
+      const emergencySession = await startEmergencySession({
         name: name.trim(),
         phone: phone.trim(),
-        ...(mode === "auto" && coords
-          ? { lat: String(coords.lat), lng: String(coords.lng) }
-          : { location: manualLocation.trim() }),
-      },
-    });
+        latitude: coords.lat,
+        longitude: coords.lng,
+      });
+
+      await saveAuthToken(emergencySession.token.accessToken, emergencySession.data.userId);
+      router.replace({
+        pathname: "/(patient)/sos",
+        params: {
+          guest: "1",
+          name: emergencySession.data.name,
+          lat: String(emergencySession.data.latitude),
+          lng: String(emergencySession.data.longitude),
+        },
+      });
+    } catch (requestError) {
+      setError(
+        requestError instanceof AuthRequestError
+          ? requestError.message
+          : "Unable to activate Emergency SOS. Please try again."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -126,62 +145,26 @@ export function GuestSosModal({ onClose }: { onClose: () => void }) {
 
             <View style={styles.formGroup}>
               <Text style={styles.label}>Current location</Text>
-              <View style={styles.segmentRow}>
-                {(["auto", "manual"] as const).map((option) => (
-                  <Pressable
-                    key={option}
-                    onPress={() => setMode(option)}
-                    style={[
-                      styles.segmentButton,
-                      mode === option ? styles.segmentButtonActive : styles.segmentButtonInactive,
-                    ]}
-                  >
-                    {option === "auto" ? (
-                      <LocateFixed size={14} color={mode === option ? theme.colors.primary : theme.colors.mutedForeground} />
+              <View style={[styles.locationBox, theme.shadows.shadowCard]}>
+                {coords ? (
+                  <Text style={styles.locationText}>
+                    <LocateFixed size={14} color={theme.colors.primary} /> Location detected ({coords.lat.toFixed(3)}, {coords.lng.toFixed(3)})
+                  </Text>
+                ) : (
+                  <Pressable onPress={detect} disabled={locating} style={styles.locationAction}>
+                    {locating ? (
+                      <Loader2 size={16} color={theme.colors.primary} style={styles.spin} />
                     ) : (
-                      <MapPin size={14} color={mode === option ? theme.colors.primary : theme.colors.mutedForeground} />
+                      <LocateFixed size={16} color={theme.colors.primary} />
                     )}
-                    <Text
-                      style={[
-                        styles.segmentText,
-                        mode === option ? styles.segmentTextActive : styles.segmentTextInactive,
-                      ]}
-                    >
-                      {option === "auto" ? "Use my location" : "Enter manually"}
+                    <Text style={styles.locationActionText}>
+                      {locating ? "Detecting your location…" : "Tap to detect my location"}
                     </Text>
                   </Pressable>
-                ))}
+                )}
               </View>
-
-              {mode === "auto" ? (
-                <View style={[styles.locationBox, theme.shadows.shadowCard]}>
-                  {coords ? (
-                    <Text style={styles.locationText}>
-                      <LocateFixed size={14} color={theme.colors.primary} /> Location detected ({coords.lat.toFixed(3)}, {coords.lng.toFixed(3)})
-                    </Text>
-                  ) : (
-                    <Pressable onPress={detect} style={styles.locationAction}>
-                      {locating ? (
-                        <Loader2 size={16} color={theme.colors.primary} style={styles.spin} />
-                      ) : (
-                        <LocateFixed size={16} color={theme.colors.primary} />
-                      )}
-                      <Text style={styles.locationActionText}>
-                        {locating ? "Detecting your location…" : "Tap to detect my location"}
-                      </Text>
-                    </Pressable>
-                  )}
-                  {!!error && <Text style={styles.errorText}>{error}</Text>}
-                </View>
-              ) : (
-                <TextInput
-                  value={manualLocation}
-                  onChangeText={setManualLocation}
-                  placeholder="House, road, area, city"
-                  placeholderTextColor={theme.colors.mutedForeground}
-                  style={[styles.manualInput, theme.shadows.shadowCard]}
-                />
-              )}
+              <Text style={styles.locationHint}>Your location is required so the emergency team can find you.</Text>
+              {!!error && <Text style={styles.errorText}>{error}</Text>}
             </View>
           </ScrollView>
 
@@ -193,8 +176,8 @@ export function GuestSosModal({ onClose }: { onClose: () => void }) {
               style={[styles.submitButton, !canSubmit && styles.disabledButton]}
             >
               <View style={styles.buttonInner}>
-                <Siren size={18} color={theme.colors.primaryForeground} />
-                <Text style={styles.buttonText}>Activate Emergency SOS</Text>
+                {submitting ? <Loader2 size={18} color={theme.colors.primaryForeground} style={styles.spin} /> : <Siren size={18} color={theme.colors.primaryForeground} />}
+                <Text style={styles.buttonText}>{submitting ? "Starting emergency session…" : "Activate Emergency SOS"}</Text>
               </View>
             </LinearGradient>
           </Pressable>
@@ -288,38 +271,6 @@ const styles = StyleSheet.create({
     fontSize: 14.5,
     color: theme.colors.foreground,
   },
-  segmentRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  segmentButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingVertical: 10,
-  },
-  segmentButtonActive: {
-    borderColor: theme.colors.primary + "80",
-    backgroundColor: theme.colors.primaryContainer,
-  },
-  segmentButtonInactive: {
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-  },
-  segmentText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  segmentTextActive: {
-    color: theme.colors.primary,
-  },
-  segmentTextInactive: {
-    color: theme.colors.mutedForeground,
-  },
   locationBox: {
     marginTop: 10,
     borderRadius: 18,
@@ -344,16 +295,11 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     fontWeight: "600",
   },
-  manualInput: {
-    marginTop: 10,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 14,
-    color: theme.colors.foreground,
+  locationHint: {
+    marginTop: 8,
+    paddingHorizontal: 4,
+    fontSize: 11.5,
+    color: theme.colors.mutedForeground,
   },
   errorText: {
     marginTop: 8,

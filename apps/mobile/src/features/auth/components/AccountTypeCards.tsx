@@ -18,42 +18,60 @@ export function AccountTypeCards({ onSelect, selected }: AccountTypeCardsProps) 
         const isSelected = selected === type.id;
         const borderColor = isSelected
           ? theme.colors.primary
-          : theme.colors.border;
+          : theme.colors.borderLight;
         const backgroundColor = isSelected
-          ? theme.colors.primaryContainer
+          ? theme.colors.primaryLight
           : theme.colors.surface;
 
         return (
-          <Pressable
+          <View
             key={type.id}
-            onPress={() => onSelect(type.id)}
             style={[
-              styles.card,
-              {
-                borderColor,
-                backgroundColor,
-              },
-              isSelected && styles.cardSelected,
+              styles.cardWrapper,
               theme.shadows.shadowCard,
+              { borderColor, backgroundColor },
+              isSelected && styles.cardSelected,
             ]}
           >
-            <View style={styles.iconContainer}>
-              <Text style={styles.emoji}>{type.emoji}</Text>
-            </View>
-
-            <View style={styles.content}>
-              <View style={styles.titleRow}>
-                <Text style={styles.label}>{type.label}</Text>
+            <Pressable
+              onPress={() => onSelect(type.id)}
+              android_ripple={{
+                color: "rgba(22, 168, 156, 0.12)",
+                borderless: false,
+              }}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
+              accessibilityLabel={`${type.label} account: ${type.summary}`}
+              style={({ pressed }) => [
+                styles.card,
+                pressed && styles.cardPressed,
+              ]}
+            >
+              <View style={styles.iconContainer}>
+                <Text style={styles.emoji}>{type.emoji}</Text>
               </View>
-              <Text style={styles.summary}>{type.summary}</Text>
-            </View>
 
-            <ChevronRight
-              size={20}
-              color={theme.colors.mutedForeground}
-              style={styles.chevron}
-            />
-          </Pressable>
+              <View style={styles.content}>
+                <View style={styles.titleRow}>
+                  <Text
+                    style={[
+                      styles.label,
+                      isSelected && { color: theme.colors.primaryDark },
+                    ]}
+                  >
+                    {type.label}
+                  </Text>
+                </View>
+                <Text style={styles.summary}>{type.summary}</Text>
+              </View>
+
+              <ChevronRight
+                size={20}
+                color={isSelected ? theme.colors.primary : theme.colors.textMuted}
+                style={styles.chevron}
+              />
+            </Pressable>
+          </View>
         );
       })}
     </View>
@@ -62,31 +80,38 @@ export function AccountTypeCards({ onSelect, selected }: AccountTypeCardsProps) 
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
+    gap: theme.spacing.md,
   },
-  card: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    borderRadius: theme.radii.xxxl,
+  cardWrapper: {
+    borderRadius: theme.radii.xxl,
     borderWidth: 1.5,
+    overflow: "hidden",
   },
   cardSelected: {
     borderWidth: 2,
+    borderColor: theme.colors.primary,
+  },
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.lg,
+  },
+  cardPressed: {
+    opacity: 0.9,
   },
   iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: theme.radii.lg,
+    width: 52,
+    height: 52,
+    borderRadius: theme.radii.xl,
     backgroundColor: theme.colors.surfaceVariant,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
   emoji: {
-    fontSize: 22,
+    fontSize: 24,
   },
   content: {
     flex: 1,
@@ -94,21 +119,18 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: theme.spacing.sm,
   },
   label: {
-    fontSize: 15.5,
-    fontWeight: "700",
+    ...theme.typography.h3,
     color: theme.colors.foreground,
   },
   summary: {
-    marginTop: 6,
-    fontSize: 12.5,
-    lineHeight: 18,
-    color: theme.colors.mutedForeground,
+    ...theme.typography.bodySmall,
+    marginTop: 4,
+    color: theme.colors.textMuted,
   },
   chevron: {
-    marginTop: 4,
     flexShrink: 0,
   },
 });

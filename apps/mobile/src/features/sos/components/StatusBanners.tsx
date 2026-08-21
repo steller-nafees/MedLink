@@ -41,7 +41,6 @@ export const SyncStatusBanner: React.FC<SyncStatusBannerProps> = ({
           size={14}
           color={theme.colors.success}
           strokeWidth={2.5}
-          style={justSynced ? { animation: 'spin 1s linear infinite' } : {}}
         />
       </View>
       <View style={{ flex: 1 }}>

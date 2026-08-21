@@ -16,6 +16,8 @@ export type Hospital = {
   icu: { total: number; available: number };
   emergency: boolean;
   bloodBank: string[];
+  /** Position on the shared, illustrative patient map. */
+  coord: { x: number; y: number };
 };
 
 export const hospitals: Hospital[] = [
@@ -33,6 +35,7 @@ export const hospitals: Hospital[] = [
     icu: { total: 40, available: 9 },
     emergency: true,
     bloodBank: ['O-', 'O+', 'A+', 'B+', 'AB+'],
+    coord: { x: 50, y: 40 },
   },
   {
     id: 'h-square',
@@ -48,6 +51,7 @@ export const hospitals: Hospital[] = [
     icu: { total: 50, available: 11 },
     emergency: true,
     bloodBank: ['O+', 'A+', 'A-', 'B+'],
+    coord: { x: 40, y: 30 },
   },
   {
     id: 'h-united',
@@ -63,6 +67,7 @@ export const hospitals: Hospital[] = [
     icu: { total: 45, available: 7 },
     emergency: true,
     bloodBank: ['O+', 'A+', 'B+', 'AB+'],
+    coord: { x: 62, y: 25 },
   },
   {
     id: 'h-labaid',
@@ -78,6 +83,7 @@ export const hospitals: Hospital[] = [
     icu: { total: 20, available: 3 },
     emergency: true,
     bloodBank: ['O+', 'A+', 'B+'],
+    coord: { x: 30, y: 60 },
   },
   {
     id: 'h-dmch',
@@ -93,6 +99,7 @@ export const hospitals: Hospital[] = [
     icu: { total: 60, available: 5 },
     emergency: true,
     bloodBank: ['O-', 'O+', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'],
+    coord: { x: 45, y: 70 },
   },
   {
     id: 'h-ibnsina',
@@ -108,6 +115,7 @@ export const hospitals: Hospital[] = [
     icu: { total: 10, available: 1 },
     emergency: false,
     bloodBank: ['O+', 'A+'],
+    coord: { x: 20, y: 45 },
   },
 ];
 

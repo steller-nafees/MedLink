@@ -1,633 +1,814 @@
-import { useRef, useState, type ReactNode } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  PanResponder,
+  Dimensions,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import { theme } from "../../../theme";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  useAnimatedScrollHandler,
+  withTiming,
+  withSpring,
+  interpolate,
+  interpolateColor,
+  Extrapolation,
+  Easing,
+} from "react-native-reanimated";
+import { BlurView } from "expo-blur";
+import { useRouter, usePathname } from "expo-router";
 import {
-  ArrowRight,
+  Home,
+  ClipboardList,
+  Building2,
+  User,
+  Plus,
+  X,
   Bot,
-  LayoutGrid,
   Siren,
-  type LucideIcon,
+  ArrowRight,
 } from "lucide-react-native";
+import { theme } from "../../../theme";
+import type { SharedValue } from 'react-native-reanimated';
 
-const slides: Array<{
-  icon: LucideIcon;
-  title: string;
-  desc: string;
-  art: () => ReactNode;
-}> = [
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+/* ─── Tab definitions ─── */
+
+const leftTabs = [
   {
-    icon: Siren,
+    route: "/(patient)" as const,
+    label: "Home",
+    icon: Home,
+    // Expo Router strips group-parens from usePathname(), so the resolved
+    // path for "/(patient)/index" is "/" — not "/(patient)". Match both
+    // the real resolved path and the group-syntax form for safety.
+    match: (p: string) => p === "/" || p === "/(patient)" || p === "/(patient)/index",
+  },
+  {
+    route: "/(patient)/activity" as const,
+    label: "Activity",
+    icon: ClipboardList,
+    match: (p: string) => p.includes("/activity"),
+  },
+] as const;
+
+const rightTabs = [
+  {
+    route: "/(patient)/hospitals" as const,
+    label: "Hospitals",
+    icon: Building2,
+    match: (p: string) => p.includes("/hospitals"),
+  },
+  {
+    route: "/(patient)/profile" as const,
+    label: "Profile",
+    icon: User,
+    match: (p: string) => p.includes("/profile"),
+  },
+] as const;
+
+/* ─── Spring config approximating cubic-bezier(0.34,1.56,0.64,1) ─── */
+const FAN_SPRING = { stiffness: 120, damping: 14, mass: 1 };
+
+/* ─── Onboarding content ─── */
+
+const ACCENT = "#C7EA6E"; // lime accent for the next button, matching the reference
+
+const onboardingSlides = [
+  {
     title: "Emergency Help When Every Second Matters",
-    desc: "Find hospitals, ambulances, and emergency care faster during critical situations.",
-    art: EmergencyArt,
+    description: "Find hospitals, ambulances, and emergency care faster during critical situations.",
+    icon: Siren,
+    cardColor: "#F4DFEA",
+    iconColor: "#D64545",
+    iconBg: "#FFFFFF",
   },
   {
-    icon: Bot,
     title: "Your AI Medical Assistant",
-    desc: "Get help finding specialists, diagnostic tests, hospitals, and healthcare information through natural conversation.",
-    art: AiArt,
+    description: "Get help finding specialists, tests, hospitals, and healthcare information.",
+    icon: Bot,
+    cardColor: "#DAD4F5",
+    iconColor: "#6C5CE7",
+    iconBg: "#FFFFFF",
   },
   {
-    icon: LayoutGrid,
     title: "Healthcare Connected in One Place",
-    desc: "Access hospitals, consultations, reservations, emergency support, and medical services from a single platform.",
-    art: ConnectedArt,
+    description: "Access care, consultations, reservations, and emergency support from one platform.",
+    icon: Building2,
+    cardColor: "#FBF0C8",
+    iconColor: "#16A89C",
+    iconBg: "#FFFFFF",
   },
-];
+] as const;
+
+const SLIDE_COUNT = onboardingSlides.length;
+const AUTOPLAY_INTERVAL = 4500;
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const scrollRef = useRef<Animated.ScrollView>(null);
+  const indexRef = useRef(0);
+  const autoplayTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const [index, setIndex] = useState(0);
-  const last = index === slides.length - 1;
+  const scrollX = useSharedValue(0);
+  const isLastSlide = index === SLIDE_COUNT - 1;
 
-  const goTo = (nextIndex: number) => {
-    setIndex(Math.max(0, Math.min(slides.length - 1, nextIndex)));
-  };
+  const scrollToIndex = useCallback((nextIndex: number, animated = true) => {
+    scrollRef.current?.scrollTo({ x: nextIndex * SCREEN_WIDTH, animated });
+  }, []);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => Math.abs(gestureState.dx) > 30,
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx < -40 && !last) {
-          goTo(index + 1);
-        }
-        if (gestureState.dx > 40 && index > 0) {
-          goTo(index - 1);
-        }
-      },
-    })
-  ).current;
+  const stopAutoplay = useCallback(() => {
+    if (autoplayTimer.current) {
+      clearInterval(autoplayTimer.current);
+      autoplayTimer.current = null;
+    }
+  }, []);
 
-  const slide = slides[index];
-  const Icon = slide.icon;
+  const startAutoplay = useCallback(() => {
+    stopAutoplay();
+    autoplayTimer.current = setInterval(() => {
+      const next = (indexRef.current + 1) % SLIDE_COUNT;
+      scrollToIndex(next);
+    }, AUTOPLAY_INTERVAL);
+  }, [scrollToIndex, stopAutoplay]);
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.shell} {...panResponder.panHandlers}>
-        <View style={styles.headerRow}>
-          <ProgressIndicator total={slides.length} current={index} />
-          <Pressable onPress={() => router.replace('/(auth)')}>
-            <Text style={styles.skipText}>Skip</Text>
-          </Pressable>
-        </View>
+  useEffect(() => {
+    startAutoplay();
+    return stopAutoplay;
+  }, [startAutoplay, stopAutoplay]);
 
-        <View style={styles.slideWrap}>
-          <View style={styles.artCard}>
-            {slide.art()}
-          </View>
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollX.value = event.contentOffset.x;
+    },
+  });
 
-          <View style={styles.copyBlock}>
-            <View style={styles.stepPill}>
-              <Icon size={14} color={theme.colors.primary} />
-              <Text style={styles.stepText}>
-                Step {index + 1} of {slides.length}
-              </Text>
-            </View>
-
-            <Text style={styles.title}>{slide.title}</Text>
-            <Text style={styles.description}>{slide.desc}</Text>
-          </View>
-        </View>
-
-        <View style={styles.footer}>
-          {last ? (
-            <LinearGradient colors={[theme.colors.secondary, theme.colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryButton}>
-              <Pressable style={styles.buttonInner} onPress={() => router.replace('/(auth)')}>
-                <Text style={styles.primaryText}>Get Started</Text>
-                <ArrowRight size={18} color={theme.colors.primaryForeground} />
-              </Pressable>
-            </LinearGradient>
-          ) : (
-            <LinearGradient colors={[theme.colors.secondary, theme.colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryButton}>
-              <Pressable style={styles.buttonInner} onPress={() => goTo(index + 1)}>
-                <Text style={styles.primaryText}>Next</Text>
-                <ArrowRight size={18} color={theme.colors.primaryForeground} />
-              </Pressable>
-            </LinearGradient>
-          )}
-
-          <View style={styles.dotsRow}>
-            {slides.map((_, pageIndex) => (
-              <Pressable
-                key={pageIndex}
-                onPress={() => goTo(pageIndex)}
-                style={[styles.dot, pageIndex === index ? styles.dotActive : styles.dotInactive]}
-              />
-            ))}
-          </View>
-        </View>
-      </View>
-    </SafeAreaView>
+  const onMomentumScrollEnd = useCallback(
+    (event: any) => {
+      const nextIndex = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+      indexRef.current = nextIndex;
+      setIndex(nextIndex);
+    },
+    [],
   );
-}
 
-function ProgressIndicator({ total, current }: { total: number; current: number }) {
-  return (
-    <View style={styles.progressRow}>
-      {Array.from({ length: total }).map((_, index) => (
-        <View
-          key={index}
-          style={[
-            styles.progressBar,
-            index === current ? styles.progressActiveBar : index < current ? styles.progressCompleteBar : styles.progressIdleBar,
-          ]}
-        />
-      ))}
-    </View>
+  const handleSkip = useCallback(() => {
+    stopAutoplay();
+    router.replace("/(auth)");
+  }, [router, stopAutoplay]);
+
+  const handleNext = useCallback(() => {
+    if (isLastSlide) {
+      stopAutoplay();
+      router.replace("/(auth)");
+      return;
+    }
+    stopAutoplay();
+    const next = indexRef.current + 1;
+    scrollToIndex(next);
+    startAutoplay();
+  }, [isLastSlide, router, scrollToIndex, startAutoplay, stopAutoplay]);
+
+  const handleDotPress = useCallback(
+    (i: number) => {
+      stopAutoplay();
+      scrollToIndex(i);
+      startAutoplay();
+    },
+    [scrollToIndex, startAutoplay, stopAutoplay],
   );
-}
-
-function EmergencyArt() {
-  return (
-    <View style={styles.illustrationBoxEmergency}>
-      <View style={styles.softCircleLeft} />
-      <View style={styles.softCircleRight} />
-
-      <View style={styles.emergencyRow}>
-        <View style={styles.tileCard}>
-          <Text style={styles.tileEmoji}>🏥</Text>
-        </View>
-
-        <View style={styles.sosBadge}>
-          <View style={styles.sosRing} />
-          <Siren size={34} color="#FFFFFF" />
-        </View>
-
-        <View style={styles.tileCard}>
-          <Text style={styles.tileEmoji}>🚑</Text>
-        </View>
-      </View>
-
-      <View style={styles.pathRow}>
-        <View style={styles.pathLine} />
-      </View>
-    </View>
-  );
-}
-
-function AiArt() {
-  return (
-    <View style={styles.illustrationBoxAi}>
-      <View style={styles.softCircleAI} />
-
-      <View style={styles.aiBubbleWrap}>
-        <View style={styles.aiBubbleUser}>
-          <Text style={styles.aiBubbleText}>I need a cardiologist near me this week.</Text>
-        </View>
-
-        <View style={styles.aiRow}>
-          <View style={styles.aiIconWrap}>
-            <Bot size={18} color="#0A8DFF" />
-          </View>
-          <View style={styles.aiBubbleBot}>
-            <Text style={styles.aiBubbleTextBot}>
-              I found 3 cardiologists with openings — the closest is 2.4 km away.
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.pulseRow}>
-          {[0, 1, 2].map((dot) => (
-            <View
-              key={dot}
-              style={[
-                styles.pulseDot,
-                dot === 0 ? styles.pulseDotFirst : dot === 1 ? styles.pulseDotSecond : styles.pulseDotThird,
-              ]}
-            />
-          ))}
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function ConnectedArt() {
-  const tiles = ["🏥", "🩺", "💊", "🧪", "📅", "🚑", "🩸", "📋", "❤️"];
 
   return (
-    <View style={styles.illustrationBoxConnected}>
-      <View style={styles.connectedGlow} />
-      <View style={styles.gridWrap}>
-        {tiles.map((tile, index) => (
-          <View
-            key={`${tile}-${index}`}
-            style={[
-              styles.connectedTile,
-              index === 4 ? styles.connectedTilePrimary : styles.connectedTileDefault,
-            ]}
-          >
-            {index === 4 ? (
-              <View style={styles.trendIconWrap}>
-                <View style={styles.trendIconLine} />
-              </View>
-            ) : (
-              <Text style={styles.connectedTileText}>{tile}</Text>
-            )}
-          </View>
+    <View style={styles.onboardingScreen}>
+      {/* Top progress indicator */}
+      <View style={styles.onboardingProgress}>
+        {onboardingSlides.map((_, i) => (
+          <ProgressSegment key={i} index={i} scrollX={scrollX} onPress={() => handleDotPress(i)} />
         ))}
       </View>
+
+      {/* Swipeable slides */}
+      <Animated.ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        decelerationRate="fast"
+        showsHorizontalScrollIndicator={false}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        onScrollBeginDrag={stopAutoplay}
+        onMomentumScrollEnd={(e) => {
+          onMomentumScrollEnd(e);
+          startAutoplay();
+        }}
+        style={styles.onboardingScroll}
+      >
+        {onboardingSlides.map((slide, i) => (
+          <Slide key={i} slide={slide} index={i} scrollX={scrollX} />
+        ))}
+      </Animated.ScrollView>
+
+      {/* Bottom controls */}
+      <View style={styles.onboardingFooter}>
+        <Pressable onPress={handleSkip} accessibilityRole="button" hitSlop={8}>
+          <Text style={styles.onboardingSkip}>Skip</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={handleNext}
+          accessibilityRole="button"
+          accessibilityLabel={isLastSlide ? "Get started" : "Next"}
+          style={styles.onboardingNextButton}
+        >
+          <ArrowRight size={22} color={theme.colors.foreground} strokeWidth={2.4} />
+        </Pressable>
+      </View>
     </View>
   );
 }
 
+/* ─── Individual progress segment ─── */
+function ProgressSegment({
+  index,
+  scrollX,
+  onPress,
+}: {
+  index: number;
+  scrollX: SharedValue<number>;
+  onPress: () => void;
+}) {
+  const segmentStyle = useAnimatedStyle(() => {
+    const width = interpolate(
+      scrollX.value,
+      [(index - 1) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 1) * SCREEN_WIDTH],
+      [16, 28, 16],
+      Extrapolation.CLAMP,
+    );
+    const backgroundColor = interpolateColor(
+      scrollX.value,
+      [(index - 0.5) * SCREEN_WIDTH, index * SCREEN_WIDTH, (index + 0.5) * SCREEN_WIDTH],
+      [theme.colors.border, theme.colors.primary, theme.colors.border],
+    );
+    return { width, backgroundColor };
+  });
+
+  return (
+    <Pressable onPress={onPress} hitSlop={8}>
+      <Animated.View style={[styles.onboardingProgressSegment, segmentStyle]} />
+    </Pressable>
+  );
+}
+
+/* ─── Individual slide ─── */
+function Slide({
+  slide,
+  index,
+  scrollX,
+}: {
+  slide: (typeof onboardingSlides)[number];
+  index: number;
+  scrollX: SharedValue<number>;
+}) {
+  const Icon = slide.icon;
+
+  const inputRange = [
+    (index - 1) * SCREEN_WIDTH,
+    index * SCREEN_WIDTH,
+    (index + 1) * SCREEN_WIDTH,
+  ];
+
+  const cardStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollX.value, inputRange, [0, 1, 0], Extrapolation.CLAMP),
+    transform: [
+      {
+        scale: interpolate(scrollX.value, inputRange, [0.9, 1, 0.9], Extrapolation.CLAMP),
+      },
+      {
+        translateY: interpolate(scrollX.value, inputRange, [16, 0, 16], Extrapolation.CLAMP),
+      },
+    ],
+  }));
+
+  const textStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollX.value, inputRange, [0, 1, 0], Extrapolation.CLAMP),
+    transform: [
+      {
+        translateY: interpolate(scrollX.value, inputRange, [12, 0, 12], Extrapolation.CLAMP),
+      },
+    ],
+  }));
+
+  return (
+    <View style={styles.slide}>
+      <Animated.View style={[styles.illustrationCard, { backgroundColor: slide.cardColor }, cardStyle]}>
+        <View style={[styles.illustrationIconWrap, { backgroundColor: slide.iconBg }]}>
+          <Icon size={56} color={slide.iconColor} strokeWidth={1.8} />
+        </View>
+        {/* decorative floating badges, echoing the reference illustration style */}
+        <View style={[styles.illustrationBadge, styles.illustrationBadgeTopLeft]}>
+          <Icon size={16} color={slide.iconColor} strokeWidth={2} />
+        </View>
+        <View style={[styles.illustrationBadge, styles.illustrationBadgeBottomRight]}>
+          <Icon size={16} color={slide.iconColor} strokeWidth={2} />
+        </View>
+      </Animated.View>
+
+      <Animated.View style={[styles.slideTextWrap, textStyle]}>
+        <Text style={styles.onboardingTitle}>{slide.title}</Text>
+        <Text style={styles.onboardingDescription}>{slide.description}</Text>
+      </Animated.View>
+    </View>
+  );
+}
+
+/* ─── Tab Item ─── */
+function TabItem({
+  route,
+  label,
+  icon: Icon,
+  active,
+  onPress,
+}: {
+  route: string;
+  label: string;
+  icon: typeof Home;
+  active: boolean;
+  onPress: (route: string) => void;
+}) {
+  return (
+    <Pressable
+      onPress={() => onPress(route)}
+      accessibilityRole="tab"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={label}
+      style={styles.tabItem}
+    >
+      <View style={[styles.iconChip, active && styles.iconChipActive]}>
+        <Icon
+          size={18}
+          strokeWidth={active ? 2.1 : 2}
+          color={active ? "#FFFFFF" : "#16A89C"}
+          fill={active ? "#16A89C" : "none"}
+        />
+      </View>
+      <Text
+        style={[
+          styles.tabLabel,
+          { fontWeight: active ? "700" : "500" },
+        ]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/* ─── Patient Tab Bar ─── */
+function PatientTabBar({ hideNav = false }: { hideNav?: boolean }) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // JS-thread state drives anything that needs a real React re-render
+  // (icon swap, accessibility state, backdrop touch-blocking).
+  const [open, setOpen] = useState(false);
+
+  // UI-thread shared value drives the actual animation.
+  const isOpen = useSharedValue(0); // 0 = closed, 1 = open
+  const centerRotation = useSharedValue(0);
+
+  const navigateTo = useCallback(
+    (route: string) => {
+      router.push(route as any);
+    },
+    [router],
+  );
+
+  const closeFan = useCallback(() => {
+    isOpen.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.ease) });
+    centerRotation.value = withTiming(0, { duration: 300, easing: Easing.out(Easing.ease) });
+    setOpen(false);
+  }, [isOpen, centerRotation]);
+
+  const toggleFan = useCallback(() => {
+    const opening = !open;
+    if (opening) {
+      isOpen.value = withSpring(1, FAN_SPRING);
+      centerRotation.value = withTiming(45, { duration: 300, easing: Easing.out(Easing.ease) });
+      setOpen(true);
+    } else {
+      closeFan();
+    }
+  }, [open, isOpen, centerRotation, closeFan]);
+
+  const handleFanNavigate = useCallback(
+    (route: string) => {
+      closeFan();
+      // Small delay so the closing animation starts before navigation
+      setTimeout(() => router.push(route as any), 80);
+    },
+    [closeFan, router],
+  );
+
+  /* ─── Animated styles ─── */
+
+  // Backdrop fade only — pointerEvents is handled via JS state below,
+  // since it isn't a reliably-animatable style property and could
+  // otherwise get stuck "auto" and block touches across the whole screen.
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: isOpen.value,
+  }));
+
+  // Center button rotation + color swap
+  const centerButtonStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${centerRotation.value}deg` }],
+    backgroundColor: isOpen.value > 0.5 ? "#FFFFFF" : "#16A89C",
+    borderColor: isOpen.value > 0.5 ? "#16A89C" : "#FFFFFF",
+  }));
+
+  // AI fan button (left, stagger 40ms)
+  const aiFanStyle = useAnimatedStyle(() => {
+    const progress = isOpen.value;
+    return {
+      opacity: progress,
+      transform: [
+        { translateX: interpolate(progress, [0, 1], [0, -92]) },
+        { translateY: interpolate(progress, [0, 1], [-30, -104]) },
+        { scale: interpolate(progress, [0, 1], [0.3, 1]) },
+      ],
+    };
+  });
+
+  // SOS fan button (right, stagger 90ms)
+  const sosFanStyle = useAnimatedStyle(() => {
+    const progress = isOpen.value;
+    return {
+      opacity: progress,
+      transform: [
+        { translateX: interpolate(progress, [0, 1], [0, 92]) },
+        { translateY: interpolate(progress, [0, 1], [-30, -104]) },
+        { scale: interpolate(progress, [0, 1], [0.3, 1]) },
+      ],
+    };
+  });
+
+  if (hideNav) return null;
+
+  return (
+    <>
+      {/* Backdrop — only mounted/interactive while open, so it can never
+          swallow touches when the fan is closed */}
+      {open && (
+        <Animated.View style={[styles.backdrop, backdropStyle]} pointerEvents="auto">
+          <Pressable style={StyleSheet.absoluteFill} onPress={closeFan} />
+        </Animated.View>
+      )}
+
+      {/* Nav bar container */}
+      <View style={styles.navContainer}>
+        {/* Fan buttons — positioned relative to the center of the bar */}
+        <View style={styles.fanAnchor} pointerEvents={open ? "box-none" : "none"}>
+          {/* AI button (left) */}
+          <Animated.View style={[styles.fanButton, aiFanStyle]} pointerEvents={open ? "auto" : "none"}>
+            <Pressable
+              onPress={() => handleFanNavigate("/(patient)/ai")}
+              accessibilityLabel="AI Medical Assistant"
+              style={styles.fanPressable}
+            >
+              <View style={[styles.fanCircle, styles.fanCircleAI]}>
+                <Bot size={24} color="#FFFFFF" strokeWidth={2.2} />
+              </View>
+              <View style={[styles.fanLabel, styles.fanLabelAI]}>
+                <Text style={[styles.fanLabelText, { color: "#16A89C" }]}>
+                  MedLInk AI
+                </Text>
+              </View>
+            </Pressable>
+          </Animated.View>
+
+          {/* SOS button (right) */}
+          <Animated.View style={[styles.fanButton, sosFanStyle]} pointerEvents={open ? "auto" : "none"}>
+            <Pressable
+              onPress={() => handleFanNavigate("/(patient)/sos")}
+              accessibilityLabel="Emergency SOS"
+              style={styles.fanPressable}
+            >
+              <View style={[styles.fanCircle, styles.fanCircleSOS]}>
+                <Siren size={24} color="#FFFFFF" strokeWidth={2.2} />
+              </View>
+              <View style={[styles.fanLabel, styles.fanLabelSOS]}>
+                <Text style={[styles.fanLabelText, { color: "#D64545" }]}>
+                  Emergency SOS
+                </Text>
+              </View>
+            </Pressable>
+          </Animated.View>
+        </View>
+
+        {/* Glass bar */}
+        <View style={styles.barOuter}>
+          <BlurView intensity={40} tint="light" style={styles.blurFill}>
+            <View style={styles.barInner}>
+              {/* Left tabs */}
+              {leftTabs.map((t) => (
+                <TabItem
+                  key={t.route}
+                  route={t.route}
+                  label={t.label}
+                  icon={t.icon}
+                  active={t.match(pathname)}
+                  onPress={navigateTo}
+                />
+              ))}
+
+              {/* Center button */}
+              <View style={styles.centerSlot}>
+                <Pressable
+                  onPress={toggleFan}
+                  accessibilityLabel="Get help"
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: open }}
+                >
+                  <Animated.View style={[styles.centerButton, centerButtonStyle]}>
+                    {open ? (
+                      <X size={24} color="#16A89C" strokeWidth={2.4} />
+                    ) : (
+                      <Plus size={28} color="#FFFFFF" strokeWidth={2.6} />
+                    )}
+                  </Animated.View>
+                </Pressable>
+              </View>
+
+              {/* Right tabs */}
+              {rightTabs.map((t) => (
+                <TabItem
+                  key={t.route}
+                  route={t.route}
+                  label={t.label}
+                  icon={t.icon}
+                  active={t.match(pathname)}
+                  onPress={navigateTo}
+                />
+              ))}
+            </View>
+          </BlurView>
+        </View>
+      </View>
+    </>
+  );
+}
+
+/* ─── Styles ─── */
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: theme.colors.background },
-  shell: {
+  onboardingScreen: {
     flex: 1,
+    paddingTop: 56,
+    paddingBottom: 32,
     backgroundColor: theme.colors.background,
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 20,
   },
-  headerRow: {
+
+  /* Top progress segments */
+  onboardingProgress: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  onboardingProgressSegment: {
+    height: 6,
+    borderRadius: 999,
+    backgroundColor: theme.colors.border,
+  },
+
+  /* Slides */
+  onboardingScroll: {
+    flex: 1,
+  },
+  slide: {
+    width: SCREEN_WIDTH,
+    paddingHorizontal: 24,
+    justifyContent: "center",
+  },
+  illustrationCard: {
+    aspectRatio: 1,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "visible",
+  },
+  illustrationIconWrap: {
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    alignItems: "center",
+    justifyContent: "center",
+    ...theme.shadows.shadowCard,
+  },
+  illustrationBadge: {
+    position: "absolute",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    ...theme.shadows.shadowCard,
+  },
+  illustrationBadgeTopLeft: {
+    top: 20,
+    left: 20,
+  },
+  illustrationBadgeBottomRight: {
+    bottom: 20,
+    right: 20,
+  },
+
+  slideTextWrap: {
+    marginTop: 40,
+  },
+  onboardingTitle: {
+    color: theme.colors.foreground,
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: "700",
+  },
+  onboardingDescription: {
+    marginTop: 12,
+    color: theme.colors.mutedForeground,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+
+  /* Footer */
+  onboardingFooter: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    paddingHorizontal: 24,
+    marginTop: 20,
   },
-  progressRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    flex: 1,
-    marginRight: 12,
-  },
-  progressBar: {
-    height: 6,
-    borderRadius: 999,
-    overflow: "hidden",
-  },
-  progressActiveBar: {
-    flex: 1,
-    backgroundColor: theme.colors.primary,
-    minWidth: 22,
-  },
-  progressCompleteBar: {
-    width: 6,
-    backgroundColor: theme.colors.accent,
-  },
-  progressIdleBar: {
-    width: 6,
-    backgroundColor: theme.colors.border,
-  },
-  skipText: {
+  onboardingSkip: {
     color: theme.colors.mutedForeground,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
-    letterSpacing: 0.2,
   },
-  slideWrap: {
+  onboardingNextButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: ACCENT,
+    ...theme.shadows.shadowFanButton,
+  },
+
+  /* Backdrop */
+  backdrop: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(0,0,0,0.05)",
+    zIndex: 25,
+  },
+
+  /* Nav container — absolutely positioned at bottom */
+  navContainer: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 20,
+    zIndex: 30,
+  },
+
+  /* Fan anchor — centered above the bar */
+  fanAnchor: {
+    position: "absolute",
+    alignSelf: "center",
+    bottom: 0,
+    zIndex: 35,
+    width: 0,
+    height: 0,
+  },
+
+  fanButton: {
+    position: "absolute",
+    alignItems: "center",
+    zIndex: 35,
+  },
+
+  fanPressable: {
+    alignItems: "center",
+    gap: 4,
+  },
+
+  fanCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 5,
+    borderColor: "#FFFFFF",
+  },
+
+  fanCircleAI: {
+    backgroundColor: "#16A89C",
+    ...theme.shadows.shadowFanButton,
+  },
+
+  fanCircleSOS: {
+    backgroundColor: "#D64545",
+    ...theme.shadows.shadowSosFanButton,
+  },
+
+  fanLabel: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: "#FFFFFF",
+    ...theme.shadows.shadowCard,
+  },
+
+  fanLabelAI: {},
+  fanLabelSOS: {},
+
+  fanLabelText: {
+    fontSize: 10.5,
+    fontFamily: theme.fonts.bold,
+    fontWeight: "700",
+  },
+
+  /* Glass bar */
+  barOuter: {
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: "rgba(22,168,156,0.60)",
+    overflow: "visible",
+    ...theme.shadows.shadowNav,
+  },
+
+  blurFill: {
+    borderRadius: 26, // inner radius = outer - borderWidth
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.75)",
+  },
+
+  barInner: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    paddingHorizontal: 8,
+    paddingTop: 12,
+    paddingBottom: 8,
+    gap: 2,
+  },
+
+  /* Tab item */
+  tabItem: {
     flex: 1,
-    marginTop: 16,
-  },
-  artCard: {
-    borderRadius: 34,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceVariant,
-    padding: 20,
-    shadowColor: theme.colors.foreground,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    elevation: 4,
-  },
-  copyBlock: {
-    marginTop: 28,
-  },
-  stepPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 6,
-    borderRadius: 999,
-    backgroundColor: theme.colors.primaryContainer,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  stepText: {
-    color: theme.colors.primary,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.7,
-    textTransform: "uppercase",
-  },
-  title: {
-    marginTop: 16,
-    fontSize: 30,
-    lineHeight: 34,
-    fontWeight: "700",
-    letterSpacing: -0.6,
-    color: theme.colors.foreground,
-  },
-  description: {
-    marginTop: 12,
-    fontSize: 14.5,
-    lineHeight: 22,
-    color: theme.colors.mutedForeground,
-  },
-  footer: {
-    marginTop: 10,
-  },
-  primaryButton: {
-    width: "100%",
-    borderRadius: 999,
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 18,
-    elevation: 5,
-  },
-  buttonInner: {
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    paddingVertical: 16,
+    gap: 4,
+    paddingVertical: 4,
   },
-  primaryText: {
-    color: theme.colors.primaryForeground,
-    fontSize: 15,
-    fontWeight: "700",
-    letterSpacing: 0.2,
-  },
-  dotsRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 18,
-  },
-  dot: {
-    borderRadius: 999,
-    backgroundColor: theme.colors.border,
-  },
-  dotActive: {
-    width: 24,
-    height: 6,
-    backgroundColor: theme.colors.primary,
-  },
-  dotInactive: {
-    width: 6,
-    height: 6,
-    backgroundColor: theme.colors.border,
-  },
-  swipeText: {
-    marginTop: 14,
-    textAlign: "center",
-    fontSize: 11.5,
-    fontWeight: "500",
-    color: theme.colors.mutedForeground,
-  },
-  illustrationBoxEmergency: {
-    position: "relative",
-    height: 224,
-    borderRadius: 26,
-    backgroundColor: theme.colors.surfaceVariant,
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-  softCircleLeft: {
-    position: "absolute",
-    top: -28,
-    left: -24,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: theme.colors.primary + "22",
-  },
-  softCircleRight: {
-    position: "absolute",
-    right: -30,
-    bottom: -34,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: theme.colors.accent + "22",
-  },
-  emergencyRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 18,
-    zIndex: 1,
-  },
-  tileCard: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: theme.colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: theme.colors.foreground,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  tileEmoji: {
-    fontSize: 28,
-  },
-  sosBadge: {
-    position: "relative",
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: theme.colors.destructive,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: theme.colors.destructive,
-    shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  sosRing: {
-    position: "absolute",
-    inset: 8,
-    borderRadius: 999,
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.25)",
-  },
-  pathRow: {
-    position: "absolute",
-    left: 20,
-    right: 20,
-    bottom: 18,
-    zIndex: 0,
-  },
-  pathLine: {
-    height: 24,
-    borderRadius: 999,
-    borderWidth: 2,
-    borderColor: theme.colors.destructive + '80',
-    borderTopWidth: 0,
-    borderLeftWidth: 0,
-    borderRightWidth: 0,
-    transform: [{ rotateY: "0deg" }],
-  },
-  illustrationBoxAi: {
-    height: 224,
-    borderRadius: 26,
-    backgroundColor: theme.colors.surfaceVariant,
-    justifyContent: "center",
-    paddingHorizontal: 18,
-    overflow: "hidden",
-  },
-  softCircleAI: {
-    position: "absolute",
-    right: -20,
-    top: -24,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: theme.colors.primary + '1A',
-  },
-  aiBubbleWrap: {
-    width: "100%",
-    zIndex: 1,
-  },
-  aiBubbleUser: {
-    alignSelf: "flex-end",
-    maxWidth: "75%",
-    borderRadius: 20,
-    borderBottomRightRadius: 6,
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    shadowColor: theme.colors.foreground,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  aiBubbleText: {
-    color: theme.colors.primaryForeground,
-    fontSize: 12.5,
-    lineHeight: 18,
-  },
-  aiRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    marginTop: 16,
-    gap: 10,
-  },
-  aiIconWrap: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: theme.colors.primaryContainer,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  aiBubbleBot: {
-    maxWidth: "74%",
-    borderRadius: 20,
-    borderBottomLeftRadius: 6,
-    backgroundColor: theme.colors.surface,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    shadowColor: theme.colors.foreground,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  aiBubbleTextBot: {
-    color: theme.colors.foreground,
-    fontSize: 12.5,
-    lineHeight: 18,
-  },
-  pulseRow: {
-    flexDirection: "row",
-    gap: 6,
-    marginTop: 12,
-    paddingLeft: 40,
-  },
-  pulseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: theme.colors.primary,
-    opacity: 0.8,
-  },
-  pulseDotFirst: {
-    opacity: 0.35,
-  },
-  pulseDotSecond: {
-    opacity: 0.7,
-  },
-  pulseDotThird: {
-    opacity: 1,
-  },
-  illustrationBoxConnected: {
-    height: 224,
-    borderRadius: 26,
-    backgroundColor: theme.colors.surfaceVariant,
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-  connectedGlow: {
-    position: "absolute",
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: theme.colors.primary + '1A',
-  },
-  gridWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    width: 210,
-    justifyContent: "center",
-    gap: 10,
-    zIndex: 1,
-  },
-  connectedTile: {
-    width: 56,
-    height: 56,
+
+  iconChip: {
+    width: 36,
+    height: 36,
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#0B1F33",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
   },
-  connectedTileDefault: {
-    backgroundColor: theme.colors.surface,
+
+  iconChipActive: {
+    backgroundColor: "#16A89C",
   },
-  connectedTilePrimary: {
-    backgroundColor: theme.colors.primary,
+
+  tabLabel: {
+    fontSize: 10,
+    lineHeight: 10,
+    color: "#16A89C",
+    fontFamily: theme.fonts.medium,
   },
-  connectedTileText: {
-    fontSize: 20,
-  },
-  trendIconWrap: {
-    width: 22,
-    height: 22,
+
+  /* Center button */
+  centerSlot: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
   },
-  trendIconLine: {
-    width: 18,
-    height: 18,
-    borderColor: theme.colors.primaryForeground,
-    borderWidth: 2,
-    borderTopWidth: 0,
-    borderLeftWidth: 0,
-    borderRightWidth: 0,
-    borderRadius: 999,
-    transform: [{ rotate: "-40deg" }],
+
+  centerButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    transform: [{ translateY: -24 }],
+    borderWidth: 5,
+    ...theme.shadows.shadowFanButton,
   },
 });
