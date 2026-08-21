@@ -1,5 +1,10 @@
 import { Stack } from "expo-router";
+import { DriverLangProvider } from "../../features/ambulance/context/DriverLangContext";
 
 export default function Layout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <DriverLangProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </DriverLangProvider>
+  );
 }

@@ -1,14 +1,5 @@
-import { View, Text, StyleSheet } from "react-native";
+import { AmbulanceHistoryScreen } from "../../features/ambulance/history/AmbulanceHistoryScreen";
 
-export default function HistoryScreen() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.text}>History (coming soon)</Text>
-    </View>
-  );
+export default function HistoryRoute() {
+  return <AmbulanceHistoryScreen />;
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "center" },
-  text: { fontSize: 16, color: "#12324A" },
-});
