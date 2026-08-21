@@ -1,5 +1,10 @@
 const jwt = require("jsonwebtoken");
 
+/**
+ * Generate Access Token
+ */
+
+
 const generateAccessToken = (payload) => {
   return jwt.sign(
     payload,
@@ -9,6 +14,13 @@ const generateAccessToken = (payload) => {
     }
   );
 };
+
+
+
+/**
+ * Generate Refresh Token
+ */
+
 
 const generateRefreshToken = (payload) => {
   return jwt.sign(
@@ -20,6 +32,13 @@ const generateRefreshToken = (payload) => {
   );
 };
 
+
+
+/**
+ * Verify Access Token
+ */
+
+
 const verifyAccessToken = (token) => {
   return jwt.verify(
     token,
@@ -27,12 +46,21 @@ const verifyAccessToken = (token) => {
   );
 };
 
+
+
+/**
+ * Verify Refresh Token
+*/
+
+
 const verifyRefreshToken = (token) => {
   return jwt.verify(
     token,
     process.env.JWT_REFRESH_SECRET
   );
 };
+
+
 
 module.exports = {
   generateAccessToken,

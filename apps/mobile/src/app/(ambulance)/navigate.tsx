@@ -1,14 +1,5 @@
-import { View, Text, StyleSheet } from "react-native";
+import { AmbulanceNavigateScreen } from "../../features/ambulance/navigate/AmbulanceNavigateScreen";
 
-export default function NavigateScreen() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Navigate (coming soon)</Text>
-    </View>
-  );
+export default function NavigateRoute() {
+  return <AmbulanceNavigateScreen />;
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "center" },
-  text: { fontSize: 16, color: "#12324A" },
-});

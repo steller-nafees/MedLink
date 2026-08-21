@@ -2,6 +2,7 @@ const { z } = require("zod");
 
 const signupSchema = z.object({
   email: z
+    .string()
     .email("Please provide a valid email address")
     .trim()
     .toLowerCase(),
@@ -40,16 +41,18 @@ const signupSchema = z.object({
   emergencyContactName: z.string().trim().optional(),
   emergencyContactPhone: z
     .string()
-    .regex(/^\+8801[3-9]\d{8}$/,
+    .regex(
+      /^\+8801[3-9]\d{8}$/,
       "Emergency contact phone number must be in the format +8801XXXXXXXXX"
     )
     .optional(),
   bloodGroup: z.string().trim().optional(),
-});
+}).strict();
 
 const loginSchema = z
   .object({
     email: z
+      .string()
       .email("Please provide a valid email address")
       .trim()
       .optional(),
