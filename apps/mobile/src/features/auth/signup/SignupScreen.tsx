@@ -45,9 +45,7 @@ const genderOptions: { label: string; value: Gender }[] = [
 ];
 
 const STEPS = [
-  { key: "personal", title: "Personal details", subtitle: "Tell us a bit about yourself." },
-  { key: "contact", title: "Contact & address", subtitle: "How we can reach you." },
-  { key: "security", title: "Secure your account", subtitle: "Choose a strong password." },
+  { key: "account", title: "Create your account", subtitle: "Enter your contact details and choose a secure password." },
 ] as const;
 
 const strengthScale = [
@@ -136,6 +134,10 @@ export default function SignupScreen() {
 
   const canSubmit =
     !isSubmitting &&
+    email.trim().length > 0 &&
+    !emailError &&
+    phoneLocal.length > 0 &&
+    !phoneError &&
     password.length > 0 &&
     confirmPassword.length > 0 &&
     !passwordError &&
@@ -178,22 +180,13 @@ export default function SignupScreen() {
 
     try {
       const response = await signUpCustomer({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        gender,
-        dateOfBirth: dateOfBirth.trim(),
-        nationalId: nationalId.trim(),
-        address: address.trim(),
-        emergencyContactName: emergencyContactName.trim(),
-        emergencyContactPhone: `+880${emergencyPhoneLocal}`,
-        bloodGroup,
         email: email.trim().toLowerCase(),
         phone: `+880${phoneLocal}`,
         password,
       });
 
       await saveAuthToken(response.token.accessToken, response.data.userId);
-      router.replace("/(patient)");
+      router.replace("/(auth)/complete-profile");
     } catch (error) {
       const message =
         error instanceof AuthRequestError
@@ -246,7 +239,7 @@ export default function SignupScreen() {
               <Text style={styles.subtitle}>{STEPS[step].subtitle}</Text>
             </View>
 
-            {step === 0 && (
+            {step === -1 && (
               <View style={styles.formBlock}>
                 <View style={styles.row}>
                   <LabelField
@@ -296,7 +289,7 @@ export default function SignupScreen() {
               </View>
             )}
 
-            {step === 1 && (
+            {step === -1 && (
               <View style={styles.formBlock}>
                 <LabelField
                   label="Email"
@@ -348,8 +341,30 @@ export default function SignupScreen() {
               </View>
             )}
 
-            {step === 2 && (
+            {step === 0 && (
               <View style={styles.formBlock}>
+                <LabelField
+                  label="Email"
+                  value={email}
+                  onChangeText={(value) => {
+                    setEmail(value);
+                    setSubmitError("");
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  error={emailError}
+                />
+
+                <PhoneField
+                  label="Phone number"
+                  value={phoneLocal}
+                  onChangeText={(value) => {
+                    setPhoneLocal(value);
+                    setSubmitError("");
+                  }}
+                  error={phoneError}
+                />
+
                 <LabelField
                   label="Password"
                   value={password}

@@ -15,7 +15,7 @@ import { Heart, Pencil, Phone, Pill, Plus, ShieldAlert, Trash2, X } from "lucide
 import { theme } from "../../../theme";
 import { eligibilityFrom, formatDate } from "../../../lib/blood";
 import { getMyProfile } from "../../../services/profile";
-import { profileMock, type ProfileContact } from "./profileMockData";
+import type { ProfileContact } from "./profileMockData";
 
 type MedicalKind = "allergies" | "conditions" | "medications";
 type Personal = {
@@ -26,27 +26,35 @@ type Personal = {
   address: string;
 };
 
+const emptyPersonal: Personal = {
+  fullName: "Not provided",
+  dob: "Not provided",
+  gender: "Not provided",
+  blood: "Not provided",
+  address: "Not provided",
+};
+
 export default function PatientProfileScreen() {
   const insets = useSafeAreaInsets();
   const isDark = useColorScheme() === "dark";
   const palette = getPalette(isDark);
   const styles = createStyles(palette);
-  const [personal, setPersonal] = useState<Personal>(profileMock.personal);
-  const [email, setEmail] = useState<string>(profileMock.email);
-  const [phone, setPhone] = useState<string>(profileMock.phone);
-  const [initials, setInitials] = useState<string>(profileMock.initials);
-  const [lastDonation, setLastDonation] = useState<string | null>(profileMock.donation.lastDonation);
+  const [personal, setPersonal] = useState<Personal>(emptyPersonal);
+  const [email, setEmail] = useState<string>("Not provided");
+  const [phone, setPhone] = useState<string>("Not provided");
+  const [initials, setInitials] = useState<string>("?");
+  const [lastDonation, setLastDonation] = useState<string | null>(null);
   const [profileError, setProfileError] = useState("");
-  const [allergies, setAllergies] = useState<string[]>([...profileMock.allergies]);
-  const [conditions, setConditions] = useState<string[]>([...profileMock.conditions]);
-  const [medications, setMedications] = useState<string[]>([...profileMock.medications]);
-  const [contacts, setContacts] = useState<ProfileContact[]>([...profileMock.contacts]);
+  const [allergies, setAllergies] = useState<string[]>([]);
+  const [conditions, setConditions] = useState<string[]>([]);
+  const [medications, setMedications] = useState<string[]>([]);
+  const [contacts, setContacts] = useState<ProfileContact[]>([]);
   const [editingContact, setEditingContact] = useState<ProfileContact | null>(null);
   const [editingPersonal, setEditingPersonal] = useState(false);
-  const [draft, setDraft] = useState<Personal>(profileMock.personal);
+  const [draft, setDraft] = useState<Personal>(emptyPersonal);
   const [adding, setAdding] = useState<MedicalKind | null>(null);
   const [item, setItem] = useState("");
-  const [donorAvailable, setDonorAvailable] = useState<boolean>(profileMock.donation.available);
+  const [donorAvailable, setDonorAvailable] = useState<boolean>(false);
   const donationEligibility = eligibilityFrom(lastDonation);
 
   useEffect(() => {

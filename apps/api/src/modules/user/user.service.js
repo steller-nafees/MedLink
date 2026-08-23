@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 const {
     createUserProfile,
     getProfileByUserId,
@@ -131,10 +130,4 @@ module.exports = {
     deleteUserAccount,
     getMyLocation,
     updateMyLocation,
-=======
-const userRepository = require("./user.repository");
-
-module.exports = {
-  ...userRepository,
->>>>>>> origin/main
 };

@@ -75,7 +75,7 @@ export default function LoginScreen() {
       });
 
       await saveAuthToken(response.token.accessToken, response.data.userId);
-      router.replace("/(patient)");
+      router.replace(response.data.profileComplete ? "/(patient)" : "/(auth)/complete-profile");
     } catch (error) {
       const message =
         error instanceof AuthRequestError

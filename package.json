@@ -13,5 +13,9 @@
   },
   "devDependencies": {
     "turbo": "^2.10.8"
+  },
+  "dependencies": {
+    "react-dom": "19.2.3",
+    "react-native-web": "^0.21.2"
   }
 }
