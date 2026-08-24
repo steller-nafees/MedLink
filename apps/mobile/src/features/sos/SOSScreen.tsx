@@ -50,6 +50,10 @@ import {
 } from './utils/blood';
 import { useEmergencySync, type EmergencyCache } from './utils/offline-sync';
 import { sortHospitals } from './utils/helpers';
+import {
+  consultMedicalCondition,
+  type AiMedicalResponse,
+} from '../../services/ai-medical';
 
 type Phase = 'input' | 'analyzing' | 'command' | 'summary';
 
@@ -59,6 +63,8 @@ type SosSummary = {
   icuReserved: boolean;
   ambulance?: { callSign: string };
   donorsContacted: number;
+  severity: string;
+  aiResponse: AiMedicalResponse;
 };
 
 /* ────────────────────────────────────────────────────────────────── */
@@ -142,23 +148,47 @@ export const SOSScreen: React.FC = () => {
   const [sentTo, setSentTo] = useState<string[]>([]);
   const [selectedHospitalId, setSelectedHospitalId] = useState<string | null>(null);
   const [summary, setSummary] = useState<SosSummary | null>(null);
+  const [aiResponse, setAiResponse] = useState<AiMedicalResponse | null>(null);
+  const [severity, setSeverity] = useState<string>('LOW');
   const [showMoreHospitals, setShowMoreHospitals] = useState(false);
   const [bloodRequired, setBloodRequired] = useState<boolean | null>(null);
   const [assessingBlood, setAssessingBlood] = useState(false);
+  const [requestError, setRequestError] = useState('');
 
   const { online, cache, justSynced } = useEmergencySync();
   const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    if (phase === 'analyzing') {
-      const t = setTimeout(() => setPhase('command'), 1800);
-      return () => clearTimeout(t);
-    }
-  }, [phase]);
-
-  const submit = (val: string) => {
+  const submit = async (val: string) => {
     setText(val);
+    setRequestError('');
     setPhase('analyzing');
+
+    try {
+      if (typeof navigator === 'undefined' || !navigator.geolocation) {
+        throw new Error('Location is not available on this device. Please enable location access and try again.');
+      }
+
+      const location = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          ({ coords }) => resolve({ latitude: coords.latitude, longitude: coords.longitude }),
+          () => reject(new Error('We could not detect your location. Please allow location access and try again.')),
+          { enableHighAccuracy: true, timeout: 10000 },
+        );
+      });
+
+      const result = await consultMedicalCondition({
+        userDescription: val,
+        ...location,
+        isEmergency: true,
+      });
+
+      setAiResponse(result.aiResponse);
+      setSeverity(result.event.severity ?? 'LOW');
+      setPhase('command');
+    } catch (error) {
+      setRequestError(error instanceof Error ? error.message : 'Unable to assess this emergency. Please try again.');
+      setPhase('input');
+    }
   };
 
   const endSOS = (s: SosSummary) => {
@@ -173,6 +203,9 @@ export const SOSScreen: React.FC = () => {
     setPendingDonor(null);
     setSentTo([]);
     setSummary(null);
+    setAiResponse(null);
+    setSeverity('LOW');
+    setRequestError('');
   };
 
   // Shared top inset so nothing ever sits under the status bar / notch,
@@ -210,7 +243,7 @@ export const SOSScreen: React.FC = () => {
 
         {phase === 'input' && (
           <FadeSlideIn>
-            <InputPhase text={text} setText={setText} submit={submit} />
+            <InputPhase text={text} setText={setText} submit={submit} error={requestError} />
           </FadeSlideIn>
         )}
         {phase === 'analyzing' && (
@@ -237,6 +270,8 @@ export const SOSScreen: React.FC = () => {
               sentTo={sentTo}
               setSentTo={setSentTo}
               endSOS={endSOS}
+              aiResponse={aiResponse}
+              severity={severity}
             />
           </FadeSlideIn>
         )}
@@ -257,10 +292,11 @@ export const SOSScreen: React.FC = () => {
 interface InputPhaseProps {
   text: string;
   setText: (v: string) => void;
-  submit: (v: string) => void;
+  submit: (v: string) => void | Promise<void>;
+  error: string;
 }
 
-const InputPhase: React.FC<InputPhaseProps> = ({ text, setText, submit }) => {
+const InputPhase: React.FC<InputPhaseProps> = ({ text, setText, submit, error }) => {
   // Outer glow ring breathes slowly; the inner circle gives a subtle
   // "heartbeat" — a bit faster, a bit smaller — so it reads as alive,
   // not just decorative.
@@ -392,6 +428,12 @@ const InputPhase: React.FC<InputPhaseProps> = ({ text, setText, submit }) => {
             marginBottom: 12,
           }}
         />
+
+        {error && (
+          <Text style={{ color: theme.colors.emergency, fontSize: 12, lineHeight: 17, marginBottom: 12 }}>
+            {error}
+          </Text>
+        )}
 
         <View
           style={{
@@ -928,6 +970,8 @@ interface CommandPhaseProps {
   sentTo: string[];
   setSentTo: (ids: string[]) => void;
   endSOS: (s: SosSummary) => void;
+  aiResponse: AiMedicalResponse | null;
+  severity: string;
 }
 
 const CommandPhase: React.FC<CommandPhaseProps> = ({
@@ -947,6 +991,8 @@ const CommandPhase: React.FC<CommandPhaseProps> = ({
   sentTo,
   setSentTo,
   endSOS,
+  aiResponse,
+  severity,
 }) => {
   const sortedHospitals = useMemo(() => sortHospitals(hospitals), []);
   const primary = sortedHospitals.find((h) => h.id === selectedHospitalId) ?? sortedHospitals[0];
@@ -1405,12 +1451,14 @@ const CommandPhase: React.FC<CommandPhaseProps> = ({
 
         <TouchableOpacity
           onPress={() =>
-            endSOS({
+            aiResponse && endSOS({
               hospitalName: primary.name,
               bedReserved: !!reserved.bed,
               icuReserved: !!reserved.icu,
               ambulance: bookedAmbulance ? { callSign: bookedAmbulance.callSign } : undefined,
               donorsContacted: sentTo.length,
+              severity,
+              aiResponse,
             })
           }
           style={{
@@ -1826,6 +1874,28 @@ const SummaryPhase: React.FC<SummaryPhaseProps> = ({ summary, onDone }) => {
           icon={Truck}
         />
         <SummaryRow label="Blood donors contacted" value={String(summary.donorsContacted)} icon={Droplet} last />
+      </View>
+
+      <View
+        style={{
+          width: '100%',
+          borderRadius: theme.radii.xxxl,
+          borderWidth: 1,
+          borderColor: `${theme.colors.primary}33`,
+          backgroundColor: `${theme.colors.primary}0D`,
+          padding: 16,
+          marginBottom: 16,
+          gap: 10,
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={{ fontSize: 13, fontWeight: 'bold', color: theme.colors.foreground }}>AI triage assessment</Text>
+          <Text style={{ fontSize: 12, fontWeight: 'bold', color: theme.colors.emergency }}>{summary.severity}</Text>
+        </View>
+        <Text style={{ fontSize: 12.5, color: theme.colors.foreground, lineHeight: 18 }}>{summary.aiResponse.summary}</Text>
+        <Text style={{ fontSize: 11.5, color: theme.colors.mutedForeground, lineHeight: 16 }}>
+          First aid: {summary.aiResponse.first_aid}
+        </Text>
       </View>
 
       {/* Coordination fee */}
