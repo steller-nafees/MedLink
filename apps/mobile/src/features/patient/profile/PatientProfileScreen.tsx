@@ -14,8 +14,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Heart, Pencil, Phone, Pill, Plus, ShieldAlert, Trash2, X } from "lucide-react-native";
 import { theme } from "../../../theme";
 import { eligibilityFrom, formatDate } from "../../../lib/blood";
-import { getMyProfile } from "../../../services/profile";
-import { profileMock, type ProfileContact } from "./profileMockData";
+import { getMyProfile, updateMyProfile, type CompleteProfileRequest, type PatientProfileResponse } from "../../../services/profile";
+import type { ProfileContact } from "./profileMockData";
 
 type MedicalKind = "allergies" | "conditions" | "medications";
 type Personal = {
@@ -26,27 +26,37 @@ type Personal = {
   address: string;
 };
 
+const emptyPersonal: Personal = {
+  fullName: "Not provided",
+  dob: "Not provided",
+  gender: "Not provided",
+  blood: "Not provided",
+  address: "Not provided",
+};
+
 export default function PatientProfileScreen() {
   const insets = useSafeAreaInsets();
   const isDark = useColorScheme() === "dark";
   const palette = getPalette(isDark);
   const styles = createStyles(palette);
-  const [personal, setPersonal] = useState<Personal>(profileMock.personal);
-  const [email, setEmail] = useState<string>(profileMock.email);
-  const [phone, setPhone] = useState<string>(profileMock.phone);
-  const [initials, setInitials] = useState<string>(profileMock.initials);
-  const [lastDonation, setLastDonation] = useState<string | null>(profileMock.donation.lastDonation);
+  const [personal, setPersonal] = useState<Personal>(emptyPersonal);
+  const [email, setEmail] = useState<string>("Not provided");
+  const [phone, setPhone] = useState<string>("Not provided");
+  const [initials, setInitials] = useState<string>("?");
+  const [lastDonation, setLastDonation] = useState<string | null>(null);
   const [profileError, setProfileError] = useState("");
-  const [allergies, setAllergies] = useState<string[]>([...profileMock.allergies]);
-  const [conditions, setConditions] = useState<string[]>([...profileMock.conditions]);
-  const [medications, setMedications] = useState<string[]>([...profileMock.medications]);
-  const [contacts, setContacts] = useState<ProfileContact[]>([...profileMock.contacts]);
+  const [allergies, setAllergies] = useState<string[]>([]);
+  const [conditions, setConditions] = useState<string[]>([]);
+  const [medications, setMedications] = useState<string[]>([]);
+  const [contacts, setContacts] = useState<ProfileContact[]>([]);
   const [editingContact, setEditingContact] = useState<ProfileContact | null>(null);
   const [editingPersonal, setEditingPersonal] = useState(false);
-  const [draft, setDraft] = useState<Personal>(profileMock.personal);
+  const [draft, setDraft] = useState<Personal>(emptyPersonal);
+  const [profileRecord, setProfileRecord] = useState<PatientProfileResponse | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [adding, setAdding] = useState<MedicalKind | null>(null);
   const [item, setItem] = useState("");
-  const [donorAvailable, setDonorAvailable] = useState<boolean>(profileMock.donation.available);
+  const [donorAvailable, setDonorAvailable] = useState<boolean>(false);
   const donationEligibility = eligibilityFrom(lastDonation);
 
   useEffect(() => {
@@ -56,6 +66,7 @@ export default function PatientProfileScreen() {
       .then((profile) => {
         if (!isMounted) return;
 
+        setProfileRecord(profile);
         const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "Not provided";
         setPersonal({
           fullName,
@@ -84,7 +95,48 @@ export default function PatientProfileScreen() {
     };
   }, []);
 
-  const savePersonal = () => { setPersonal(draft); setEditingPersonal(false); };
+  const savePersonal = async () => {
+    if (!profileRecord || isSavingProfile) return;
+
+    const [firstName, ...lastNameParts] = draft.fullName.trim().split(/\s+/);
+    if (!firstName || lastNameParts.length === 0) {
+      setProfileError("Enter both a first and last name before saving.");
+      return;
+    }
+
+    const payload: CompleteProfileRequest = {
+      firstName,
+      lastName: lastNameParts.join(" "),
+      gender: draft.gender.toUpperCase() as CompleteProfileRequest["gender"],
+      dateOfBirth: normalizeProfileDate(draft.dob),
+      nationalId: profileRecord.national_id ?? "",
+      address: draft.address.trim(),
+      emergencyContactName: profileRecord.emergency_contact_name ?? "",
+      emergencyContactPhone: profileRecord.emergency_contact_phone ?? "",
+      bloodGroup: draft.blood as CompleteProfileRequest["bloodGroup"],
+    };
+
+    setIsSavingProfile(true);
+    setProfileError("");
+    try {
+      await updateMyProfile(payload);
+      const refreshed = await getMyProfile();
+      setProfileRecord(refreshed);
+      const fullName = [refreshed.first_name, refreshed.last_name].filter(Boolean).join(" ") || "Not provided";
+      setPersonal({
+        fullName,
+        dob: formatProfileDate(refreshed.date_of_birth),
+        gender: formatGender(refreshed.gender),
+        blood: refreshed.blood_group ?? "Not provided",
+        address: refreshed.address ?? "Not provided",
+      });
+      setEditingPersonal(false);
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : "Unable to save your profile.");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
   const updateList = (kind: MedicalKind, next: string[]) => {
     if (kind === "allergies") setAllergies(next);
     if (kind === "conditions") setConditions(next);
@@ -118,7 +170,7 @@ export default function PatientProfileScreen() {
         <SectionTitle title="Personal information" palette={palette} />
         {profileError ? <Text style={styles.profileError}>{profileError}</Text> : null}
         <View style={styles.card}>
-          <View style={styles.personalAction}>{editingPersonal ? <><Pressable onPress={() => { setDraft(personal); setEditingPersonal(false); }} style={styles.cancel}><Text style={styles.cancelText}>Cancel</Text></Pressable><Pressable onPress={savePersonal} style={styles.save}><Text style={styles.saveText}>Save</Text></Pressable></> : <Pressable onPress={() => { setDraft(personal); setEditingPersonal(true); }} style={styles.editSmall}><Pencil size={12} color={palette.primary} /><Text style={styles.editSmallText}>Edit profile</Text></Pressable>}</View>
+          <View style={styles.personalAction}>{editingPersonal ? <><Pressable disabled={isSavingProfile} onPress={() => { setDraft(personal); setEditingPersonal(false); }} style={styles.cancel}><Text style={styles.cancelText}>Cancel</Text></Pressable><Pressable disabled={isSavingProfile} onPress={() => void savePersonal()} style={styles.save}><Text style={styles.saveText}>{isSavingProfile ? "Saving..." : "Save"}</Text></Pressable></> : <Pressable onPress={() => { setDraft(personal); setEditingPersonal(true); }} style={styles.editSmall}><Pencil size={12} color={palette.primary} /><Text style={styles.editSmallText}>Edit profile</Text></Pressable>}</View>
           {(Object.entries(personal) as [keyof Personal, string][]).map(([key, value]) => <View key={key} style={styles.infoRow}><Text style={styles.infoLabel}>{labels[key]}</Text>{editingPersonal ? <TextInput value={draft[key]} onChangeText={(text) => setDraft((current) => ({ ...current, [key]: text }))} style={styles.infoInput} placeholderTextColor={palette.muted} /> : <Text style={styles.infoValue}>{value}</Text>}</View>)}
         </View>
 
@@ -147,6 +199,12 @@ const labels: Record<keyof Personal, string> = { fullName: "Full name", dob: "Da
 
 function formatProfileDate(value: string | null) {
   return value ? new Date(value).toLocaleDateString("en-US", { day: "numeric", month: "long", year: "numeric" }) : "Not provided";
+}
+
+function normalizeProfileDate(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value.trim())) return value.trim();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value.trim() : parsed.toISOString().slice(0, 10);
 }
 
 function formatGender(value: string | null) {

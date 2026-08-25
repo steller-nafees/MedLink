@@ -12,15 +12,6 @@ export type SignupRequest = {
   email: string;
   phone: string;
   password: string;
-  firstName?: string;
-  lastName?: string;
-  gender?: string;
-  dateOfBirth?: string;
-  nationalId?: string;
-  address?: string;
-  emergencyContactName?: string;
-  emergencyContactPhone?: string;
-  bloodGroup?: string;
 };
 
 export type SignupResponse = {

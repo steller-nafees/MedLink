@@ -1,5 +1,6 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   View,
   Text,
   ScrollView,
@@ -7,7 +8,7 @@ import {
   useColorScheme,
   StyleSheet,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Bell,
@@ -24,8 +25,14 @@ import {
   ArrowUpRight,
 } from "lucide-react-native";
 import { theme } from "../../../theme";
-import { patient, serviceRequests, requestKindLabel, statusStyle, paymentStyle } from "../../../lib/data";
-import { myDonation, eligibilityFrom, formatDate } from "../../../lib/blood";
+import { formatDate } from "../../../lib/blood";
+import { getMyProfile, type PatientProfileResponse } from "../../../services/profile";
+import {
+  getMedicalEvents,
+  getReservations,
+  type MedicalEvent,
+  type Reservation,
+} from "../../../services/patient-records";
 
 const quickAccessItems = [
   { label: "Hospitals", icon: Building2, href: "/hospitals" },
@@ -39,13 +46,46 @@ export default function PatientHomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  // Compute data
-  const recent = useMemo(() => serviceRequests.filter((r) => r.kind === "emergency").slice(0, 3), []);
-  const active = useMemo(() => serviceRequests.filter((r) => r.status !== "completed" && r.status !== "cancelled"), []);
-  const due = useMemo(() => serviceRequests.filter((r) => r.status === "completed" && r.payment !== "paid"), []);
+  const [profile, setProfile] = useState<PatientProfileResponse | null>(null);
+  const [events, setEvents] = useState<MedicalEvent[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const eligibility = eligibilityFrom(myDonation.lastDonation);
+  const loadDashboard = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
 
+    try {
+      const [profileRecord, eventRecords, reservationRecords] = await Promise.all([
+        getMyProfile(),
+        getMedicalEvents(),
+        getReservations(),
+      ]);
+      setProfile(profileRecord);
+      setEvents(eventRecords);
+      setReservations(reservationRecords);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Unable to load your dashboard.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => { void loadDashboard(); }, [loadDashboard]));
+
+  const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Your profile";
+  const initials = getInitials(fullName);
+  const donation = {
+    group: profile?.blood_group ?? "--",
+    lastDonation: profile?.last_donation_date ?? null,
+    available: profile?.is_available_for_donation ?? false,
+  };
+  const recent = useMemo(() => events.filter((event) => event.is_emergency).slice(0, 3), [events]);
+  const active = useMemo(
+    () => reservations.filter((reservation) => !["COMPLETED", "CANCELLED", "CANCELED"].includes(reservation.reservation_status.toUpperCase())),
+    [reservations],
+  );
   return (
     <View style={styles.container}>
       <ScrollView
@@ -71,11 +111,11 @@ export default function PatientHomeScreen() {
               accessibilityLabel="View profile"
             >
               <View style={[styles.avatar, theme.shadows.shadowCard]}>
-                <Text style={styles.avatarText}>{patient.initials}</Text>
+                <Text style={styles.avatarText}>{initials}</Text>
               </View>
               <View>
                 <Text style={styles.greetingText}>Good morning</Text>
-                <Text style={styles.userName}>{patient.name}</Text>
+                <Text style={styles.userName}>{loading ? "Loading…" : fullName}</Text>
               </View>
             </Pressable>
 
@@ -106,6 +146,8 @@ export default function PatientHomeScreen() {
             </View>
           </View>
         </View>
+
+        {loadError ? <Text style={styles.dashboardError}>{loadError}</Text> : null}
 
         {/* Hero Cards Section */}
         <View style={styles.heroSection}>
@@ -197,23 +239,23 @@ export default function PatientHomeScreen() {
               onPress={() => router.push("/blood")}
               android_ripple={{ color: "rgba(22, 168, 156, 0.08)", borderless: false }}
               accessibilityRole="button"
-              accessibilityLabel={`Blood donation status: group ${myDonation.group}`}
+              accessibilityLabel={`Blood donation status: group ${donation.group}`}
             >
               <View style={styles.bloodRow}>
                 <View style={styles.bloodGroupBadge}>
-                  <Text style={styles.bloodGroupText}>{myDonation.group}</Text>
+                  <Text style={styles.bloodGroupText}>{donation.group}</Text>
                 </View>
                 <View style={styles.bloodInfoWrap}>
                   <Text style={styles.bloodTitle}>Blood donation</Text>
                   <Text style={styles.bloodSubtitle}>
-                    Last donated · {formatDate(myDonation.lastDonation)}
+                    Last donated · {formatDate(donation.lastDonation)}
                   </Text>
                   <View style={styles.bloodStatusRow}>
                     <View
                       style={[
                         styles.statusChip,
                         {
-                          backgroundColor: myDonation.available
+                          backgroundColor: donation.available
                             ? theme.colors.successLight
                             : theme.colors.muted,
                         },
@@ -223,13 +265,13 @@ export default function PatientHomeScreen() {
                         style={[
                           styles.statusChipText,
                           {
-                            color: myDonation.available
+                            color: donation.available
                               ? theme.colors.successDark
                               : theme.colors.textMuted,
                           },
                         ]}
                       >
-                        {myDonation.available ? "Available" : "Paused"}
+                        {donation.available ? "Available" : "Paused"}
                       </Text>
                     </View>
                     <View style={styles.manageButton}>
@@ -306,9 +348,9 @@ export default function PatientHomeScreen() {
               </Pressable>
             </View>
             <View style={[styles.cardWrapper, theme.shadows.shadowCard]}>
-              {recent.map((r, i) => (
+              {recent.map((event, i) => (
                 <Pressable
-                  key={r.id}
+                  key={event.id}
                   style={[
                     styles.activityItem,
                     i > 0 && styles.activityItemBorder,
@@ -316,22 +358,22 @@ export default function PatientHomeScreen() {
                   onPress={() => router.push("/activity")}
                   android_ripple={{ color: "rgba(22, 168, 156, 0.08)", borderless: false }}
                   accessibilityRole="button"
-                  accessibilityLabel={`Activity: ${r.title}`}
+                  accessibilityLabel={`Activity: ${event.user_description || "Emergency medical event"}`}
                 >
                   <View style={styles.activityIconWrap}>
                     <Siren size={18} color={theme.colors.emergency} strokeWidth={2} />
                   </View>
                   <View style={styles.activityTextWrap}>
                     <Text style={styles.activityTitle} numberOfLines={1}>
-                      {r.title}
+                      {event.user_description || "Emergency medical event"}
                     </Text>
                     <Text style={styles.activitySubtitle}>
-                      {requestKindLabel[r.kind]} · {r.date}
+                      Emergency SOS · {formatActivityDate(event.created_at)}
                     </Text>
                   </View>
                   <View style={styles.statusBadgeSmall}>
                     <Text style={styles.statusBadgeSmallText}>
-                      {statusStyle(r.status).label}
+                      {formatStatus(event.event_status)}
                     </Text>
                   </View>
                   <ChevronRight size={16} color={theme.colors.textMuted} strokeWidth={2} />
@@ -375,49 +417,44 @@ export default function PatientHomeScreen() {
                 onPress={() => router.push("/activity")}
                 android_ripple={{ color: "rgba(22, 168, 156, 0.08)", borderless: false }}
                 accessibilityRole="button"
-                accessibilityLabel={`${due.length} pending payments`}
+                accessibilityLabel={`${reservations.length} total reservations`}
               >
-                <Text style={styles.statNumber}>{due.length}</Text>
-                <Text style={styles.statLabel}>Pending payment</Text>
+                <Text style={styles.statNumber}>{reservations.length}</Text>
+                <Text style={styles.statLabel}>Reservations</Text>
               </Pressable>
             </View>
           </View>
 
-          {/* Due Payment Card */}
-          {due[0] && (
-            <View style={[styles.cardWrapper, theme.shadows.shadowCard, { marginTop: theme.spacing.md }]}>
-              <View style={styles.dueCard}>
-                <View style={styles.dueHeader}>
-                  <View style={styles.dueTextWrap}>
-                    <Text style={styles.dueTitle} numberOfLines={1}>
-                      {due[0].title}
-                    </Text>
-                    <Text style={styles.dueHospital} numberOfLines={1}>
-                      {due[0].hospital}
-                    </Text>
-                    <View style={styles.paymentBadgeWrap}>
-                      <View style={styles.paymentBadge}>
-                        <Text style={styles.paymentBadgeText}>
-                          {paymentStyle(due[0].payment).label}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-
-                <View style={styles.payButtonWrap}>
-                  <Text style={styles.payButtonText}>Pay in App</Text>
-                  <View style={styles.comingSoonMiniBadge}>
-                    <Text style={styles.comingSoonMiniText}>Coming Soon</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          )}
         </View>
       </ScrollView>
     </View>
   );
+}
+
+function getInitials(name: string) {
+  if (name === "Your profile") return "?";
+
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+function formatStatus(value: string) {
+  return value
+    .split("_")
+    .map((part) => `${part.charAt(0)}${part.slice(1).toLowerCase()}`)
+    .join(" ");
+}
+
+function formatActivityDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 const styles = StyleSheet.create({
@@ -434,6 +471,14 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: theme.spacing.xxl,
     paddingTop: theme.spacing.xs,
+  },
+  dashboardError: {
+    marginBottom: theme.spacing.lg,
+    borderRadius: theme.radii.lg,
+    backgroundColor: theme.colors.emergencyLight,
+    padding: theme.spacing.md,
+    ...theme.typography.caption,
+    color: theme.colors.emergency,
   },
   headerRow: {
     flexDirection: "row",
