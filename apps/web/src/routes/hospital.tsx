@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { HospitalLayout } from "@/layouts/HospitalLayout";
 
-export const hospitalHead = {
+const hospitalHead = {
   title: "Hospital Dashboard · MedLink",
   description: "Coordinate emergency cases, beds, ICU and ambulances.",
 };
