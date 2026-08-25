@@ -129,6 +129,19 @@ export async function signUpCustomer(payload: SignupRequest): Promise<SignupResp
         phone: payload.phone.trim(),
         password: payload.password,
         userType: "CUSTOMER",
+        ...(payload.firstName ? { firstName: payload.firstName.trim() } : {}),
+        ...(payload.lastName ? { lastName: payload.lastName.trim() } : {}),
+        ...(payload.gender ? { gender: payload.gender } : {}),
+        ...(payload.dateOfBirth ? { dateOfBirth: payload.dateOfBirth.trim() } : {}),
+        ...(payload.nationalId ? { nationalId: payload.nationalId.trim() } : {}),
+        ...(payload.address ? { address: payload.address.trim() } : {}),
+        ...(payload.emergencyContactName
+          ? { emergencyContactName: payload.emergencyContactName.trim() }
+          : {}),
+        ...(payload.emergencyContactPhone
+          ? { emergencyContactPhone: payload.emergencyContactPhone.trim() }
+          : {}),
+        ...(payload.bloodGroup ? { bloodGroup: payload.bloodGroup } : {}),
       }),
       signal: controller.signal,
     });
