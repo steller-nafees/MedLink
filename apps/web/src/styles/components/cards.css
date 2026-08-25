@@ -1,0 +1,57 @@
+.ui-card {
+  border: 1px solid rgb(215 228 229 / 70%);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(23 37 47 / 5%);
+}
+
+.beds-stat-card,
+.beds-ward-card,
+.hospital-kpi,
+.hospital-panel,
+.hospital-insight,
+.hospital-emergency-card,
+.hospital-emergency-detail {
+  border: 1px solid rgb(215 228 229 / 70%);
+  border-radius: 24px;
+  background: var(--hospital-surface, var(--surface));
+  box-shadow: 0 8px 24px rgb(23 37 47 / 5%);
+}
+
+.hospital-kpi,
+.hospital-panel,
+.hospital-insight {
+  min-width: 0;
+  padding: 20px;
+}
+
+.hospital-insight {
+  border-color: rgb(22 168 156 / 30%);
+  background: linear-gradient(135deg, rgb(22 168 156 / 12%), #fff);
+}
+
+.hospital-emergency-card {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  color: var(--hospital-text);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.hospital-emergency-card:hover,
+.hospital-emergency-card.active {
+  border-color: var(--hospital-primary);
+  box-shadow: 0 8px 24px rgb(22 168 156 / 12%);
+}
+
+.hospital-emergency-detail {
+  position: sticky;
+  top: 88px;
+  height: fit-content;
+  overflow: hidden;
+}

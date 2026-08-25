@@ -1,0 +1,51 @@
+.dashboard-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 64px;
+  gap: 12px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.dashboard-search {
+  position: relative;
+  width: 100%;
+  max-width: 448px;
+}
+
+.dashboard-search svg {
+  position: absolute;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--muted-foreground);
+}
+
+.dashboard-header-actions {
+  gap: 8px;
+  margin-left: auto;
+}
+
+.dashboard-notification-button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+
+.dashboard-notification-button:hover {
+  color: var(--foreground);
+}
+
+.dashboard-notification-button svg {
+  width: 16px;
+  height: 16px;
+}

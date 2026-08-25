@@ -1,0 +1,100 @@
+.ui-button {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 16px;
+  background: var(--surface);
+  color: var(--foreground);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.ui-button-primary {
+  border-color: transparent;
+  background: linear-gradient(135deg, #3dbdb3, var(--primary));
+  color: #fff;
+  box-shadow: 0 20px 50px -12px rgb(22 168 156 / 25%);
+}
+
+.today-button,
+.emergency-button,
+.accept-button,
+.prepare-button {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.today-button {
+  border: 1px solid var(--hospital-border);
+  border-radius: 999px;
+  background: var(--hospital-surface);
+  padding: 8px 16px;
+  color: var(--hospital-text);
+}
+
+.emergency-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ed7062, var(--hospital-emergency));
+  padding: 8px 16px;
+  color: #fff;
+  text-decoration: none;
+}
+
+.accept-button {
+  border-radius: 999px;
+  background: linear-gradient(135deg, #3dbdb3, var(--hospital-primary));
+  padding: 6px 12px;
+  color: #fff;
+}
+
+.prepare-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  border-radius: 999px;
+  background: var(--hospital-text);
+  padding: 8px 12px;
+  color: #fff;
+}
+
+.hospital-detail-actions button,
+.hospital-dispatch button {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 9px 10px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.hospital-redirect,
+.hospital-dispatch button {
+  border: 1px solid var(--hospital-border);
+  background: var(--hospital-surface);
+  color: var(--hospital-text);
+}
+
+.hospital-outline-primary {
+  border: 1px solid rgb(22 168 156 / 30%);
+  background: transparent;
+  color: var(--hospital-primary);
+}
+
+.hospital-outline-emergency {
+  border: 1px solid rgb(214 69 69 / 30%);
+  background: transparent;
+  color: var(--hospital-emergency);
+}

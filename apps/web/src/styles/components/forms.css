@@ -1,0 +1,40 @@
+.dashboard-search input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 16px 8px 36px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.dashboard-search input:focus {
+  border-color: var(--primary);
+}
+
+.hospital-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--hospital-border);
+  border-radius: 999px;
+  background: var(--hospital-surface);
+  padding: 8px 12px;
+  color: var(--hospital-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.hospital-filter select {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  outline: 0;
+}

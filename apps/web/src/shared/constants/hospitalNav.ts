@@ -5,7 +5,6 @@ import {
   Inbox,
   LayoutDashboard,
   Siren,
-  Truck,
 } from "lucide-react";
 import type { NavItem } from "@/shared/components/ui/DashboardShell";
 import type { HospitalUser } from "@/types/hospital";
@@ -21,7 +20,7 @@ export const hospitalNav: NavItem[] = [
     badge: getOpenEmergencyCount(),
   },
   { to: "/hospital/beds", label: "Beds & ICU", icon: BedDouble },
-  { to: "/hospital/ambulances", label: "Ambulances", icon: Truck },
+  { to: "/hospital/reservations", label: "Reservations", icon: Inbox },
   {
     to: "/hospital/requests",
     label: "Requests",
