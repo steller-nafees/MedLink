@@ -108,7 +108,7 @@
 
 .hospital-live {
   border-radius: 999px;
-  background: rgb(214 69 69 / 10%);
+  background: color-mix(in srgb, var(--hospital-emergency) 10%, transparent);
   padding: 3px 8px;
   color: var(--hospital-emergency);
   font-size: 10.5px;
@@ -117,9 +117,9 @@
 
 .hospital-ai-summary {
   margin: 0 20px 16px;
-  border: 1px solid rgb(214 69 69 / 20%);
+  border: 1px solid color-mix(in srgb, var(--hospital-emergency) 20%, transparent);
   border-radius: 16px;
-  background: rgb(214 69 69 / 5%);
+  background: color-mix(in srgb, var(--hospital-emergency) 5%, transparent);
   padding: 16px;
 }
 
@@ -175,17 +175,17 @@
   place-items: center;
   margin: 0 auto;
   border-radius: 999px;
-  background: #f1f7f7;
+  background: var(--surface-variant);
   color: var(--hospital-muted);
 }
 
 .hospital-mini-icon.primary {
-  background: #d8f6f3;
+  background: var(--primary-container);
   color: var(--hospital-primary);
 }
 
 .hospital-mini-icon.emergency {
-  background: rgb(214 69 69 / 10%);
+  background: color-mix(in srgb, var(--hospital-emergency) 10%, transparent);
   color: var(--hospital-emergency);
 }
 

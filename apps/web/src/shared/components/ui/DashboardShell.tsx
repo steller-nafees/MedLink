@@ -1,6 +1,8 @@
 import { useState, type ComponentType, type ReactNode } from "react";
-import { Bell, ChevronDown, Search } from "lucide-react";
+import { Bell, ChevronDown, HelpCircle, LogOut, Search, Settings, User } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import dashboardLogo from "@/assets/images/Logos/medlink-dashboard-logo.png";
+import compactLogo from "@/assets/images/Logos/medlink_without_tagline.png";
 
 export type NavItem = {
   to: string;
@@ -52,23 +54,18 @@ export function DashboardShell({
   children,
 }: DashboardShellProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const userInitials = initials(user.name);
-
   const visibleNav = collapsed ? nav.filter((item) => !item.comingSoon) : nav;
 
   return (
     <div className={`dashboard-shell${collapsed ? " sidebar-collapsed" : ""}`}>
       <aside className="dashboard-sidebar">
         <div className="dashboard-brand">
-          <div className="dashboard-logo">M</div>
-          {!collapsed && (
-            <div className="dashboard-brand-copy">
-              <strong>MedLink</strong>
-              <span>{role}</span>
-            </div>
-          )}
+          <img className="dashboard-logo dashboard-logo-expanded" src={dashboardLogo} alt="MedLink" />
+          <img className="dashboard-logo dashboard-logo-collapsed" src={compactLogo} alt="MedLink" />
           <button
             type="button"
             className="dashboard-collapse-toggle"
@@ -137,6 +134,11 @@ export function DashboardShell({
           })}
         </nav>
 
+        <button type="button" className="dashboard-support-button">
+          <HelpCircle className="dashboard-support-icon" aria-hidden="true" />
+          {!collapsed && <span>Contact support</span>}
+        </button>
+
         <div className="dashboard-user-card">
           <div className="dashboard-avatar gradient-primary">{userInitials}</div>
           {!collapsed && (
@@ -166,7 +168,38 @@ export function DashboardShell({
             >
               <Bell aria-hidden="true" />
             </button>
-            <div className="dashboard-avatar gradient-primary">{userInitials}</div>
+            <div className="dashboard-profile-menu">
+              <button
+                type="button"
+                className="dashboard-profile-trigger"
+                aria-expanded={profileOpen}
+                aria-haspopup="menu"
+                onClick={() => setProfileOpen((previous) => !previous)}
+              >
+                <div className="dashboard-avatar gradient-primary">{userInitials}</div>
+                <span className="dashboard-profile-copy">
+                  <strong>{user.name}</strong>
+                  <small>{user.role}</small>
+                </span>
+                <ChevronDown className="dashboard-profile-chevron" aria-hidden="true" />
+              </button>
+              {profileOpen && (
+                <div className="dashboard-profile-dropdown" role="menu">
+                  <button type="button" role="menuitem" onClick={() => navigate("/hospital/profile")}>
+                    <User aria-hidden="true" />
+                    Profile
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => navigate("/hospital/settings")}>
+                    <Settings aria-hidden="true" />
+                    Settings
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => navigate("/login")}>
+                    <LogOut aria-hidden="true" />
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
         <main className="dashboard-main">{children}</main>

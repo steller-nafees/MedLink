@@ -1,13 +1,4 @@
 .hospital-dashboard {
-  --hospital-bg: #f7fbfb;
-  --hospital-surface: #fff;
-  --hospital-muted: #6b7280;
-  --hospital-text: #17252f;
-  --hospital-primary: #16a89c;
-  --hospital-border: #d7e4e5;
-  --hospital-emergency: #d64545;
-  --hospital-warning: #b5570a;
-  --hospital-success: #1f7a44;
   max-width: 1400px;
   margin: 0 auto;
   color: var(--hospital-text);
@@ -111,24 +102,24 @@
   width: 40px;
   height: 40px;
   border-radius: 16px;
-  background: #d8f6f3;
+  background: color-mix(in srgb, var(--hospital-primary) 15%, transparent);
   color: var(--hospital-primary);
 }
 
 .hospital-kpi-icon.is-emergency,
 .severity-critical {
-  background: rgb(214 69 69 / 10%);
+  background: color-mix(in srgb, var(--hospital-emergency) 10%, transparent);
   color: var(--hospital-emergency);
 }
 
 .hospital-kpi-icon.is-success {
-  background: rgb(31 122 68 / 10%);
+  background: color-mix(in srgb, var(--hospital-success) 10%, transparent);
   color: var(--hospital-success);
 }
 
 .hospital-kpi-icon.is-warning,
 .severity-high {
-  background: rgb(181 87 10 / 10%);
+  background: color-mix(in srgb, var(--hospital-warning) 10%, transparent);
   color: var(--hospital-warning);
 }
 
@@ -224,7 +215,7 @@
 }
 
 .severity-moderate-text {
-  color: #2d5772;
+  color: var(--hospital-info);
 }
 
 .emergency-summary {
@@ -250,8 +241,8 @@
 }
 
 .hospital-insight {
-  border-color: rgb(22 168 156 / 30%);
-  background: linear-gradient(135deg, rgb(22 168 156 / 12%), #fff);
+  border-color: color-mix(in srgb, var(--hospital-primary) 30%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--hospital-primary) 12%, transparent), var(--hospital-surface));
   padding: 20px;
 }
 

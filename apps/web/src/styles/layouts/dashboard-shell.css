@@ -8,6 +8,17 @@
   --primary-container: #d8f6f3;
   --border: #d7e4e5;
   --sidebar: #ffffff;
+  --hospital-bg: #f7fbfb;
+  --hospital-surface: #ffffff;
+  --hospital-muted: #6b7280;
+  --hospital-text: #17252f;
+  --hospital-primary: #16a89c;
+  --hospital-border: #d7e4e5;
+  --hospital-emergency: #d64545;
+  --hospital-critical: #a72a22;
+  --hospital-info: #2d5772;
+  --hospital-warning: #b5570a;
+  --hospital-success: #1f7a44;
   display: flex;
   min-height: 100vh;
   background: var(--background);

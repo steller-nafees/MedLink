@@ -81,19 +81,19 @@
 
 .beds-tone-emergency,
 .beds-emergency {
-  color: var(--hospital-emergency, #d64545);
-  background-color: rgb(214 69 69 / 15%);
+  color: var(--hospital-emergency);
+  background-color: color-mix(in srgb, var(--hospital-emergency) 15%, transparent);
 }
 
 .beds-tone-warning,
 .beds-warning {
-  color: #b5570a;
-  background-color: rgb(181 87 10 / 12%);
+  color: var(--hospital-warning);
+  background-color: color-mix(in srgb, var(--hospital-warning) 12%, transparent);
 }
 
 .beds-info {
-  color: #2d5772;
-  background-color: rgb(45 87 114 / 10%);
+  color: var(--hospital-info);
+  background-color: color-mix(in srgb, var(--hospital-info) 10%, transparent);
 }
 
 .beds-capacity-track {
@@ -115,11 +115,11 @@
 }
 
 .beds-fill-emergency {
-  background: #d64545;
+  background: var(--hospital-emergency);
 }
 
 .beds-fill-warning {
-  background: #b5570a;
+  background: var(--hospital-warning);
 }
 
 .beds-stat-card > p,

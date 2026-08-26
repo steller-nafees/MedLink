@@ -4,7 +4,7 @@
 .ambulance-heading { align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
 .ambulance-heading h1 { font-size: 28px; line-height: 1.15; }
 .ambulance-heading p { margin-top: 4px; color: var(--hospital-muted); font-size: 13px; }
-.ambulance-awaiting { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: rgb(214 69 69 / 10%); color: var(--hospital-emergency); font-size: 12px; font-weight: 700; }
+.ambulance-awaiting { display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: color-mix(in srgb, var(--hospital-emergency) 10%, transparent); color: var(--hospital-emergency); font-size: 12px; font-weight: 700; }
 .ambulance-awaiting svg { width: 14px; height: 14px; }
 .ambulance-layout { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
 .ambulance-left, .ambulance-fleet { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
@@ -23,15 +23,15 @@
 .ambulance-section-heading span { color: var(--hospital-muted); font-size: 11.5px; }
 .ambulance-request-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
 .ambulance-request { position: relative; padding: 12px; border: 1px solid var(--hospital-border); border-radius: 16px; }
-.ambulance-request.is-pending { border-color: rgb(214 69 69 / 30%); background: rgb(214 69 69 / 5%); }
+.ambulance-request.is-pending { border-color: color-mix(in srgb, var(--hospital-emergency) 30%, transparent); background: color-mix(in srgb, var(--hospital-emergency) 5%, transparent); }
 .ambulance-request-person { gap: 8px; }
 .ambulance-request-person strong { font-size: 13.5px; }
 .ambulance-request-person .hospital-icon { flex: 0 0 auto; width: 14px; height: 14px; color: var(--hospital-muted); }
 .ambulance-request p, .ambulance-fleet-card p { margin-top: 2px; color: var(--hospital-muted); font-size: 12px; }
 .ambulance-urgency, .ambulance-type, .ambulance-status { padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
 .ambulance-urgency { margin-left: 2px; }
-.urgency-critical { background: rgb(214 69 69 / 10%); color: var(--hospital-emergency); }
-.urgency-moderate { background: rgb(181 87 10 / 10%); color: var(--hospital-warning); }
+.urgency-critical { background: color-mix(in srgb, var(--hospital-emergency) 10%, transparent); color: var(--hospital-emergency); }
+.urgency-moderate { background: color-mix(in srgb, var(--hospital-warning) 10%, transparent); color: var(--hospital-warning); }
 .urgency-stable { background: var(--hospital-bg); color: var(--hospital-muted); }
 .ambulance-request-meta, .ambulance-fleet-meta { flex-wrap: wrap; gap: 12px; margin-top: 6px; color: var(--hospital-muted); font-size: 11.5px; }
 .ambulance-request-meta span, .ambulance-fleet-meta span { display: flex; align-items: center; gap: 4px; }
@@ -49,7 +49,7 @@
 .ambulance-menu > div:last-child button:hover { background: var(--hospital-bg); }
 .ambulance-menu > div:last-child strong { font-size: 12.5px; }
 .ambulance-menu > div:last-child span { color: var(--hospital-muted); font-size: 11px; }
-.ambulance-assigned { display: flex; align-items: center; gap: 6px; width: fit-content; margin-top: 10px; padding: 6px 10px; border-radius: 999px; background: rgb(31 122 68 / 10%); color: var(--hospital-success); font-size: 11.5px; font-weight: 600; }
+.ambulance-assigned { display: flex; align-items: center; gap: 6px; width: fit-content; margin-top: 10px; padding: 6px 10px; border-radius: 999px; background: color-mix(in srgb, var(--hospital-success) 10%, transparent); color: var(--hospital-success); font-size: 11.5px; font-weight: 600; }
 .ambulance-assigned svg { width: 14px; height: 14px; }
 .ambulance-fleet-card { padding: 16px; }
 .ambulance-fleet-main { display: flex; align-items: flex-start; gap: 12px; }
@@ -60,9 +60,9 @@
 .ambulance-fleet-title strong { font-size: 15px; }
 .ambulance-type { background: var(--hospital-bg); color: var(--hospital-text); text-transform: none; letter-spacing: 0; }
 .ambulance-status { text-transform: capitalize; }
-.status-available { background: rgb(31 122 68 / 10%); color: var(--hospital-success); }
-.status-en_route { background: rgb(181 87 10 / 10%); color: var(--hospital-warning); }
-.status-on_scene { background: rgb(45 87 114 / 10%); color: var(--hospital-info, #2d5772); }
+.status-available { background: color-mix(in srgb, var(--hospital-success) 10%, transparent); color: var(--hospital-success); }
+.status-en_route { background: color-mix(in srgb, var(--hospital-warning) 10%, transparent); color: var(--hospital-warning); }
+.status-on_scene { background: color-mix(in srgb, var(--hospital-info) 10%, transparent); color: var(--hospital-info); }
 .status-returning { background: var(--hospital-bg); color: var(--hospital-primary); }
 .ambulance-actions { gap: 8px; margin-top: 12px; }
 .ambulance-actions .ui-button { display: flex; flex: 1; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--hospital-border); border-radius: 999px; background: var(--hospital-surface); }

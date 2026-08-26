@@ -26,8 +26,8 @@
 }
 
 .hospital-insight {
-  border-color: rgb(22 168 156 / 30%);
-  background: linear-gradient(135deg, rgb(22 168 156 / 12%), #fff);
+  border-color: color-mix(in srgb, var(--hospital-primary) 30%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--hospital-primary) 12%, transparent), var(--hospital-surface));
 }
 
 .hospital-emergency-card {

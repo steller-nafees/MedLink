@@ -43,8 +43,8 @@ const dashboard = {
 		{ day: "Thu", cases: 189 }, { day: "Fri", cases: 221 }, { day: "Sat", cases: 240 }, { day: "Sun", cases: 169 },
 	],
 	bySeverity: [
-		{ name: "Critical", value: 18, color: "#d64545" }, { name: "High", value: 32, color: "#b5570a" },
-		{ name: "Moderate", value: 30, color: "#2d5772" }, { name: "Low", value: 20, color: "#16a89c" },
+		{ name: "Critical", value: 18, color: "var(--hospital-emergency)" }, { name: "High", value: 32, color: "var(--hospital-warning)" },
+		{ name: "Moderate", value: 30, color: "var(--hospital-info)" }, { name: "Low", value: 20, color: "var(--hospital-primary)" },
 	],
 	emergencies: [
 		{ id: "e-9021", patient: "Eleanor Chen", age: 74, severity: "critical", summary: "Suspected acute myocardial infarction. Chest pain 25 min, radiating to left arm, diaphoretic. Aspirin 325mg given.", eta: "6 min", ambulance: "Unit 12" },
