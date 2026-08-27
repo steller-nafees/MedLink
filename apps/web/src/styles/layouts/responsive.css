@@ -1,0 +1,83 @@
+@media (max-width: 700px) {
+  .beds-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .beds-grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  .ui-page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 900px) {
+  .hospital-emergencies {
+    grid-template-columns: 1fr;
+  }
+
+  .hospital-emergency-detail {
+    position: static;
+  }
+
+  .hospital-kpi-grid,
+  .hospital-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .hospital-wide-panel {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 600px) {
+  .hospital-emergency-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .hospital-emergency-filters {
+    width: 100%;
+  }
+
+  .hospital-filter {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .hospital-kpi-grid,
+  .hospital-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hospital-wide-panel {
+    grid-column: auto;
+  }
+
+  .hospital-kpi {
+    padding: 14px;
+  }
+
+  .hospital-kpi-value {
+    font-size: 24px;
+  }
+
+  .emergency-row {
+    flex-wrap: wrap;
+  }
+
+  .emergency-eta {
+    margin-left: 56px;
+    text-align: left;
+  }
+
+  .accept-button {
+    margin-left: auto;
+  }
+
+  .hospital-dashboard h1 {
+    font-size: 28px;
+  }
+}

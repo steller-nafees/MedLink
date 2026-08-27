@@ -1,0 +1,9 @@
+.hospital-line-chart {
+  height: 256px;
+  margin-top: 16px;
+}
+
+.hospital-donut-chart {
+  height: 160px;
+  margin-top: 16px;
+}

@@ -1,0 +1,82 @@
+.dashboard-badge {
+  font-weight: 700;
+}
+
+.dashboard-badge-number {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--primary);
+  color: white;
+  font-size: 10px;
+}
+
+.dashboard-badge-pill {
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  color: var(--primary);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.dashboard-badge-soon {
+  border: 1px solid var(--border);
+  background: var(--surface-variant);
+  color: var(--muted-foreground);
+}
+
+.hospital-case-id,
+.hospital-case-chips span {
+  border-radius: 999px;
+  background: #f1f7f7;
+  padding: 2px 8px;
+  color: var(--hospital-muted);
+  font-size: 10.5px;
+}
+
+.hospital-case-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.hospital-chip-primary {
+  background: #d8f6f3 !important;
+  color: var(--hospital-primary) !important;
+}
+
+.severity-pill,
+.insight-heading span,
+.hospital-kpi-delta {
+  border-radius: 999px;
+  background: #f1f7f7;
+  padding: 2px 8px;
+  color: var(--hospital-muted);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.severity-pill {
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.severity-critical,
+.severity-critical-text,
+.severity-high,
+.severity-high-text,
+.severity-moderate,
+.severity-moderate-text {
+  color: var(--hospital-emergency, #d64545);
+}
+
+.severity-moderate {
+  background: rgb(45 87 114 / 10%);
+  color: #2d5772;
+}

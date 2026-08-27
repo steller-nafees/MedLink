@@ -1,0 +1,27 @@
+.hospital-payments { max-width: 1400px; margin: 0 auto; color: var(--hospital-text); }
+.hospital-payments h1, .hospital-payments h2, .hospital-payments p { margin: 0; }
+.payment-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+.payment-stat { padding: 20px; border: 1px solid var(--hospital-border); border-radius: 24px; background: var(--hospital-surface); box-shadow: 0 8px 24px rgb(23 37 47 / 5%); }
+.payment-stat p { color: var(--hospital-muted); font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.payment-stat strong { display: block; margin-top: 8px; font-size: 28px; line-height: 1; }
+.payment-stat span { display: block; margin-top: 6px; color: var(--hospital-muted); font-size: 12.5px; }
+.payment-table-wrap { overflow-x: auto; }
+.payment-table { width: 100%; min-width: 860px; border-collapse: collapse; text-align: left; }
+.payment-table th { padding: 12px 20px; border-bottom: 1px solid rgb(215 228 229 / 50%); color: var(--hospital-muted); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.payment-table td { padding: 14px 20px; border-bottom: 1px solid rgb(215 228 229 / 40%); font-size: 13px; }
+.payment-table tr:last-child td { border-bottom: 0; }
+.payment-table tbody tr:hover { background: color-mix(in srgb, var(--hospital-bg) 40%, transparent); }
+.payment-table td:first-child strong, .payment-table td:first-child span { display: block; }
+.payment-table td:first-child span { color: var(--hospital-muted); font-size: 11.5px; }
+.payment-fee { color: var(--hospital-primary); font-weight: 600; }
+.payment-status, .payment-pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.payment-status-pending, .payment-pill-pending { background: color-mix(in srgb, var(--hospital-warning) 10%, transparent); color: var(--hospital-warning); }
+.payment-status-accepted { background: color-mix(in srgb, var(--hospital-info) 10%, transparent); color: var(--hospital-info); }
+.payment-status-confirmed, .payment-status-scheduled { background: color-mix(in srgb, var(--hospital-primary) 10%, transparent); color: var(--hospital-primary); }
+.payment-status-completed, .payment-pill-paid, .payment-pill-settled { background: color-mix(in srgb, var(--hospital-success) 10%, transparent); color: var(--hospital-success); }
+.payment-status-cancelled { background: var(--hospital-bg); color: var(--hospital-muted); }
+.payment-pill-unpaid { background: color-mix(in srgb, var(--hospital-emergency) 10%, transparent); color: var(--hospital-emergency); }
+.payment-pill-collected { background: color-mix(in srgb, var(--hospital-info) 10%, transparent); color: var(--hospital-info); }
+.payment-action { text-align: right; }
+.tabular-nums { font-variant-numeric: tabular-nums; }
+@media (max-width: 700px) { .payment-stats { grid-template-columns: 1fr; } }

@@ -1,0 +1,136 @@
+.hospital-beds {
+  max-width: 1400px;
+  margin: 0 auto;
+  color: var(--foreground);
+}
+
+.ui-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.ui-page-header h1 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.ui-page-header p {
+  margin: 4px 0 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.ui-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.beds-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.beds-stat-card,
+.beds-ward-card {
+  padding: 20px;
+}
+
+.beds-stat-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.beds-stat-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.beds-stat-value {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.beds-stat-value strong {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.beds-stat-value span {
+  margin-bottom: 2px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.beds-tone-primary,
+.beds-primary {
+  color: var(--primary);
+  background-color: var(--primary-container);
+}
+
+.beds-tone-emergency,
+.beds-emergency {
+  color: var(--hospital-emergency);
+  background-color: color-mix(in srgb, var(--hospital-emergency) 15%, transparent);
+}
+
+.beds-tone-warning,
+.beds-warning {
+  color: var(--hospital-warning);
+  background-color: color-mix(in srgb, var(--hospital-warning) 12%, transparent);
+}
+
+.beds-info {
+  color: var(--hospital-info);
+  background-color: color-mix(in srgb, var(--hospital-info) 10%, transparent);
+}
+
+.beds-capacity-track {
+  height: 8px;
+  overflow: hidden;
+  margin-top: 16px;
+  border-radius: 999px;
+  background: var(--surface-variant);
+}
+
+.beds-capacity-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.beds-fill-primary {
+  background: var(--primary);
+}
+
+.beds-fill-emergency {
+  background: var(--hospital-emergency);
+}
+
+.beds-fill-warning {
+  background: var(--hospital-warning);
+}
+
+.beds-stat-card > p,
+.beds-ward-heading p {
+  margin: 6px 0 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+
+.beds-wards {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
