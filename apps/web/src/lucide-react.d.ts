@@ -1,7 +1,7 @@
 declare module "lucide-react" {
   import type { ComponentType } from "react";
 
-  type IconProps = { className?: string; "aria-hidden"?: boolean | string };
+  type IconProps = { className?: string; size?: number; "aria-hidden"?: boolean | string };
   export const Activity: ComponentType<IconProps>;
   export const Ambulance: ComponentType<IconProps>;
   export const ArrowUpRight: ComponentType<IconProps>;
@@ -10,6 +10,9 @@ declare module "lucide-react" {
   export const Check: ComponentType<IconProps>;
   export const CheckCircle2: ComponentType<IconProps>;
   export const ChevronDown: ComponentType<IconProps>;
+  export const ChevronRight: ComponentType<IconProps>;
+  export const ArrowLeft: ComponentType<IconProps>;
+  export const ArrowRight: ComponentType<IconProps>;
   export const Clock: ComponentType<IconProps>;
   export const CreditCard: ComponentType<IconProps>;
   export const Droplet: ComponentType<IconProps>;
@@ -24,16 +27,24 @@ declare module "lucide-react" {
   export const MapPin: ComponentType<IconProps>;
   export const MessageSquare: ComponentType<IconProps>;
   export const Hospital: ComponentType<IconProps>;
+  export const Loader2: ComponentType<IconProps>;
+  export const Building2: ComponentType<IconProps>;
+  export const Globe: ComponentType<IconProps>;
+  export const LocateFixed: ComponentType<IconProps>;
   export const PhoneCall: ComponentType<IconProps>;
+  export const Phone: ComponentType<IconProps>;
   export const Plus: ComponentType<IconProps>;
   export const Search: ComponentType<IconProps>;
   export const Siren: ComponentType<IconProps>;
   export const Sparkles: ComponentType<IconProps>;
   export const Stethoscope: ComponentType<IconProps>;
+  export const ShieldCheck: ComponentType<IconProps>;
   export const Settings: ComponentType<IconProps>;
   export const Tag: ComponentType<IconProps>;
   export const Truck: ComponentType<IconProps>;
   export const TrendingUp: ComponentType<IconProps>;
   export const User: ComponentType<IconProps>;
+  export const UserRound: ComponentType<IconProps>;
+  export const Upload: ComponentType<IconProps>;
   export const X: ComponentType<IconProps>;
 }

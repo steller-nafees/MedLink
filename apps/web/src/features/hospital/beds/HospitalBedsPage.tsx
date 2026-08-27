@@ -1,9 +1,10 @@
+import { useEffect, useState } from "react";
 import { Activity, BedDouble, User } from "lucide-react";
 import { Button } from "@/shared/components/ui/Button";
 import { Card } from "@/shared/components/ui/Card";
 import { PageHeader } from "@/shared/components/ui/PageHeader";
 import { StatCard } from "@/shared/components/ui/StatCard";
-import { getBedCapacity, getHospitalWards } from "@/services/hospital.service";
+import { getHospitalBedsFromApi, type HospitalBed } from "@/services/hospital.service";
 import type { BedTone, HospitalWard } from "@/types/hospital";
 
 const toneClasses: Record<BedTone, string> = {
@@ -23,7 +24,14 @@ function WardCard({ ward }: { ward: HospitalWard }) {
 }
 
 export function HospitalBedsPage() {
-	const capacity = getBedCapacity();
-	const wards = getHospitalWards();
-	return <main className="hospital-beds"><PageHeader title="Beds & ICU" subtitle="Live occupancy across wards" actions={<><Button onClick={() => window.print()}>Print report</Button><Button variant="primary">Reserve bed</Button></>} /><div className="beds-summary-grid">{capacity.map((item, index) => <StatCard key={item.label} label={item.label} value={item.value} available={item.available} percentage={percentage(item.value, item.available)} tone={item.tone === "info" ? "primary" : item.tone} icon={index === 1 ? Activity : BedDouble} />)}</div><div className="beds-wards">{wards.map((ward) => <WardCard key={ward.name} ward={ward} />)}</div></main>;
+	const [beds, setBeds] = useState<HospitalBed[]>([]);
+	const [error, setError] = useState<string | null>(null);
+	useEffect(() => { getHospitalBedsFromApi().then(setBeds).catch((requestError: unknown) => setError(requestError instanceof Error ? requestError.message : "Unable to load beds")); }, []);
+	const wards = Array.from(new Set(beds.map((bed) => bed.ward_name))).map((name, index) => ({ name, tone: index % 2 ? "primary" as const : "emergency" as const, beds: beds.filter((bed) => bed.ward_name === name).map((bed, bedIndex) => ({ id: bedIndex + 1, occupied: bed.bed_status !== "AVAILABLE" })) }));
+	const total = beds.length;
+	const available = beds.filter((bed) => bed.bed_status === "AVAILABLE").length;
+	const capacity = [{ label: "Total beds", value: total, available, tone: "primary" as const }, { label: "Occupied beds", value: beds.filter((bed) => bed.bed_status === "OCCUPIED").length, available: 0, tone: "emergency" as const }];
+	if (error) return <main className="hospital-beds"><p role="alert">{error}</p></main>;
+	if (!beds.length) return <main className="hospital-beds"><p>Loading beds...</p></main>;
+	return <main className="hospital-beds"><PageHeader title="Beds & ICU" subtitle="Live occupancy across wards" actions={<><Button onClick={() => window.print()}>Print report</Button><Button variant="primary">Reserve bed</Button></>} /><div className="beds-summary-grid">{capacity.map((item, index) => <StatCard key={item.label} label={item.label} value={item.value} available={item.available} percentage={percentage(item.value, item.available)} tone={item.tone} icon={index === 1 ? Activity : BedDouble} />)}</div><div className="beds-wards">{wards.map((ward) => <WardCard key={ward.name} ward={ward} />)}</div></main>;
 }

@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { Activity, BedDouble, Check, Filter, PhoneCall, Siren, Sparkles, X } from "lucide-react";
-import { getEmergencyCases, severityStyle } from "@/services/hospital.service";
+import { getActiveCases, severityStyle, type HospitalActiveCase } from "@/services/hospital.service";
 import type { EmergencyCase, Severity } from "@/types/hospital";
 
-const cases = getEmergencyCases();
-
 export function HospitalEmergenciesPage() {
-	const [selected, setSelected] = useState<EmergencyCase>(cases[0]);
+	const [cases, setCases] = useState<EmergencyCase[]>([]);
+	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [severity, setSeverity] = useState<Severity | "all">("all");
 	const [caseStates, setCaseStates] = useState<Record<string, EmergencyCase["status"]>>({});
+	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => { getActiveCases().then((activeCases) => { const mapped = activeCases.map(mapCase); setCases(mapped); setSelectedId(mapped[0]?.id ?? null); }).catch((requestError: unknown) => setError(requestError instanceof Error ? requestError.message : "Unable to load emergency cases")); }, []);
 
 	useEffect(() => {
 		document.title = "Emergencies · Hospital Dashboard";
@@ -21,8 +23,11 @@ export function HospitalEmergenciesPage() {
 		description.content = "Live emergency case queue.";
 	}, []);
 
+	const selected = cases.find((emergencyCase) => emergencyCase.id === selectedId) ?? cases[0];
 	const visibleCases = severity === "all" ? cases : cases.filter((emergencyCase) => emergencyCase.severity === severity);
 	const updateStatus = (status: EmergencyCase["status"]) => setCaseStates((current) => ({ ...current, [selected.id]: status }));
+	if (error) return <div className="hospital-emergencies"><p role="alert">{error}</p></div>;
+	if (!selected) return <div className="hospital-emergencies"><p>Loading emergency cases...</p></div>;
 
 	return (
 		<div className="hospital-emergencies">
@@ -39,7 +44,7 @@ export function HospitalEmergenciesPage() {
 						const style = severityStyle(emergencyCase.severity);
 						const active = selected.id === emergencyCase.id;
 						const status = caseStates[emergencyCase.id] ?? emergencyCase.status;
-						return <button type="button" key={emergencyCase.id} className={`hospital-emergency-card${active ? " active" : ""}`} onClick={() => setSelected(emergencyCase)}>
+						return <button type="button" key={emergencyCase.id} className={`hospital-emergency-card${active ? " active" : ""}`} onClick={() => setSelectedId(emergencyCase.id)}>
 							<div className={`emergency-symbol ${style.bg}`}><Siren className="hospital-icon" /></div>
 							<div className="hospital-emergency-copy"><div className="emergency-name"><strong>{emergencyCase.patient}, {emergencyCase.age}</strong><span className={`severity-pill ${style.bg} ${style.text}`}>{emergencyCase.severity}</span><span className="hospital-case-id">#{emergencyCase.id}</span></div><p className="hospital-muted emergency-summary">{emergencyCase.summary}</p><div className="hospital-case-chips"><span>ETA {emergencyCase.eta}</span><span>{emergencyCase.ambulance}</span><span className="hospital-chip-primary">{status.replace("_", " ")}</span><span>{emergencyCase.createdAt}</span></div></div>
 						</button>;
@@ -58,6 +63,11 @@ export function HospitalEmergenciesPage() {
 			</aside>
 		</div>
 	);
+}
+
+function mapCase(activeCase: HospitalActiveCase): EmergencyCase {
+	const severity = ["critical", "high", "moderate", "low"].includes(activeCase.severity.toLowerCase()) ? activeCase.severity.toLowerCase() as Severity : "moderate";
+	return { id: activeCase.event_id, patient: activeCase.user_description || "Unnamed patient", age: 0, severity, summary: activeCase.user_description || "Active medical event", symptoms: [], eta: "—", hospital: "Assigned hospital", ambulance: "—", status: activeCase.event_status.toLowerCase().replace("_", "_") as EmergencyCase["status"], createdAt: new Date(activeCase.created_at).toLocaleString() };
 }
 
 function MiniStat({ label, value, icon: Icon, tone = "default" }: { label: string; value: string; icon: typeof Activity; tone?: "default" | "primary" | "emergency" }) {

@@ -1,5 +1,7 @@
 import { useEffect, type ReactNode } from "react";
+import { Navigate } from "react-router-dom";
 import { HospitalLayout } from "@/layouts/HospitalLayout";
+import { getStoredUser } from "@/services/auth";
 import { useLocation } from "react-router-dom";
 
 const hospitalHead = {
@@ -8,6 +10,7 @@ const hospitalHead = {
 };
 
 export function HospitalRoute({ children }: { children: ReactNode }) {
+  if (!getStoredUser()) return <Navigate to="/hospital/login" replace />;
   const location = useLocation();
   const isEmergencies = location.pathname === "/hospital/emergencies";
   const isBeds = location.pathname === "/hospital/beds";

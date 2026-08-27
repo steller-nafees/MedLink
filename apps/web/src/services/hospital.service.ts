@@ -1,4 +1,92 @@
+import { api } from "./api";
 import type { Ambulance, BedCapacitySummary, EmergencyCase, EmergencyRequest, HospitalReservation, HospitalServiceRequest, HospitalWard, Severity } from "@/types/hospital";
+
+type ApiResponse<T> = { data: T };
+
+export type HospitalDashboard = {
+  hospital_id: string;
+  hospital_name: string;
+  hospital_status: string;
+  total_beds: number;
+  available_beds: number;
+  occupied_beds: number;
+  maintenance_beds: number;
+  total_icu_beds: number;
+  pending_reservations: number;
+  active_cases: number;
+};
+
+export type HospitalBed = {
+  bed_id: string;
+  bed_number: string | number;
+  bed_status: "AVAILABLE" | "OCCUPIED" | "RESERVED" | "MAINTENANCE";
+  ward_id: string;
+  ward_name: string;
+};
+
+export type HospitalActiveCase = {
+  event_id: string;
+  user_id: string;
+  user_description: string;
+  severity: string;
+  event_status: string;
+  is_emergency: boolean;
+  created_at: string;
+};
+
+export type HospitalPayment = {
+  payment_id: string;
+  reservation_id: string;
+  total_amount: number | string;
+  payment_method: string;
+  payment_status: string;
+  paid_at: string | null;
+  patient_id: string;
+  patient_first_name?: string;
+  patient_last_name?: string;
+  reservation_mode: string;
+  reservation_status: string;
+};
+
+export async function getHospitalDashboard() {
+  const response = await api.get<ApiResponse<HospitalDashboard>>("/hospital/dashboard");
+  return response.data.data;
+}
+
+export async function getMyHospital() {
+  const response = await api.get<ApiResponse<{ name: string; hospital_id: string }>>("/hospital/my-hospital");
+  return response.data.data;
+}
+
+export async function getActiveCases() {
+  const response = await api.get<ApiResponse<HospitalActiveCase[]>>("/hospital/dashboard/active-cases");
+  return response.data.data;
+}
+
+export async function getHospitalBedsFromApi() {
+  const response = await api.get<ApiResponse<HospitalBed[]>>("/hospital/beds");
+  return response.data.data;
+}
+
+export async function updateBedStatus(bedId: string, bedStatus: HospitalBed["bed_status"]) {
+  const response = await api.put<ApiResponse<HospitalBed>>(`/hospital/beds/${bedId}/status`, { bedStatus });
+  return response.data.data;
+}
+
+export async function getHospitalReservationsFromApi() {
+  const response = await api.get<ApiResponse<Record<string, unknown>[]>>("/hospital/reservations");
+  return response.data.data;
+}
+
+export async function approveReservation(reservationId: string) {
+  const response = await api.put<ApiResponse<Record<string, unknown>>>(`/hospital/reservations/${reservationId}/approve`);
+  return response.data.data;
+}
+
+export async function getHospitalPaymentsFromApi() {
+  const response = await api.get<ApiResponse<HospitalPayment[]>>("/hospital/payments");
+  return response.data.data;
+}
 
 const ambulances: Ambulance[] = [
   { id: "a-01", callSign: "Unit 12", reg: "Dhaka Metro Cha 11-1111", provider: "MedLink Emergency Services", driver: "Md. Kamal Hossain", type: "ALS", crew: "Medical Officer Dr. Farhan Kabir · Paramedic Rakib Hasan", etaMin: 4, distanceKm: 1.1, phone: "+880 1712-334455", status: "available" },

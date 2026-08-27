@@ -30,6 +30,7 @@
 @import "./pages/hospital-payments.css";
 @import "./pages/admin-dashboard.css";
 @import "./pages/auth.css";
+@import "./pages/landing.css";
 
 @import "./utilities/helpers.css";
 @import "./utilities/tailwind-utilities.css";

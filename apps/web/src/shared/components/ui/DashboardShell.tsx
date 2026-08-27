@@ -17,6 +17,7 @@ type DashboardShellProps = {
   nav: NavItem[];
   user: { name: string; role: string };
   searchPlaceholder?: string;
+  onLogout?: () => void;
   children: ReactNode;
 };
 
@@ -51,6 +52,7 @@ export function DashboardShell({
   nav,
   user,
   searchPlaceholder = "Search patients, beds, ambulances...",
+  onLogout,
   children,
 }: DashboardShellProps) {
   const [collapsed, setCollapsed] = useState(false);
@@ -193,7 +195,7 @@ export function DashboardShell({
                     <Settings aria-hidden="true" />
                     Settings
                   </button>
-                  <button type="button" role="menuitem" onClick={() => navigate("/login")}>
+                  <button type="button" role="menuitem" onClick={() => { onLogout?.(); navigate("/hospital/login"); }}>
                     <LogOut aria-hidden="true" />
                     Logout
                   </button>

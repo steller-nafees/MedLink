@@ -21,6 +21,8 @@ import {
 	Tooltip as RechartsTooltip,
 	CartesianGrid as RechartsCartesianGrid,
 } from "recharts";
+import { useEffect, useState } from "react";
+import { getActiveCases, getHospitalDashboard, type HospitalActiveCase, type HospitalDashboard } from "@/services/hospital.service";
 
 type Severity = "critical" | "high" | "moderate" | "low";
 type Icon = typeof Activity;
@@ -65,16 +67,42 @@ function Kpi({ label, value, delta, icon: IconComponent, tone = "default" }: { l
 }
 
 export function HospitalDashboardPage() {
-	const bedsOccupied = dashboard.hospital.beds.total - dashboard.hospital.beds.available;
-	const icuOccupied = dashboard.hospital.icu.total - dashboard.hospital.icu.available;
+	const [summary, setSummary] = useState<HospitalDashboard | null>(null);
+	const [activeCases, setActiveCases] = useState<HospitalActiveCase[]>([]);
+	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		Promise.all([getHospitalDashboard(), getActiveCases()])
+			.then(([dashboardSummary, cases]) => {
+				setSummary(dashboardSummary);
+				setActiveCases(cases);
+			})
+			.catch((requestError: unknown) => setError(requestError instanceof Error ? requestError.message : "Unable to load dashboard"));
+	}, []);
+
+	const bedsTotal = summary?.total_beds ?? 0;
+	const bedsAvailable = summary?.available_beds ?? 0;
+	const icuTotal = summary?.total_icu_beds ?? 0;
+	const emergencies = activeCases.slice(0, 3).map((activeCase) => ({
+		id: activeCase.event_id,
+		patient: activeCase.user_description || "Unnamed patient",
+		age: 0,
+		severity: activeCase.severity.toLowerCase() as Severity,
+		summary: activeCase.user_description || "Active medical event",
+		eta: "—",
+		ambulance: "—",
+	}));
+
+	if (error) return <div className="hospital-dashboard"><p role="alert">{error}</p></div>;
+	if (!summary) return <div className="hospital-dashboard"><p>Loading dashboard...</p></div>;
 
 	return <div className="hospital-dashboard">
 		<div className="hospital-dashboard-header"><div><p className="hospital-eyebrow">Wednesday, April 24</p><h1>Good morning, Dr. Amara</h1><p className="hospital-subline">4 active emergencies · 2 incoming in the next 15 minutes.</p></div><div className="hospital-actions"><button type="button" className="today-button">Today</button><Link to="/hospital/emergencies" className="emergency-button"><Siren className="hospital-icon" /> Emergency queue</Link></div></div>
 
-		<div className="hospital-kpi-grid"><Kpi label="Active cases" value="12" delta="+3" icon={Activity} tone="emergency" /><Kpi label="Avg. response" value={`${dashboard.avgResponse}m`} delta="-0.8m" icon={Clock} tone="success" /><Kpi label="Beds occupied" value={`${bedsOccupied}/${dashboard.hospital.beds.total}`} delta="72%" icon={BedDouble} /><Kpi label="ICU occupied" value={`${icuOccupied}/${dashboard.hospital.icu.total}`} delta="79%" icon={Activity} tone="warning" /></div>
+		<div className="hospital-kpi-grid"><Kpi label="Active cases" value={String(summary.active_cases)} delta="Live" icon={Activity} tone="emergency" /><Kpi label="Pending reservations" value={String(summary.pending_reservations)} delta="Live" icon={Clock} tone="success" /><Kpi label="Beds occupied" value={`${summary.occupied_beds}/${bedsTotal}`} delta={`${bedsAvailable} available`} icon={BedDouble} /><Kpi label="ICU beds" value={String(icuTotal)} delta="Total capacity" icon={Activity} tone="warning" /></div>
 
 		<div className="hospital-grid hospital-grid-top"><section className="hospital-panel hospital-wide-panel"><div className="hospital-panel-heading"><div><h2>Cases this week</h2><p className="hospital-muted">Incoming volume and average response time</p></div><span className="hospital-success"><TrendingUp className="hospital-icon" /> +12% vs last week</span></div><div className="hospital-line-chart"><RechartsResponsiveContainer width="100%" height="100%"><RechartsLineChart data={dashboard.weekly} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}><RechartsCartesianGrid stroke="#d7e4e5" strokeDasharray="3 6" vertical={false} /><RechartsXAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fill: "#6b7280", fontSize: 11 }} /><RechartsYAxis tickLine={false} axisLine={false} tick={{ fill: "#6b7280", fontSize: 11 }} /><RechartsTooltip /><RechartsLine type="monotone" dataKey="cases" stroke="#16a89c" strokeWidth={2.5} dot={{ r: 4, strokeWidth: 2, fill: "white" }} /></RechartsLineChart></RechartsResponsiveContainer></div></section><section className="hospital-panel"><h2>Severity mix</h2><p className="hospital-muted">Last 30 days</p><div className="hospital-donut-chart"><RechartsResponsiveContainer width="100%" height="100%"><RechartsPieChart><RechartsPie data={dashboard.bySeverity} innerRadius={45} outerRadius={70} paddingAngle={4} dataKey="value">{dashboard.bySeverity.map((item) => <RechartsCell key={item.name} fill={item.color} />)}</RechartsPie></RechartsPieChart></RechartsResponsiveContainer></div><ul className="severity-list">{dashboard.bySeverity.map((item) => <li key={item.name}><span className="severity-dot" style={{ background: item.color }} /><span>{item.name}</span><span className="hospital-muted">{item.value}%</span></li>)}</ul></section></div>
 
-		<div className="hospital-grid"><section className="hospital-panel hospital-wide-panel hospital-queue"><div className="hospital-panel-heading"><div><h2>Incoming emergencies</h2><p className="hospital-muted">AI-triaged · live from patient app &amp; dispatch</p></div><Link to="/hospital/emergencies" className="hospital-view-link">View all <ArrowUpRight className="hospital-icon" /></Link></div><div className="emergency-list">{dashboard.emergencies.map((emergency) => { const style = severityStyle[emergency.severity]; return <div className="emergency-row" key={emergency.id}><div className={`emergency-symbol ${style.bg}`}><Siren className="hospital-icon" /></div><div className="emergency-copy"><div className="emergency-name"><strong>{emergency.patient}, {emergency.age}</strong><span className={`severity-pill ${style.bg} ${style.text}`}>{emergency.severity}</span></div><p className="hospital-muted emergency-summary">{emergency.summary}</p></div><div className="emergency-eta"><strong>ETA {emergency.eta}</strong><span>{emergency.ambulance}</span></div><button type="button" className="accept-button">Accept</button></div>; })}</div></section><section className="hospital-insight"><div className="insight-heading"><Sparkles className="hospital-icon" /><strong>AI Insight</strong><span>Coming Soon</span></div><p className="insight-title">Cardiology capacity is tightening.</p><p className="insight-copy">Predicted 3 additional cardiac cases in next 2 hours. Consider staging ICU Bay 4 and paging on-call cardiologist.</p><button type="button" className="prepare-button"><Truck className="hospital-icon" /> Prepare team</button></section></div>
+		<div className="hospital-grid"><section className="hospital-panel hospital-wide-panel hospital-queue"><div className="hospital-panel-heading"><div><h2>Incoming emergencies</h2><p className="hospital-muted">AI-triaged · live from patient app &amp; dispatch</p></div><Link to="/hospital/emergencies" className="hospital-view-link">View all <ArrowUpRight className="hospital-icon" /></Link></div><div className="emergency-list">{emergencies.map((emergency) => { const style = severityStyle[emergency.severity]; return <div className="emergency-row" key={emergency.id}><div className={`emergency-symbol ${style.bg}`}><Siren className="hospital-icon" /></div><div className="emergency-copy"><div className="emergency-name"><strong>{emergency.patient}</strong><span className={`severity-pill ${style.bg} ${style.text}`}>{emergency.severity}</span></div><p className="hospital-muted emergency-summary">{emergency.summary}</p></div><div className="emergency-eta"><strong>ETA {emergency.eta}</strong><span>{emergency.ambulance}</span></div><button type="button" className="accept-button">Accept</button></div>; })}</div></section><section className="hospital-insight"><div className="insight-heading"><Sparkles className="hospital-icon" /><strong>AI Insight</strong><span>Coming Soon</span></div><p className="insight-title">Live hospital capacity</p><p className="insight-copy">{summary.available_beds} beds are currently available across this hospital.</p><button type="button" className="prepare-button"><Truck className="hospital-icon" /> Prepare team</button></section></div>
 	</div>;
 }
