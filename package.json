@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "node api.js && turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
     "test": "turbo test"
@@ -15,6 +15,7 @@
     "turbo": "^2.10.8"
   },
   "dependencies": {
+    "expo-location": "~57.0.14",
     "react-dom": "19.2.3",
     "react-native-web": "^0.21.2"
   }

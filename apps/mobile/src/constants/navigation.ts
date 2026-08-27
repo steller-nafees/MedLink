@@ -1,0 +1,1 @@
+export const PATIENT_NAV_CLEARANCE = 116;

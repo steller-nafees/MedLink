@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "node --watch src/server.js",
-    "start": "node src/server.js"
+    "dev": "node api.js && node --watch src/server.js",
+    "start": "node api.js && node src/server.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -22,9 +22,5 @@
     "@types/node": "^26.1.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^6.0.3"
-  },
-  "scripts": {
-    "dev": "node --watch src/server.js",
-    "start": "node src/server.js"
   }
 }

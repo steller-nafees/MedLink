@@ -12,6 +12,7 @@ import {
   Easing,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Heart,
   Sparkles,
@@ -36,7 +37,7 @@ import {
   AmbulanceCard,
 } from './components';
 import {
-  hospitals,
+  hospitals as mockHospitals,
   ambulances,
   emergencySuggestions,
   SOS_COORDINATION_FEE_BDT,
@@ -50,10 +51,13 @@ import {
 } from './utils/blood';
 import { useEmergencySync, type EmergencyCache } from './utils/offline-sync';
 import { sortHospitals } from './utils/helpers';
+import { getCurrentLocation } from '../../lib/location';
+import { clearAuthSession } from '../../services/auth';
 import {
   consultMedicalCondition,
   type AiMedicalResponse,
 } from '../../services/ai-medical';
+import { getNearbyHospitals, type NearbyHospital } from '../../services/hospitals';
 
 type Phase = 'input' | 'analyzing' | 'command' | 'summary';
 
@@ -65,7 +69,29 @@ type SosSummary = {
   donorsContacted: number;
   severity: string;
   aiResponse: AiMedicalResponse;
+  temporaryPassword?: string;
 };
+
+function toSosHospital(hospital: NearbyHospital): Hospital {
+  const distanceKm = Number(hospital.distance_km);
+
+  return {
+    id: hospital.id,
+    name: hospital.hospital_name,
+    tier: 'C',
+    distanceKm,
+    etaMin: Math.max(1, Math.round(distanceKm * 4)),
+    address: hospital.address || 'Address unavailable',
+    rating: 0,
+    phone: hospital.phone || '',
+    departments: [],
+    beds: { total: 0, available: 0 },
+    icu: { total: 0, available: 0 },
+    emergency: hospital.hospital_status.toUpperCase() === 'OPEN',
+    bloodBank: [],
+    coord: { x: 50, y: 50 },
+  };
+}
 
 /* ────────────────────────────────────────────────────────────────── */
 /* ANIMATION HELPERS                                                   */
@@ -141,6 +167,8 @@ const FadeSlideIn: React.FC<{ children: React.ReactNode; delay?: number; style?:
 };
 
 export const SOSScreen: React.FC = () => {
+  const { guest, temporaryPassword } = useLocalSearchParams<{ guest?: string; temporaryPassword?: string }>();
+  const router = useRouter();
   const [phase, setPhase] = useState<Phase>('input');
   const [text, setText] = useState('');
   const [reserved, setReserved] = useState<{ bed?: boolean; icu?: boolean; ambulance?: string }>({});
@@ -154,6 +182,7 @@ export const SOSScreen: React.FC = () => {
   const [bloodRequired, setBloodRequired] = useState<boolean | null>(null);
   const [assessingBlood, setAssessingBlood] = useState(false);
   const [requestError, setRequestError] = useState('');
+  const [nearbyHospitals, setNearbyHospitals] = useState<Hospital[]>([]);
 
   const { online, cache, justSynced } = useEmergencySync();
   const insets = useSafeAreaInsets();
@@ -164,24 +193,22 @@ export const SOSScreen: React.FC = () => {
     setPhase('analyzing');
 
     try {
-      if (typeof navigator === 'undefined' || !navigator.geolocation) {
-        throw new Error('Location is not available on this device. Please enable location access and try again.');
+      const location = await getCurrentLocation();
+
+      const [result, liveHospitals] = await Promise.all([
+        consultMedicalCondition({
+          userDescription: val,
+          ...location,
+          isEmergency: true,
+        }),
+        getNearbyHospitals(location.latitude, location.longitude),
+      ]);
+
+      if (liveHospitals.length === 0) {
+        throw new Error('No hospitals were found near your current location. Please try again or call emergency services.');
       }
 
-      const location = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          ({ coords }) => resolve({ latitude: coords.latitude, longitude: coords.longitude }),
-          () => reject(new Error('We could not detect your location. Please allow location access and try again.')),
-          { enableHighAccuracy: true, timeout: 10000 },
-        );
-      });
-
-      const result = await consultMedicalCondition({
-        userDescription: val,
-        ...location,
-        isEmergency: true,
-      });
-
+      setNearbyHospitals(liveHospitals.map(toSosHospital));
       setAiResponse(result.aiResponse);
       setSeverity(result.event.severity ?? 'LOW');
       setPhase('command');
@@ -204,8 +231,19 @@ export const SOSScreen: React.FC = () => {
     setSentTo([]);
     setSummary(null);
     setAiResponse(null);
+    setNearbyHospitals([]);
     setSeverity('LOW');
     setRequestError('');
+  };
+
+  const finishSOS = async () => {
+    if (guest === '1') {
+      await clearAuthSession();
+      router.replace('/(auth)');
+      return;
+    }
+
+    resetAndExit();
   };
 
   // Shared top inset so nothing ever sits under the status bar / notch,
@@ -272,12 +310,14 @@ export const SOSScreen: React.FC = () => {
               endSOS={endSOS}
               aiResponse={aiResponse}
               severity={severity}
+              hospitals={nearbyHospitals}
+              temporaryPassword={temporaryPassword}
             />
           </FadeSlideIn>
         )}
         {phase === 'summary' && summary && (
           <FadeSlideIn>
-            <SummaryPhase summary={summary} onDone={resetAndExit} />
+            <SummaryPhase summary={summary} onDone={finishSOS} />
           </FadeSlideIn>
         )}
       </ScrollView>
@@ -693,7 +733,7 @@ const OfflineCommandPhase: React.FC<OfflineCommandPhaseProps> = ({
   topInset,
   bottomInset,
 }) => {
-  const sortedHospitals = useMemo(() => sortHospitals(hospitals), []);
+  const sortedHospitals = useMemo(() => sortHospitals(mockHospitals), []);
   const nearestHospital = sortedHospitals.find((h) => h.id === selectedHospitalId) ?? sortedHospitals[0];
 
   return (
@@ -972,6 +1012,8 @@ interface CommandPhaseProps {
   endSOS: (s: SosSummary) => void;
   aiResponse: AiMedicalResponse | null;
   severity: string;
+  hospitals: Hospital[];
+  temporaryPassword?: string;
 }
 
 const CommandPhase: React.FC<CommandPhaseProps> = ({
@@ -993,8 +1035,13 @@ const CommandPhase: React.FC<CommandPhaseProps> = ({
   endSOS,
   aiResponse,
   severity,
+  hospitals,
+  temporaryPassword,
 }) => {
-  const sortedHospitals = useMemo(() => sortHospitals(hospitals), []);
+  const sortedHospitals = useMemo(
+    () => [...hospitals].sort((a, b) => a.distanceKm - b.distanceKm),
+    [hospitals],
+  );
   const primary = sortedHospitals.find((h) => h.id === selectedHospitalId) ?? sortedHospitals[0];
   const hospitalSelected = selectedHospitalId !== null;
   const requiredGroup: BloodGroup = 'O+';
@@ -1459,6 +1506,7 @@ const CommandPhase: React.FC<CommandPhaseProps> = ({
               donorsContacted: sentTo.length,
               severity,
               aiResponse,
+              temporaryPassword,
             })
           }
           style={{
@@ -1851,6 +1899,30 @@ const SummaryPhase: React.FC<SummaryPhaseProps> = ({ summary, onDone }) => {
       >
         Emergency coordination has ended. Here's a summary of what was arranged for you.
       </Text>
+
+      {summary.temporaryPassword && (
+        <View
+          style={{
+            width: '100%',
+            borderRadius: theme.radii.xxxl,
+            borderWidth: 1,
+            borderColor: `${theme.colors.emergency}66`,
+            backgroundColor: `${theme.colors.emergency}0D`,
+            padding: 16,
+            marginBottom: 16,
+          }}
+        >
+          <Text style={{ fontSize: 13, fontWeight: 'bold', color: theme.colors.foreground, marginBottom: 6 }}>
+            Save your emergency login
+          </Text>
+          <Text style={{ fontSize: 12, color: theme.colors.mutedForeground, lineHeight: 17 }}>
+            Use your phone number and this password to log in later. This guest session will not be remembered on this device.
+          </Text>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.emergency, marginTop: 10 }}>
+            {summary.temporaryPassword}
+          </Text>
+        </View>
+      )}
 
       {/* Summary card */}
       <View

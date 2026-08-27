@@ -167,12 +167,12 @@ const startEmergencySession = async ({
     });
 
     isNewEmergencyUser = true;
-
-    await createEmergencyProfile({
-      userId: user.id,
-      name,
-    });
   }
+
+  await createEmergencyProfile({
+    userId: user.id,
+    name,
+  });
 
   const location = await upsertUserLocation({
     userId: user.id,
