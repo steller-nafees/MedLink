@@ -1,75 +1,103 @@
-# React + TypeScript + Vite
+# MedLink Web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+MedLink Web is the browser-based dashboard application for the MedLink healthcare platform.
 
-Currently, two official plugins are available:
+The web application provides role-based dashboards and management interfaces for:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Hospital staff
+- System administrators
 
-## React Compiler
+The mobile application is responsible for patient and ambulance workflows, while the web application focuses on operational and administrative workflows.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## Tech Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- React
+- TypeScript
+- Vite
+- React Router
+- CSS / reusable UI components
+- REST API integration
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Project Structure
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
-
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
+```text
+apps/web/
+├── public/
+├── src/
+│   ├── app/
+│   │   └── Application-level configuration
+│   │
+│   ├── assets/
+│   │   └── Static images and assets
+│   │
+│   ├── features/
+│   │   ├── admin/
+│   │   │   ├── analytics/
+│   │   │   ├── dashboard/
+│   │   │   ├── drivers/
+│   │   │   ├── hospitals/
+│   │   │   ├── notifications/
+│   │   │   ├── users/
+│   │   │   └── verification/
+│   │   │
+│   │   ├── auth/
+│   │   │   ├── components/
+│   │   │   ├── hooks/
+│   │   │   ├── pages/
+│   │   │   ├── services/
+│   │   │   └── types/
+│   │   │
+│   │   └── hospital/
+│   │       ├── beds/
+│   │       ├── dashboard/
+│   │       ├── emergencies/
+│   │       ├── notifications/
+│   │       ├── payments/
+│   │       └── requests/
+│   │
+│   ├── layouts/
+│   │   ├── AdminLayout.tsx
+│   │   ├── AuthLayout.tsx
+│   │   └── HospitalLayout.tsx
+│   │
+│   ├── routes/
+│   │   ├── admin.tsx
+│   │   ├── auth.tsx
+│   │   ├── hospital.tsx
+│   │   └── index.tsx
+│   │
+│   ├── services/
+│   │   └── API and backend service integrations
+│   │
+│   ├── shared/
+│   │   ├── components/
+│   │   │   ├── cards/
+│   │   │   ├── charts/
+│   │   │   ├── forms/
+│   │   │   ├── tables/
+│   │   │   └── ui/
+│   │   │
+│   │   ├── constants/
+│   │   ├── hooks/
+│   │   ├── services/
+│   │   ├── theme/
+│   │   └── utils/
+│   │
+│   ├── store/
+│   │   └── Global application state
+│   │
+│   ├── types/
+│   │   └── Shared TypeScript types
+│   │
+│   └── utils/
+│       └── General utility functions
+│
+├── index.html
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+└── README.md

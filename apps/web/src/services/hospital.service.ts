@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { api } from "./api";
 import type { Ambulance, BedCapacitySummary, EmergencyCase, EmergencyRequest, HospitalReservation, HospitalServiceRequest, HospitalWard, Severity } from "@/types/hospital";
 
@@ -164,6 +165,11 @@ export function getBedCapacity(): BedCapacitySummary[] {
 export function getHospitalWards(): HospitalWard[] {
   return hospitalWards;
 }
+=======
+import type { EmergencyCase } from "@/types/hospital";
+
+const emergencyCases: EmergencyCase[] = [];
+>>>>>>> origin/main
 
 export function getEmergencyCases(): EmergencyCase[] {
   return emergencyCases;
@@ -175,6 +181,7 @@ export function getOpenEmergencyCount(): number {
       emergencyCase.status !== "completed" &&
       emergencyCase.status !== "arrived",
   ).length;
+<<<<<<< HEAD
 }
 
 export function severityStyle(severity: Severity) {
@@ -188,4 +195,6 @@ export function severityStyle(severity: Severity) {
 
 export function getHospitalRequests(): HospitalServiceRequest[] {
   return hospitalRequests;
+=======
+>>>>>>> origin/main
 }
