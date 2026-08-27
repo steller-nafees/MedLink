@@ -404,6 +404,9 @@ const createEmergencyProfile = async ({
             $1,
             $2
         )
+        ON CONFLICT (user_id)
+        DO UPDATE SET
+            first_name = EXCLUDED.first_name
         RETURNING *;
     `;
 

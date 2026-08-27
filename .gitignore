@@ -7,8 +7,6 @@ dist
 web-build
 
 # Environment
-.env
-.env.local
 .env.*.local
 
 # Logs
@@ -21,7 +19,6 @@ yarn-error.log*
 Thumbs.db
 
 # IDE
-.vscode
 .idea
 
 # Turbo
@@ -43,3 +40,4 @@ AGENTS.md
 
 #UI Kit
 ui-kit
+config.bat

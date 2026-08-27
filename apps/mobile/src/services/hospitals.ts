@@ -18,6 +18,10 @@ export type Hospital = {
   updated_at: string;
 };
 
+export type NearbyHospital = Hospital & {
+  distance_km: number;
+};
+
 export type HospitalWard = {
   id: string;
   ward_name: string;
@@ -98,6 +102,12 @@ async function request<T>(path: string): Promise<T> {
 
 export function getHospitals() {
   return request<Hospital[]>("/api/v1/hospitals?limit=100&offset=0&sortBy=name");
+}
+
+export function getNearbyHospitals(latitude: number, longitude: number, radius = 100) {
+  return request<NearbyHospital[]>(
+    `/api/v1/hospitals/nearby?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&radius=${encodeURIComponent(radius)}`,
+  );
 }
 
 export function getHospitalById(hospitalId: string) {
