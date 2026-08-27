@@ -13,9 +13,6 @@ type LoginResponse = { token: { accessToken: string }; data: AuthUser };
 
 export async function login(payload: LoginPayload) {
 	const { data } = await api.post<LoginResponse>("/auth/login", payload);
-	if (data.data.userType !== "HOSPITAL_ADMIN") {
-		throw new Error("This account is not a hospital administrator");
-	}
 	localStorage.setItem("medlink.accessToken", data.token.accessToken);
 	localStorage.setItem("medlink.user", JSON.stringify(data.data));
 	return data.data;
