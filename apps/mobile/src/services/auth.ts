@@ -7,6 +7,8 @@ const SOS_API_BASE_URL =
   (process.env.EXPO_PUBLIC_SOS_API_URL ?? API_BASE_URL).replace(/\/+$/, "");
 
 const USER_ID_STORAGE_KEY = "medlink_user_id";
+const EMERGENCY_SESSION_STORAGE_KEY = "medlink_emergency_session";
+let emergencyAccessToken: string | null = null;
 
 export type SignupRequest = {
   email: string;
@@ -129,19 +131,6 @@ export async function signUpCustomer(payload: SignupRequest): Promise<SignupResp
         phone: payload.phone.trim(),
         password: payload.password,
         userType: "CUSTOMER",
-        ...(payload.firstName ? { firstName: payload.firstName.trim() } : {}),
-        ...(payload.lastName ? { lastName: payload.lastName.trim() } : {}),
-        ...(payload.gender ? { gender: payload.gender } : {}),
-        ...(payload.dateOfBirth ? { dateOfBirth: payload.dateOfBirth.trim() } : {}),
-        ...(payload.nationalId ? { nationalId: payload.nationalId.trim() } : {}),
-        ...(payload.address ? { address: payload.address.trim() } : {}),
-        ...(payload.emergencyContactName
-          ? { emergencyContactName: payload.emergencyContactName.trim() }
-          : {}),
-        ...(payload.emergencyContactPhone
-          ? { emergencyContactPhone: payload.emergencyContactPhone.trim() }
-          : {}),
-        ...(payload.bloodGroup ? { bloodGroup: payload.bloodGroup } : {}),
       }),
       signal: controller.signal,
     });
@@ -321,9 +310,15 @@ export async function startEmergencySession(
   }
 }
 
-export async function saveAuthToken(accessToken: string, userId?: string) {
+export async function saveAuthToken(accessToken: string, userId?: string, options?: { emergency?: boolean }) {
   if (!accessToken || typeof accessToken !== "string") {
     throw new AuthRequestError("No valid token returned from the authentication API.", 500, "NO_TOKEN");
+  }
+
+  if (options?.emergency) {
+    await AsyncStorage.multiRemove(["medlink_token", USER_ID_STORAGE_KEY, EMERGENCY_SESSION_STORAGE_KEY]);
+    emergencyAccessToken = accessToken;
+    return;
   }
 
   await AsyncStorage.setItem("medlink_token", accessToken);
@@ -331,6 +326,8 @@ export async function saveAuthToken(accessToken: string, userId?: string) {
   if (userId) {
     await AsyncStorage.setItem(USER_ID_STORAGE_KEY, userId);
   }
+
+  await AsyncStorage.removeItem(EMERGENCY_SESSION_STORAGE_KEY);
 }
 
 export async function getCurrentUserId() {
@@ -338,5 +335,18 @@ export async function getCurrentUserId() {
 }
 
 export async function getAuthToken() {
-  return AsyncStorage.getItem("medlink_token");
+  if (await AsyncStorage.getItem(EMERGENCY_SESSION_STORAGE_KEY)) {
+    await AsyncStorage.multiRemove(["medlink_token", USER_ID_STORAGE_KEY, EMERGENCY_SESSION_STORAGE_KEY]);
+    return emergencyAccessToken;
+  }
+  return emergencyAccessToken ?? AsyncStorage.getItem("medlink_token");
+}
+
+export async function isEmergencySession() {
+  return emergencyAccessToken !== null;
+}
+
+export async function clearAuthSession() {
+  emergencyAccessToken = null;
+  await AsyncStorage.multiRemove(["medlink_token", USER_ID_STORAGE_KEY, EMERGENCY_SESSION_STORAGE_KEY]);
 }

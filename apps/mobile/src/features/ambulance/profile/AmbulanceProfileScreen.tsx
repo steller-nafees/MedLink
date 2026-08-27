@@ -11,6 +11,7 @@ import { BigButton } from "../../../components/ui/BigButton";
 import { useLang } from "../context/DriverLangContext";
 import { mockData } from "../data/mockData";
 import { theme } from "../../../theme";
+import { clearAuthSession } from "../../../services/auth";
 
 export function AmbulanceProfileScreen() {
   const { t, lang } = useLang();
@@ -158,7 +159,10 @@ export function AmbulanceProfileScreen() {
           <BigButton
             icon={LogOut}
             variant="outline"
-            onClick={() => router.push("/")} // Assuming '/' is auth or driver entry
+            onClick={async () => {
+              await clearAuthSession();
+              router.replace("/(auth)/login");
+            }}
           >
             {t("logout")}
           </BigButton>
