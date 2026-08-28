@@ -75,6 +75,8 @@ export function GuestSosModal({ onClose }: { onClose: () => void }) {
         params: {
           guest: "1",
           name: emergencySession.data.name,
+          phone: emergencySession.data.phone,
+          temporaryPassword: emergencySession.data.temporaryPassword ?? "",
           lat: String(emergencySession.data.latitude),
           lng: String(emergencySession.data.longitude),
         },

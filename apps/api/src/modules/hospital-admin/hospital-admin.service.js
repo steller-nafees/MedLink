@@ -32,6 +32,12 @@ const getActiveCases = async (userId) => {
     return repository.getActiveCasesByHospitalId(hospital.hospital_id);
 };
 
+const getDashboardAnalytics = async (userId) => {
+    const hospital = await repository.getHospitalIdByAdminId(userId);
+    if (!hospital) throw noAssignment("No hospital assignment found");
+    return repository.getDashboardAnalyticsByHospitalId(hospital.hospital_id);
+};
+
 const getHospitalReservations = async (userId) => {
     const hospital = await getAssignedHospital(userId);
     return repository.getReservationsByHospital(hospital.hospital_id);
@@ -100,4 +106,4 @@ const updateHospitalPayment = async (userId, paymentId, { totalAmount, paymentMe
     return repository.updatePayment(paymentId, hospital.hospital_id, { totalAmount, paymentMethod, paymentStatus, paidAt });
 };
 
-module.exports = { getMyHospital, getMyAssignments, getDashboard, getActiveCases, getHospitalReservations, getHospitalReservationById, approveHospitalReservation, getHospitalBeds, updateHospitalBedStatus, getHospitalPayments, getHospitalPaymentById, createHospitalPayment, getPatientPayments, updateHospitalPayment };
+module.exports = { getMyHospital, getMyAssignments, getDashboard, getActiveCases, getDashboardAnalytics, getHospitalReservations, getHospitalReservationById, approveHospitalReservation, getHospitalBeds, updateHospitalBedStatus, getHospitalPayments, getHospitalPaymentById, createHospitalPayment, getPatientPayments, updateHospitalPayment };

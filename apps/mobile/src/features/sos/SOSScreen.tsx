@@ -7,11 +7,18 @@ import {
   Pressable,
   TextInput,
   ActivityIndicator,
+  Alert,
   Linking,
   Animated,
   Easing,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLocalSearchParams } from 'expo-router';
+import * as Location from 'expo-location';
+import * as Clipboard from 'expo-clipboard';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import {
   Heart,
   Sparkles,
@@ -26,6 +33,8 @@ import {
   Star,
   Info,
   CheckCircle2,
+  Copy,
+  Download,
 } from 'lucide-react-native';
 import { theme } from '../../theme';
 import {
@@ -141,6 +150,10 @@ const FadeSlideIn: React.FC<{ children: React.ReactNode; delay?: number; style?:
 };
 
 export const SOSScreen: React.FC = () => {
+  const { phone: phoneParam, temporaryPassword: passwordParam } = useLocalSearchParams<{
+    phone?: string | string[];
+    temporaryPassword?: string | string[];
+  }>();
   const [phase, setPhase] = useState<Phase>('input');
   const [text, setText] = useState('');
   const [reserved, setReserved] = useState<{ bed?: boolean; icu?: boolean; ambulance?: string }>({});
@@ -164,17 +177,28 @@ export const SOSScreen: React.FC = () => {
     setPhase('analyzing');
 
     try {
-      if (typeof navigator === 'undefined' || !navigator.geolocation) {
-        throw new Error('Location is not available on this device. Please enable location access and try again.');
-      }
+      let location: { latitude: number; longitude: number };
+      if (Platform.OS === 'web') {
+        if (typeof navigator === 'undefined' || !navigator.geolocation) {
+          throw new Error('Location is not available in this browser. Please enable location access and try again.');
+        }
 
-      const location = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          ({ coords }) => resolve({ latitude: coords.latitude, longitude: coords.longitude }),
-          () => reject(new Error('We could not detect your location. Please allow location access and try again.')),
-          { enableHighAccuracy: true, timeout: 10000 },
-        );
-      });
+        location = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            ({ coords }) => resolve({ latitude: coords.latitude, longitude: coords.longitude }),
+            () => reject(new Error('We could not detect your location. Please allow location access and try again.')),
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+          );
+        });
+      } else {
+        const permission = await Location.requestForegroundPermissionsAsync();
+        if (permission.status !== Location.PermissionStatus.GRANTED) {
+          throw new Error('Location permission was denied. Please enable location access and try again.');
+        }
+
+        const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        location = { latitude: position.coords.latitude, longitude: position.coords.longitude };
+      }
 
       const result = await consultMedicalCondition({
         userDescription: val,
@@ -211,6 +235,8 @@ export const SOSScreen: React.FC = () => {
   // Shared top inset so nothing ever sits under the status bar / notch,
   // on iOS and Android alike (edge-to-edge safe).
   const topInset = Math.max(insets.top, 12);
+  const guestPhone = Array.isArray(phoneParam) ? phoneParam[0] : phoneParam;
+  const temporaryPassword = Array.isArray(passwordParam) ? passwordParam[0] : passwordParam;
 
   if (!online) {
     return (
@@ -277,7 +303,12 @@ export const SOSScreen: React.FC = () => {
         )}
         {phase === 'summary' && summary && (
           <FadeSlideIn>
-            <SummaryPhase summary={summary} onDone={resetAndExit} />
+            <SummaryPhase
+              summary={summary}
+              onDone={resetAndExit}
+              guestPhone={guestPhone}
+              temporaryPassword={temporaryPassword}
+            />
           </FadeSlideIn>
         )}
       </ScrollView>
@@ -1797,15 +1828,52 @@ const ActionButton: React.FC<ActionButtonProps> = ({ label, icon: Icon, onClick,
 interface SummaryPhaseProps {
   summary: SosSummary;
   onDone: () => void;
+  guestPhone?: string;
+  temporaryPassword?: string;
 }
 
-const SummaryPhase: React.FC<SummaryPhaseProps> = ({ summary, onDone }) => {
+const SummaryPhase: React.FC<SummaryPhaseProps> = ({ summary, onDone, guestPhone, temporaryPassword }) => {
   // Checkmark springs in with a slight overshoot — the classic
   // "success" micro-interaction — instead of appearing instantly.
   const checkScale = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.spring(checkScale, { toValue: 1, friction: 5, tension: 120, useNativeDriver: true }).start();
   }, [checkScale]);
+
+  const hasTemporaryCredentials = Boolean(guestPhone && temporaryPassword);
+  const credentialText = `Emergency phone number: ${guestPhone}\nTemporary password: ${temporaryPassword}`;
+
+  const copyCredentials = async () => {
+    await Clipboard.setStringAsync(credentialText);
+    Alert.alert('Copied', 'Your emergency number and temporary password are on the clipboard.');
+  };
+
+  const downloadCredentials = async () => {
+    if (!FileSystem.cacheDirectory) {
+      Alert.alert('Unable to download', 'A local file location is not available on this device.');
+      return;
+    }
+
+    try {
+      const fileUri = `${FileSystem.cacheDirectory}medlink-emergency-credentials.txt`;
+      await FileSystem.writeAsStringAsync(fileUri, credentialText, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert('File ready', 'The credentials file was created, but sharing is not available on this device.');
+        return;
+      }
+
+      await Sharing.shareAsync(fileUri, {
+        mimeType: 'text/plain',
+        dialogTitle: 'Save emergency credentials',
+        UTI: 'public.plain-text',
+      });
+    } catch {
+      Alert.alert('Unable to download', 'We could not create the credentials file. Please try again.');
+    }
+  };
 
   return (
     <View style={{ flex: 1, alignItems: 'center', paddingVertical: 40 }}>
@@ -1897,6 +1965,49 @@ const SummaryPhase: React.FC<SummaryPhaseProps> = ({ summary, onDone }) => {
           First aid: {summary.aiResponse.first_aid}
         </Text>
       </View>
+
+      {hasTemporaryCredentials && (
+        <View
+          style={{
+            width: '100%',
+            borderRadius: theme.radii.xxxl,
+            borderWidth: 1,
+            borderColor: `${theme.colors.primary}33`,
+            backgroundColor: theme.colors.card,
+            padding: 16,
+            marginBottom: 16,
+            gap: 12,
+          }}
+        >
+          <Text style={{ fontSize: 13, fontWeight: 'bold', color: theme.colors.foreground }}>
+            Emergency login details
+          </Text>
+          <View style={{ gap: 6 }}>
+            <Text style={{ fontSize: 11.5, color: theme.colors.mutedForeground }}>Phone number</Text>
+            <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.foreground }}>{guestPhone}</Text>
+            <Text style={{ fontSize: 11.5, color: theme.colors.mutedForeground, marginTop: 4 }}>Temporary password</Text>
+            <Text selectable style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.foreground }}>
+              {temporaryPassword}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <Pressable
+              onPress={copyCredentials}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 999, borderWidth: 1, borderColor: theme.colors.border, paddingVertical: 11 }}
+            >
+              <Copy size={15} color={theme.colors.primary} />
+              <Text style={{ fontSize: 12, fontWeight: 'bold', color: theme.colors.primary }}>Copy</Text>
+            </Pressable>
+            <Pressable
+              onPress={downloadCredentials}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 999, backgroundColor: theme.colors.primary, paddingVertical: 11 }}
+            >
+              <Download size={15} color={theme.colors.primaryForeground} />
+              <Text style={{ fontSize: 12, fontWeight: 'bold', color: theme.colors.primaryForeground }}>Download</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
 
       {/* Coordination fee */}
       <View

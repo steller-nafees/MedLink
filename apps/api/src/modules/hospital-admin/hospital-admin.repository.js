@@ -77,6 +77,58 @@ const getActiveCasesByHospitalId = async (hospitalId) => {
     return result.rows;
 };
 
+const getDashboardAnalyticsByHospitalId = async (hospitalId) => {
+    const weeklyResult = await pool.query(`
+        WITH days AS (
+            SELECT generate_series(
+                date_trunc('day', CURRENT_DATE)::date - INTERVAL '6 days',
+                date_trunc('day', CURRENT_DATE)::date,
+                INTERVAL '1 day'
+            )::date AS day
+        )
+        SELECT to_char(days.day, 'Dy') AS day,
+            COALESCE(COUNT(DISTINCT me.id), 0)::integer AS cases
+        FROM days
+        LEFT JOIN event_hospitals eh
+            ON eh.hospital_id = $1
+        LEFT JOIN medical_events me
+            ON me.id = eh.medical_event_id
+            AND me.created_at::date = days.day
+        GROUP BY days.day
+        ORDER BY days.day;
+    `, [hospitalId]);
+
+    const severityResult = await pool.query(`
+        WITH severities(severity, sort_order) AS (
+            VALUES ('critical', 1), ('high', 2), ('moderate', 3), ('low', 4)
+        ),
+        counts AS (
+            SELECT LOWER(me.severity) AS severity, COUNT(DISTINCT me.id)::integer AS count
+            FROM event_hospitals eh
+            INNER JOIN medical_events me ON me.id = eh.medical_event_id
+            WHERE eh.hospital_id = $1
+                AND me.created_at >= CURRENT_DATE - INTERVAL '30 days'
+            GROUP BY LOWER(me.severity)
+        ),
+        total AS (
+            SELECT COALESCE(SUM(count), 0)::integer AS count FROM counts
+        )
+        SELECT initcap(severities.severity) AS name,
+            CASE WHEN total.count = 0 THEN 0
+                ELSE ROUND((COALESCE(counts.count, 0)::numeric / total.count) * 100)::integer
+            END AS value
+        FROM severities
+        CROSS JOIN total
+        LEFT JOIN counts ON counts.severity = severities.severity
+        ORDER BY severities.sort_order;
+    `, [hospitalId]);
+
+    return {
+        weekly: weeklyResult.rows,
+        bySeverity: severityResult.rows,
+    };
+};
+
 const getReservationsByHospital = async (hospitalId) => {
     const result = await pool.query(`
         SELECT r.id AS reservation_id, r.medical_event_id, r.user_id, r.hospital_id,
@@ -250,7 +302,7 @@ const updatePayment = async (paymentId, hospitalId, { totalAmount, paymentMethod
 
 module.exports = {
     getHospitalIdByAdminId, getHospitalByAdminId, getAssignmentsByAdminId,
-    getDashboardByAdminId, getActiveCasesByHospitalId, getReservationsByHospital,
+    getDashboardByAdminId, getActiveCasesByHospitalId, getDashboardAnalyticsByHospitalId, getReservationsByHospital,
     getReservationById, approveReservation, getBedsByHospital, updateBedStatus,
     getPaymentsByHospitalId, getPaymentById, createPayment, getPaymentsByPatientId,
     updatePayment,
