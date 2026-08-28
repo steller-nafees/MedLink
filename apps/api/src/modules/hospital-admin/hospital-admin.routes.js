@@ -13,6 +13,7 @@ router.get("/my-assignments", ...adminOnly, controller.getMyAssignments);
 router.get("/dashboard", ...adminOnly, controller.getDashboard);
 router.get("/dashboard/analytics", ...adminOnly, controller.getDashboardAnalytics);
 router.get("/dashboard/active-cases", ...adminOnly, controller.getActiveCases);
+router.put("/dashboard/active-cases/:eventId/approve", ...adminOnly, controller.approveEmergencyCase);
 router.get("/reservations", ...adminOnly, controller.getReservations);
 router.get("/reservations/:reservationId", ...adminOnly, controller.getReservationById);
 router.put("/reservations/:reservationId/approve", ...adminOnly, controller.approveReservation);

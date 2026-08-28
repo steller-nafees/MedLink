@@ -66,15 +66,99 @@ const getDashboardByAdminId = async (userId) => {
 const getActiveCasesByHospitalId = async (hospitalId) => {
     const result = await pool.query(`
         SELECT me.id AS event_id, me.user_id, me.user_description,
+            up.first_name, up.last_name, u.phone,
             me.event_location_latitude::double precision AS event_location_latitude,
             me.event_location_longitude::double precision AS event_location_longitude,
-            me.severity, me.event_status, me.is_emergency, me.created_at, me.updated_at
+                        me.severity,
+                        CASE WHEN EXISTS (
+                                SELECT 1 FROM reservations approved_reservation
+                                WHERE approved_reservation.medical_event_id = me.id
+                                    AND approved_reservation.hospital_id = eh.hospital_id
+                                    AND approved_reservation.reservation_status = 'APPROVED'
+                        ) THEN 'ACCEPTED' ELSE me.event_status::text END AS event_status,
+                        me.is_emergency, me.created_at, me.updated_at
         FROM event_hospitals eh
         INNER JOIN medical_events me ON me.id = eh.medical_event_id
+        INNER JOIN users u ON u.id = me.user_id
+        LEFT JOIN user_profiles up ON up.user_id = me.user_id
         WHERE eh.hospital_id = $1 AND me.event_status NOT IN ('COMPLETED', 'CANCELLED')
         ORDER BY me.created_at DESC;
     `, [hospitalId]);
     return result.rows;
+};
+
+const approveEmergencyCase = async (eventId, hospitalId) => {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+        const result = await client.query(`
+            UPDATE medical_events me
+            SET updated_at = CURRENT_TIMESTAMP
+            FROM event_hospitals eh
+            WHERE me.id = $1
+              AND eh.medical_event_id = me.id
+              AND eh.hospital_id = $2
+              AND me.is_emergency = TRUE
+              AND me.event_status = 'PENDING'
+            RETURNING me.id AS event_id, me.user_id, me.user_description,
+                me.severity, me.event_status, me.is_emergency, me.created_at, me.updated_at;
+        `, [eventId, hospitalId]);
+        if (result.rows.length === 0) {
+            await client.query("ROLLBACK");
+            return null;
+        }
+        const reservationResult = await client.query(`
+            SELECT id, reservation_status
+            FROM reservations
+            WHERE medical_event_id = $1 AND hospital_id = $2
+                            AND reservation_status IN ('PENDING', 'APPROVED')
+            ORDER BY requested_at DESC
+            LIMIT 1
+            FOR UPDATE;
+        `, [eventId, hospitalId]);
+
+        if (reservationResult.rows.length === 0) {
+            const bedResult = await client.query(`
+                SELECT b.id AS bed_id, b.ward_id, me.user_id, me.severity
+                FROM medical_events me
+                INNER JOIN hospital_wards w ON w.hospital_id = $2
+                INNER JOIN hospital_beds b ON b.ward_id = w.id AND b.hospital_id = $2
+                WHERE me.id = $1 AND b.bed_status = 'AVAILABLE'
+                ORDER BY CASE
+                    WHEN LOWER(me.severity) = 'critical' AND w.ward_name ILIKE '%icu%' THEN 0
+                    WHEN w.ward_name ILIKE '%emergency%' THEN 1
+                    WHEN w.ward_name ILIKE '%icu%' THEN 2
+                    ELSE 3
+                END, b.bed_number
+                LIMIT 1
+                FOR UPDATE OF b;
+            `, [eventId, hospitalId]);
+            if (bedResult.rows.length === 0) {
+                const error = new Error("No available hospital bed can be assigned to this emergency case");
+                error.statusCode = 409;
+                throw error;
+            }
+            const bed = bedResult.rows[0];
+            await client.query("UPDATE hospital_beds SET bed_status = 'RESERVED', updated_at = CURRENT_TIMESTAMP WHERE id = $1", [bed.bed_id]);
+            await client.query(`
+                INSERT INTO reservations (medical_event_id, user_id, hospital_id, ward_id, bed_id, reservation_mode, reservation_status, approved_at)
+                VALUES ($1, $2, $3, $4, $5, 'EMERGENCY', 'APPROVED', CURRENT_TIMESTAMP);
+            `, [eventId, bed.user_id, hospitalId, bed.ward_id, bed.bed_id]);
+        }
+
+        await client.query(`
+            UPDATE reservations
+            SET reservation_status = 'APPROVED', approved_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            WHERE medical_event_id = $1 AND hospital_id = $2 AND reservation_status = 'PENDING';
+        `, [eventId, hospitalId]);
+        await client.query("COMMIT");
+        return result.rows[0];
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
+    }
 };
 
 const getDashboardAnalyticsByHospitalId = async (hospitalId) => {
@@ -302,7 +386,7 @@ const updatePayment = async (paymentId, hospitalId, { totalAmount, paymentMethod
 
 module.exports = {
     getHospitalIdByAdminId, getHospitalByAdminId, getAssignmentsByAdminId,
-    getDashboardByAdminId, getActiveCasesByHospitalId, getDashboardAnalyticsByHospitalId, getReservationsByHospital,
+    getDashboardByAdminId, getActiveCasesByHospitalId, approveEmergencyCase, getDashboardAnalyticsByHospitalId, getReservationsByHospital,
     getReservationById, approveReservation, getBedsByHospital, updateBedStatus,
     getPaymentsByHospitalId, getPaymentById, createPayment, getPaymentsByPatientId,
     updatePayment,

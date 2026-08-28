@@ -33,6 +33,9 @@ export type HospitalActiveCase = {
   event_id: string;
   user_id: string;
   user_description: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  phone?: string | null;
   event_location_latitude?: number | null;
   event_location_longitude?: number | null;
   severity: string;
@@ -97,6 +100,11 @@ export async function getActiveCases() {
   return response.data.data;
 }
 
+export async function approveEmergencyCase(eventId: string) {
+  const response = await api.put<ApiResponse<HospitalActiveCase>>(`/hospital/dashboard/active-cases/${eventId}/approve`);
+  return response.data.data;
+}
+
 export async function getHospitalBedsFromApi() {
   const response = await api.get<ApiResponse<HospitalBed[]>>("/hospital/beds");
   return response.data.data;
@@ -134,9 +142,8 @@ export async function getHospitalIncomingRequests() {
   const reservationRequests = reservations.map((reservation) =>
     mapReservationToRequest(reservation, hospitalName, paymentsByReservation.get(reservation.reservation_id)),
   );
-  const reservationEventIds = new Set(reservations.map((reservation) => reservation.medical_event_id).filter(Boolean));
   const emergencyRequests = activeCases
-    .filter((activeCase) => activeCase.is_emergency && !reservationEventIds.has(activeCase.event_id))
+    .filter((activeCase) => activeCase.is_emergency)
     .map((activeCase) => mapActiveCaseToRequest(activeCase, hospitalName));
 
   return [...emergencyRequests, ...reservationRequests].sort((left, right) => {
@@ -187,13 +194,14 @@ function mapReservationToRequest(
 
 function mapActiveCaseToRequest(activeCase: HospitalActiveCase, hospitalName: string): HospitalServiceRequest {
   const createdAt = parseApiDate(activeCase.created_at);
+  const patientName = [activeCase.first_name, activeCase.last_name].filter(Boolean).join(" ") || `Patient ${activeCase.user_id.slice(0, 8)}`;
   return {
     id: activeCase.event_id,
     kind: "emergency",
     title: "Emergency SOS",
     hospital: hospitalName,
     department: "Emergency",
-    patient: activeCase.user_description ? "Emergency patient" : `Patient ${activeCase.user_id.slice(0, 8)}`,
+    patient: patientName,
     date: createdAt.date,
     time: createdAt.time,
     status: mapEventStatus(activeCase.event_status),
@@ -202,6 +210,7 @@ function mapActiveCaseToRequest(activeCase: HospitalActiveCase, hospitalName: st
     payment: "unpaid",
     createdAt: activeCase.created_at,
     patientId: activeCase.user_id,
+    phone: activeCase.phone ?? undefined,
     severity: activeCase.severity,
     eventStatus: activeCase.event_status,
     location: [activeCase.event_location_latitude, activeCase.event_location_longitude].filter(Boolean).join(", "),

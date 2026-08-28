@@ -5,8 +5,8 @@ const createReservationSchema = z.object({
     hospitalId: z.string().uuid("Invalid hospital ID"),
     wardId: z.string().uuid("Invalid ward ID"),
     bedId: z.string().uuid("Invalid bed ID").optional().nullable(),
-    reservationMode: z.enum(["NORMAL", "EMERGENCY"], {
-        message: "reservationMode must be either NORMAL or EMERGENCY",
+    reservationMode: z.enum(["NORMAL", "EMERGENCY", "ICU"], {
+        message: "reservationMode must be NORMAL, EMERGENCY, or ICU",
     }),
 });
 

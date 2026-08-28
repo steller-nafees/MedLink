@@ -60,17 +60,28 @@ export function HospitalDashboardPage() {
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
-		Promise.all([
+		let cancelled = false;
+		const loadDashboard = () => Promise.all([
 			getHospitalDashboard(),
 			getHospitalDashboardAnalytics().catch(() => ({ weekly: [], bySeverity: [] })),
 			getActiveCases(),
 		])
 			.then(([dashboardSummary, dashboardAnalytics, cases]) => {
+				if (cancelled) return;
 				setSummary(dashboardSummary);
 				setAnalytics(dashboardAnalytics);
 				setActiveCases(cases);
 			})
-			.catch((requestError: unknown) => setError(requestError instanceof Error ? requestError.message : "Unable to load dashboard"));
+			.catch((requestError: unknown) => {
+				if (!cancelled) setError(requestError instanceof Error ? requestError.message : "Unable to load dashboard");
+			});
+
+		loadDashboard();
+		const intervalId = window.setInterval(loadDashboard, 5000);
+		return () => {
+			cancelled = true;
+			window.clearInterval(intervalId);
+		};
 	}, []);
 
 	const bedsTotal = summary?.total_beds ?? 0;

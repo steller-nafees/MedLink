@@ -67,6 +67,8 @@ const createReservation = async ({
         medicalEventId, userId, hospitalId, wardId, bedId, reservationMode,
     });
 
+    await reservationRepository.linkEventToHospital(client, medicalEventId, hospitalId);
+
     if (bedId) {
         await reservationRepository.reserveBed(client, bedId);
     }
