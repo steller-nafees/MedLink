@@ -1,5 +1,7 @@
 import { useEffect, type ReactNode } from "react";
+import { Navigate } from "react-router-dom";
 import { AdminLayout } from "@/layouts/AdminLayout";
+import { getStoredUser } from "@/services/auth";
 
 const adminHead = {
   title: "Super Admin · MedLink Platform Console",
@@ -9,6 +11,11 @@ const adminHead = {
 };
 
 export function AdminRoute({ children }: { children: ReactNode }) {
+  const user = getStoredUser();
+  if (!user || user.userType !== "SUPER_ADMIN") {
+    return <Navigate to={{ pathname: "/", search: "?auth=true" }} replace />;
+  }
+
   useEffect(() => {
     document.title = adminHead.title;
     

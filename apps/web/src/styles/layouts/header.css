@@ -1,9 +1,9 @@
 .dashboard-header {
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 20;
   height: 72px;
-  gap: 20px;
+  gap: 12px;
   margin: 14px 20px 0;
   padding: 0 16px 0 18px;
   border: 1px solid var(--border);
@@ -13,10 +13,39 @@
   backdrop-filter: blur(12px);
 }
 
+.dashboard-menu-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  padding: 10px 9px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-variant);
+  cursor: pointer;
+}
+
+.dashboard-menu-toggle span {
+  display: block;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--foreground);
+}
+
+@media (max-width: 1023px) {
+  .dashboard-menu-toggle {
+    display: flex;
+  }
+}
+
 .dashboard-search {
   position: relative;
   width: 100%;
   max-width: 520px;
+  min-width: 0;
 }
 
 .dashboard-search svg {

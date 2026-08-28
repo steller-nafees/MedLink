@@ -31,4 +31,6 @@ export function getStoredUser(): AuthUser | null {
 export function logout() {
 	localStorage.removeItem("medlink.accessToken");
 	localStorage.removeItem("medlink.user");
+	localStorage.removeItem("medlink.role");
+	localStorage.removeItem("medlink.token");
 }
