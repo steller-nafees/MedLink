@@ -24,7 +24,13 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow MedLink to use your location for emergency assistance and medical guidance."
+        }
+      ]
     ]
   }
 }

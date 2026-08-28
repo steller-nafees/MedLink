@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react-native";
 import { theme } from "../../theme";
+import { getCurrentLocation } from "../../lib/location";
 import { AuthRequestError, saveAuthToken, startEmergencySession } from "../../services/auth";
 
 export function GuestSosModal({ onClose }: { onClose: () => void }) {
@@ -31,26 +32,18 @@ export function GuestSosModal({ onClose }: { onClose: () => void }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const detect = () => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setError("Location isn't available on this device. Enter it manually.");
-      return;
-    }
-
+  const detect = async () => {
     setLocating(true);
     setError("");
 
-    navigator.geolocation.getCurrentPosition(
-      ({ coords: c }) => {
-        setCoords({ lat: c.latitude, lng: c.longitude });
-        setLocating(false);
-      },
-      () => {
-        setError("We couldn't detect your location. Allow access or enter it manually.");
-        setLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+    try {
+      const location = await getCurrentLocation();
+      setCoords({ lat: location.latitude, lng: location.longitude });
+    } catch (locationError) {
+      setError(locationError instanceof Error ? locationError.message : "We couldn't detect your location. Please try again.");
+    } finally {
+      setLocating(false);
+    }
   };
 
   const canSubmit = name.trim().length >= 2 && phone.trim().length > 0 && !!coords && !submitting;
@@ -69,7 +62,7 @@ export function GuestSosModal({ onClose }: { onClose: () => void }) {
         longitude: coords.lng,
       });
 
-      await saveAuthToken(emergencySession.token.accessToken, emergencySession.data.userId);
+      await saveAuthToken(emergencySession.token.accessToken, emergencySession.data.userId, { emergency: true });
       router.replace({
         pathname: "/(patient)/sos",
         params: {
@@ -79,6 +72,9 @@ export function GuestSosModal({ onClose }: { onClose: () => void }) {
           temporaryPassword: emergencySession.data.temporaryPassword ?? "",
           lat: String(emergencySession.data.latitude),
           lng: String(emergencySession.data.longitude),
+          ...(emergencySession.data.temporaryPassword
+            ? { temporaryPassword: emergencySession.data.temporaryPassword }
+            : {}),
         },
       });
     } catch (requestError) {
