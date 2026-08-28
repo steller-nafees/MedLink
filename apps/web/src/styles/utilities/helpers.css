@@ -1,0 +1,17 @@
+.gradient-primary {
+  background: linear-gradient(135deg, #16a89c, #3dbdb3);
+}
+
+.glass {
+  background: rgb(255 255 255 / 65%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.sos-ring {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+.float-y {
+  animation: float-y 3s ease-in-out infinite;
+}
