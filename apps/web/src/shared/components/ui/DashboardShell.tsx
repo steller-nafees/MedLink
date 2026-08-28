@@ -1,8 +1,8 @@
-import { useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { Bell, ChevronDown, HelpCircle, LogOut, Search, Settings, User } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import dashboardLogo from "@/assets/images/Logos/medlink-dashboard-logo.png";
-import compactLogo from "@/assets/images/Logos/medlink_without_tagline.png";
+import dashboardLogo from "@/assets/images/Logos/medlink_dashboard_white.png";
+import compactLogo from "@/assets/images/Logos/medlink_compact_white.png";
 
 export type NavItem = {
   to: string;
@@ -29,24 +29,6 @@ function initials(name: string): string {
     .join("");
 }
 
-function MenuIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="4" y1="6" x2="20" y2="6" />
-      <line x1="4" y1="12" x2="20" y2="12" />
-      <line x1="4" y1="18" x2="20" y2="18" />
-    </svg>
-  );
-}
-
 export function DashboardShell({
   role,
   nav,
@@ -57,25 +39,61 @@ export function DashboardShell({
 }: DashboardShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const userInitials = initials(user.name);
-  const visibleNav = collapsed ? nav.filter((item) => !item.comingSoon) : nav;
+  const visibleNav = collapsed && !mobileNavOpen ? nav.filter((item) => !item.comingSoon) : nav;
+  const showLabels = !collapsed || mobileNavOpen;
+
+  useEffect(() => {
+    setMobileNavOpen(false);
+    setProfileOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileNavOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [mobileNavOpen]);
 
   return (
-    <div className={`dashboard-shell${collapsed ? " sidebar-collapsed" : ""}`}>
-      <aside className="dashboard-sidebar">
+    <div
+      className={`dashboard-shell${collapsed ? " sidebar-collapsed" : ""}${mobileNavOpen ? " mobile-nav-open" : ""}`}
+    >
+      {mobileNavOpen && (
+        <button
+          type="button"
+          className="dashboard-sidebar-backdrop"
+          aria-label="Close navigation"
+          onClick={() => setMobileNavOpen(false)}
+        />
+      )}
+
+      <aside className="dashboard-sidebar" id="dashboard-sidebar">
         <div className="dashboard-brand">
-          <img className="dashboard-logo dashboard-logo-expanded" src={dashboardLogo} alt="MedLink" />
-          <img className="dashboard-logo dashboard-logo-collapsed" src={compactLogo} alt="MedLink" />
           <button
             type="button"
-            className="dashboard-collapse-toggle"
+            className="dashboard-logo-toggle"
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-pressed={collapsed}
-            onClick={() => setCollapsed((prev) => !prev)}
+            onClick={() => {
+              if (window.matchMedia("(max-width: 1023px)").matches) {
+                setMobileNavOpen(false);
+                return;
+              }
+              setCollapsed((prev) => !prev);
+            }}
           >
-            <MenuIcon className="dashboard-collapse-icon" />
+            <img className="dashboard-logo dashboard-logo-expanded" src={dashboardLogo} alt="MedLink" />
+            <img className="dashboard-logo dashboard-logo-collapsed" src={compactLogo} alt="MedLink" />
           </button>
         </div>
 
@@ -96,10 +114,10 @@ export function DashboardShell({
                   role="link"
                   aria-disabled="true"
                   tabIndex={-1}
-                  title={collapsed ? `${item.label} (coming soon)` : undefined}
+                  title={showLabels ? undefined : `${item.label} (coming soon)`}
                 >
                   <Icon className="dashboard-nav-icon" />
-                  {!collapsed && (
+                  {showLabels && (
                     <>
                       <span>{item.label}</span>
                       <span className="dashboard-badge dashboard-badge-pill dashboard-badge-soon">
@@ -116,11 +134,12 @@ export function DashboardShell({
                 key={item.to}
                 to={item.to}
                 className={`dashboard-nav-item${active ? " active" : ""}`}
-                title={collapsed ? item.label : undefined}
+                title={showLabels ? undefined : item.label}
+                onClick={() => setMobileNavOpen(false)}
               >
                 <Icon className="dashboard-nav-icon" />
-                {!collapsed && <span>{item.label}</span>}
-                {!collapsed && item.badge !== undefined && (
+                {showLabels && <span>{item.label}</span>}
+                {showLabels && item.badge !== undefined && (
                   <span
                     className={
                       typeof item.badge === "string"
@@ -138,25 +157,24 @@ export function DashboardShell({
 
         <button type="button" className="dashboard-support-button">
           <HelpCircle className="dashboard-support-icon" aria-hidden="true" />
-          {!collapsed && <span>Contact support</span>}
+          {showLabels && <span>Contact support</span>}
         </button>
-
-        <div className="dashboard-user-card">
-          <div className="dashboard-avatar gradient-primary">{userInitials}</div>
-          {!collapsed && (
-            <>
-              <div className="dashboard-user-copy">
-                <strong>{user.name}</strong>
-                <span>{user.role}</span>
-              </div>
-              <ChevronDown className="dashboard-chevron" />
-            </>
-          )}
-        </div>
       </aside>
 
       <div className="dashboard-content">
         <header className="dashboard-header glass">
+          <button
+            type="button"
+            className="dashboard-menu-toggle"
+            aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"}
+            aria-expanded={mobileNavOpen}
+            aria-controls="dashboard-sidebar"
+            onClick={() => setMobileNavOpen((open) => !open)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
           <div className="dashboard-search">
             <Search aria-hidden="true" />
             <input type="search" placeholder={searchPlaceholder} />
@@ -195,7 +213,14 @@ export function DashboardShell({
                     <Settings aria-hidden="true" />
                     Settings
                   </button>
-                  <button type="button" role="menuitem" onClick={() => { onLogout?.(); navigate("/hospital/login"); }}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      onLogout?.();
+                      navigate("/?auth=true");
+                    }}
+                  >
                     <LogOut aria-hidden="true" />
                     Logout
                   </button>

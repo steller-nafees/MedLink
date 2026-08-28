@@ -9,12 +9,10 @@ import {
   ShieldCheck,
   Stethoscope,
   User,
-  X,
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useState } from "react";
-import { LoginPage } from "@/features/auth/pages/LoginPage";
-import { SignupPage } from "@/features/auth/pages/SignupPage";
+import { useState, useEffect } from "react";
+import { AuthModal, type AuthTab } from "@/features/auth/components/AuthModal";
 import logo from "@/assets/images/Logos/medlink_without_tagline.png";
 
 const fadeUp: Variants = {
@@ -87,16 +85,43 @@ const why = [
 
 export function LandingPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [authMode, setAuthMode] = useState<"login" | "signup" | null>(() =>
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [authTab, setAuthTab] = useState<AuthTab | null>(() =>
     searchParams.get("signup") === "true" ? "signup" : searchParams.get("auth") === "true" ? "login" : null,
   );
-  const openAuth = (mode: "login" | "signup") => {
-    setAuthMode(mode);
+  const openAuth = (mode: AuthTab) => {
+    setAuthTab(mode);
     setSearchParams({ auth: "true", ...(mode === "signup" ? { signup: "true" } : {}) });
   };
   const closeAuth = () => {
-    setAuthMode(null);
+    setAuthTab(null);
     setSearchParams({});
+  };
+
+  useEffect(() => {
+    if (searchParams.get("auth") !== "true") {
+      setAuthTab(null);
+      return;
+    }
+    setAuthTab(searchParams.get("signup") === "true" ? "signup" : "login");
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
+
+  const openAuthFromMenu = (mode: AuthTab) => {
+    setMenuOpen(false);
+    openAuth(mode);
   };
 
   return (
@@ -118,8 +143,38 @@ export function LandingPage() {
           <button type="button" onClick={() => openAuth("signup")} className="landing-header-cta landing-auth-button">
             Get started
           </button>
+          <button
+            type="button"
+            className="landing-menu-toggle"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
         </div>
       </header>
+
+      {menuOpen && (
+        <div className="landing-mobile-nav" role="dialog" aria-label="Mobile navigation">
+          <nav>
+            <a href="#hero" onClick={() => setMenuOpen(false)}>Home</a>
+            <a href="#how-it-works" onClick={() => setMenuOpen(false)}>How it works</a>
+            <a href="#who-its-for" onClick={() => setMenuOpen(false)}>Who it's for</a>
+            <a href="#why" onClick={() => setMenuOpen(false)}>Why MedLink</a>
+          </nav>
+          <div className="landing-mobile-actions">
+            <button type="button" onClick={() => openAuthFromMenu("login")} className="landing-login landing-auth-button">
+              Log in
+            </button>
+            <button type="button" onClick={() => openAuthFromMenu("signup")} className="landing-header-cta landing-auth-button">
+              Get started
+            </button>
+          </div>
+        </div>
+      )}
 
       <main>
         <section className="landing-hero" id="hero">
@@ -361,24 +416,14 @@ export function LandingPage() {
         </div>
       </footer>
 
-      {authMode && (
-        <div className="landing-auth-overlay" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && closeAuth()}>
-          <section className="landing-auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
-            <div className="landing-auth-modal-header">
-              <div>
-                <span className="landing-kicker">MedLink secure access</span>
-                <h2 id="auth-modal-title">{authMode === "login" ? "Welcome back" : "Join the care network"}</h2>
-              </div>
-              <button type="button" onClick={closeAuth} className="landing-auth-close" aria-label="Close authentication dialog"><X size={20} /></button>
-            </div>
-            <div className="landing-auth-tabs" role="tablist" aria-label="Authentication options">
-              <button type="button" role="tab" aria-selected={authMode === "login"} onClick={() => setAuthMode("login")} className={authMode === "login" ? "active" : ""}>Log in</button>
-              <button type="button" role="tab" aria-selected={authMode === "signup"} onClick={() => setAuthMode("signup")} className={authMode === "signup" ? "active" : ""}>Sign up</button>
-            </div>
-            {authMode === "login" ? <LoginPage onSignup={() => setAuthMode("signup")} /> : <SignupPage onBack={() => setAuthMode("login")} />}
-            {authMode === "signup" && <p className="landing-auth-contact">Need help choosing an account? <a href="mailto:hello@medlink.health">Contact us</a>.</p>}
-          </section>
-        </div>
+      {authTab && (
+        <AuthModal
+          initialTab={authTab}
+          onClose={closeAuth}
+          onTabChange={(tab) =>
+            setSearchParams({ auth: "true", ...(tab === "signup" ? { signup: "true" } : {}) })
+          }
+        />
       )}
     </div>
   );

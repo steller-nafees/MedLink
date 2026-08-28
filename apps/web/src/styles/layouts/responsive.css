@@ -1,15 +1,111 @@
-@media (max-width: 700px) {
-  .beds-summary-grid {
-    grid-template-columns: 1fr;
+html,
+body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+.dashboard-shell,
+.dashboard-content,
+.dashboard-main,
+.landing-page {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.recharts-responsive-container,
+.recharts-wrapper {
+  min-width: 0 !important;
+}
+
+.payment-table-wrap,
+.ui-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 30;
+  }
+}
+
+@media (max-width: 1200px) {
+  .hospital-dashboard .hospital-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
-  .beds-grid {
-    grid-template-columns: repeat(8, minmax(0, 1fr));
+  .hospital-dashboard .hospital-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .hospital-dashboard .hospital-wide-panel {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 1023px) {
+  .hospital-dashboard {
+    max-width: none;
+    margin: 0;
+  }
+
+  .dashboard-header {
+    position: fixed;
+    top: 10px;
+    right: 12px;
+    left: 12px;
+    z-index: 20;
+    margin: 0;
+  }
+
+  .dashboard-main {
+    padding-top: 88px;
+  }
+
+  .dashboard-header {
+    height: 64px;
+    padding: 0 10px 0 10px;
+  }
+
+  .dashboard-profile-copy,
+  .dashboard-profile-chevron {
+    display: none;
+  }
+
+  .dashboard-search {
+    max-width: none;
   }
 
   .ui-page-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .reservation-page-head,
+  .ambulance-heading,
+  .hospital-dashboard-header,
+  .hospital-panel-heading,
+  .request-panel > header,
+  .reservation-panel > header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+    .hospital-dashboard-header {
+      align-items: center;
+      flex-direction: row;
+    }
+
+  .hospital-mini-stats {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -22,13 +118,61 @@
     position: static;
   }
 
-  .hospital-kpi-grid,
-  .hospital-grid {
+  .hospital-dashboard .hospital-kpi-grid,
+  .hospital-dashboard .hospital-grid,
+  .beds-summary-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .hospital-wide-panel {
-    grid-column: span 2;
+  .hospital-dashboard .hospital-grid-top > .hospital-wide-panel:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .hospital-dashboard .hospital-grid-top > .hospital-panel:nth-child(2),
+  .hospital-dashboard .hospital-grid-top > .hospital-queue {
+    grid-column: span 1;
+  }
+
+  .hospital-dashboard .hospital-grid-top > .hospital-insight {
+    grid-column: 1 / -1;
+  }
+
+  .ambulance-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .ambulance-menu {
+    left: auto;
+    right: 0;
+    width: min(288px, calc(100vw - 48px));
+  }
+}
+
+@media (max-width: 700px) {
+  .beds-summary-grid,
+  .payment-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .beds-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .ui-page-header h1,
+  .hospital-dashboard h1,
+  .ambulance-heading h1,
+  .reservation-page-head h1 {
+    font-size: 24px;
+  }
+
+  .hospital-actions,
+  .ui-page-actions {
+    width: 100%;
+  }
+
+  .hospital-actions .ui-button,
+  .ui-page-actions .ui-button {
+    flex: 1;
   }
 }
 
@@ -40,6 +184,7 @@
 
   .hospital-emergency-filters {
     width: 100%;
+    flex-wrap: wrap;
   }
 
   .hospital-filter {
@@ -47,12 +192,19 @@
     justify-content: center;
   }
 
-  .hospital-kpi-grid,
-  .hospital-grid {
+  .hospital-dashboard .hospital-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hospital-dashboard .hospital-grid,
+  .beds-summary-grid {
     grid-template-columns: 1fr;
   }
 
-  .hospital-wide-panel {
+  .hospital-dashboard .hospital-grid-top > .hospital-wide-panel:first-child,
+  .hospital-dashboard .hospital-grid-top > .hospital-panel:nth-child(2),
+  .hospital-dashboard .hospital-grid-top > .hospital-queue,
+  .hospital-dashboard .hospital-grid-top > .hospital-insight {
     grid-column: auto;
   }
 
@@ -77,7 +229,51 @@
     margin-left: auto;
   }
 
-  .hospital-dashboard h1 {
-    font-size: 28px;
+  .dashboard-header {
+    top: 8px;
+    right: 8px;
+    left: 8px;
+    height: auto;
+    min-height: 56px;
+    flex-wrap: wrap;
+    padding: 8px 10px;
+  }
+
+  .dashboard-main {
+    padding-top: 92px;
+  }
+
+  .dashboard-search {
+    order: 3;
+    flex-basis: 100%;
+    max-width: none;
+    margin-top: 4px;
+    margin-bottom: 4px;
+  }
+
+  .dashboard-search input {
+    height: 38px;
+  }
+
+  .dashboard-header-actions {
+    margin-left: auto;
+  }
+
+  .beds-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .hospital-detail-actions {
+    flex-wrap: wrap;
+  }
+
+  .hospital-detail-actions .ui-button {
+    flex: 1;
+  }
+
+  .request-modal,
+  .mobile-app-modal,
+  .landing-auth-modal {
+    max-width: 100%;
   }
 }

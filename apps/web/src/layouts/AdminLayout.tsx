@@ -2,9 +2,12 @@ import { useEffect, useState, type ReactNode } from "react";
 import { DashboardShell } from "@/shared/components/ui/DashboardShell";
 import { getAdminNav } from "@/shared/constants/adminNav";
 import { platformService } from "@/services/platform.service";
+import { getStoredUser, logout as clearSession } from "@/services/auth";
+import { authStore } from "@/store/auth.store";
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const [pendingCount, setPendingCount] = useState(0);
+  const user = getStoredUser();
 
   useEffect(() => {
     // Admin console is light mode only.
@@ -31,11 +34,20 @@ export function AdminLayout({ children }: { children: ReactNode }) {
 
   const nav = getAdminNav(pendingCount);
 
+  const handleLogout = () => {
+    clearSession();
+    authStore.logout();
+  };
+
   return (
     <DashboardShell
       role="Super Admin"
       nav={nav}
-      user={{ name: "Raees Rahman", role: "Platform Administrator" }}
+      user={{
+        name: user?.email ?? user?.phone ?? "Platform Administrator",
+        role: "Platform Administrator",
+      }}
+      onLogout={handleLogout}
       searchPlaceholder="Search users, hospitals, drivers, settlements…"
     >
       {children}

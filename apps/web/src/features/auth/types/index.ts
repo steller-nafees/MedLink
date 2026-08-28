@@ -1,4 +1,4 @@
-export type AccountRole = "patient" | "driver" | "hospital";
+export type AccountRole = "patient" | "driver" | "hospital" | "admin";
 
 export type AccountTypeInfo = {
   id: AccountRole;
@@ -33,6 +33,14 @@ export const accountTypes: AccountTypeInfo[] = [
       "Manage reservations, consultations, diagnostic tests, blood requests, ambulance coordination and emergency cases.",
     webOnly: true,
     dashboard: "/hospital",
+  },
+  {
+    id: "admin",
+    label: "Super Admin",
+    emoji: "🛡️",
+    summary: "Govern the MedLink platform: verification, users, revenue and system health.",
+    webOnly: true,
+    dashboard: "/admin",
   },
 ];
 

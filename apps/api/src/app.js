@@ -1,4 +1,5 @@
 const express = require("express");
+const cors = require("cors");
 
 const authRoutes = require("./modules/auth/auth.routes");
 const userRoutes = require("./modules/user/user.routes");
@@ -14,6 +15,7 @@ const adminRoutes = require("./modules/admin/admin.routes");
 
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 
 app.get("/health", (req, res) => {

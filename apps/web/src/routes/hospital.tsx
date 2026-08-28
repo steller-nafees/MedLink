@@ -10,7 +10,10 @@ const hospitalHead = {
 };
 
 export function HospitalRoute({ children }: { children: ReactNode }) {
-  if (!getStoredUser()) return <Navigate to="/hospital/login" replace />;
+  const user = getStoredUser();
+  if (!user || user.userType !== "HOSPITAL_ADMIN") {
+    return <Navigate to={{ pathname: "/", search: "?auth=true" }} replace />;
+  }
   const location = useLocation();
   const isEmergencies = location.pathname === "/hospital/emergencies";
   const isBeds = location.pathname === "/hospital/beds";
