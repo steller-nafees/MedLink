@@ -12,6 +12,7 @@
     "test": "turbo test"
   },
   "devDependencies": {
+    "@expo/cli": "^57.0.19",
     "source-map": "^0.7.4",
     "turbo": "^2.10.8"
   },
