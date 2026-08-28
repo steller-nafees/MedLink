@@ -88,6 +88,14 @@ const insertReservation = async (client, {
     return result.rows[0];
 };
 
+const linkEventToHospital = async (client, medicalEventId, hospitalId) => {
+    await client.query(`
+        INSERT INTO event_hospitals (medical_event_id, hospital_id)
+        VALUES ($1, $2)
+        ON CONFLICT DO NOTHING;
+    `, [medicalEventId, hospitalId]);
+};
+
 const reserveBed = async (client, bedId) => {
     await client.query(`
         UPDATE hospital_beds
@@ -203,6 +211,7 @@ module.exports = {
     findBedForUpdate,
     findActiveReservation,
     insertReservation,
+    linkEventToHospital,
     reserveBed,
     releaseReservedBed,
     getAllReservations,

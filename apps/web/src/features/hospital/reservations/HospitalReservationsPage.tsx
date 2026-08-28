@@ -9,7 +9,15 @@ export function HospitalReservationsPage() {
 	const [occupied, setOccupied] = useState<string[]>([]);
 	const [all, setAll] = useState<ReturnType<typeof mapReservation>[]>([]);
 	const [error, setError] = useState<string | null>(null);
-	useEffect(() => { getHospitalReservationsFromApi().then((records) => setAll(records.map(mapReservation))).catch((requestError: unknown) => setError(requestError instanceof Error ? requestError.message : "Unable to load reservations")); }, []);
+	useEffect(() => {
+		let cancelled = false;
+		const loadReservations = () => getHospitalReservationsFromApi()
+			.then((records) => { if (!cancelled) setAll(records.map(mapReservation)); })
+			.catch((requestError: unknown) => { if (!cancelled) setError(requestError instanceof Error ? requestError.message : "Unable to load reservations"); });
+		loadReservations();
+		const intervalId = window.setInterval(loadReservations, 5000);
+		return () => { cancelled = true; window.clearInterval(intervalId); };
+	}, []);
 	const visible = all.map((request) => ({ ...request, status: overrides[request.id] ?? request.status }));
  const groups = [{ title: "Bed reservations", list: visible.filter((request) => request.kind === "bed") }, { title: "ICU reservations", list: visible.filter((request) => request.kind === "icu") }];
  const setStatus = (id: string, status: ReservationStatus) => setOverrides((current) => ({ ...current, [id]: status }));

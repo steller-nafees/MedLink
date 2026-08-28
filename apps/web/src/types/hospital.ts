@@ -13,6 +13,8 @@ export type Severity = "critical" | "high" | "moderate" | "low";
 export type EmergencyCase = {
   id: string;
   patient: string;
+  patientPhone?: string;
+  phone?: string;
   age: number;
   severity: Severity;
   summary: string;

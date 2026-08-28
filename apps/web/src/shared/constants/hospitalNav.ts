@@ -1,7 +1,6 @@
 import {
   BedDouble,
   CreditCard,
-  Droplet,
   Inbox,
   LayoutDashboard,
   Siren,
@@ -25,13 +24,6 @@ export const hospitalNav: NavItem[] = [
     to: "/hospital/requests",
     label: "Requests",
     icon: Inbox,
-    badge: "Coming Soon",
-  },
-  {
-    to: "/hospital/blood",
-    label: "Blood",
-    icon: Droplet,
-    badge: "Coming Soon",
   },
 ];
 

@@ -1,5 +1,5 @@
 import { api } from "./api";
-import type { Ambulance, BedCapacitySummary, EmergencyCase, EmergencyRequest, HospitalReservation, HospitalServiceRequest, HospitalWard, Severity } from "@/types/hospital";
+import type { Ambulance, BedCapacitySummary, EmergencyCase, EmergencyRequest, HospitalRequestPayment, HospitalRequestStatus, HospitalReservation, HospitalServiceRequest, HospitalWard, Severity } from "@/types/hospital";
 
 type ApiResponse<T> = { data: T };
 
@@ -16,6 +16,11 @@ export type HospitalDashboard = {
   active_cases: number;
 };
 
+export type HospitalDashboardAnalytics = {
+  weekly: { day: string; cases: number }[];
+  bySeverity: { name: "Critical" | "High" | "Moderate" | "Low"; value: number }[];
+};
+
 export type HospitalBed = {
   bed_id: string;
   bed_number: string | number;
@@ -28,10 +33,37 @@ export type HospitalActiveCase = {
   event_id: string;
   user_id: string;
   user_description: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  phone?: string | null;
+  event_location_latitude?: number | null;
+  event_location_longitude?: number | null;
   severity: string;
   event_status: string;
   is_emergency: boolean;
   created_at: string;
+};
+
+export type HospitalReservationRecord = {
+  reservation_id: string;
+  medical_event_id: string;
+  user_id: string;
+  hospital_id: string;
+  ward_id: string;
+  bed_id: string | null;
+  reservation_mode: string;
+  reservation_status: string;
+  requested_at: string;
+  approved_at: string | null;
+  created_at: string;
+  updated_at: string;
+  user_description?: string | null;
+  severity?: string | null;
+  event_status?: string | null;
+  is_emergency?: boolean;
+  ward_name?: string | null;
+  bed_number?: string | number | null;
+  bed_status?: string | null;
 };
 
 export type HospitalPayment = {
@@ -53,6 +85,11 @@ export async function getHospitalDashboard() {
   return response.data.data;
 }
 
+export async function getHospitalDashboardAnalytics() {
+  const response = await api.get<ApiResponse<HospitalDashboardAnalytics>>("/hospital/dashboard/analytics");
+  return response.data.data;
+}
+
 export async function getMyHospital() {
   const response = await api.get<ApiResponse<{ name: string; hospital_id: string }>>("/hospital/my-hospital");
   return response.data.data;
@@ -60,6 +97,11 @@ export async function getMyHospital() {
 
 export async function getActiveCases() {
   const response = await api.get<ApiResponse<HospitalActiveCase[]>>("/hospital/dashboard/active-cases");
+  return response.data.data;
+}
+
+export async function approveEmergencyCase(eventId: string) {
+  const response = await api.put<ApiResponse<HospitalActiveCase>>(`/hospital/dashboard/active-cases/${eventId}/approve`);
   return response.data.data;
 }
 
@@ -86,6 +128,149 @@ export async function approveReservation(reservationId: string) {
 export async function getHospitalPaymentsFromApi() {
   const response = await api.get<ApiResponse<HospitalPayment[]>>("/hospital/payments");
   return response.data.data;
+}
+
+export async function getHospitalIncomingRequests() {
+  const [hospital, reservations, activeCases, payments] = await Promise.all([
+    getMyHospital().catch(() => null),
+    getHospitalReservationsFromApi() as Promise<HospitalReservationRecord[]>,
+    getActiveCases(),
+    getHospitalPaymentsFromApi().catch(() => [] as HospitalPayment[]),
+  ]);
+  const hospitalName = hospital?.name ?? "Assigned hospital";
+  const paymentsByReservation = new Map(payments.map((payment) => [payment.reservation_id, payment]));
+  const reservationRequests = reservations.map((reservation) =>
+    mapReservationToRequest(reservation, hospitalName, paymentsByReservation.get(reservation.reservation_id)),
+  );
+  const emergencyRequests = activeCases
+    .filter((activeCase) => activeCase.is_emergency)
+    .map((activeCase) => mapActiveCaseToRequest(activeCase, hospitalName));
+
+  return [...emergencyRequests, ...reservationRequests].sort((left, right) => {
+    const leftDate = "createdAt" in left ? Date.parse(String(left.createdAt)) : 0;
+    const rightDate = "createdAt" in right ? Date.parse(String(right.createdAt)) : 0;
+    return rightDate - leftDate;
+  });
+}
+
+function mapReservationToRequest(
+  reservation: HospitalReservationRecord,
+  hospitalName: string,
+  payment?: HospitalPayment,
+): HospitalServiceRequest {
+  const requestedAt = parseApiDate(reservation.requested_at ?? reservation.created_at);
+  const mode = reservation.reservation_mode?.toLowerCase() ?? "";
+  const kind = mode.includes("icu") ? "icu" : "bed";
+  const wardName = reservation.ward_name ?? "Hospital ward";
+  const patientId = reservation.user_id ? reservation.user_id.slice(0, 8) : "unknown";
+  const bedLabel = reservation.bed_number ? ` · Bed ${reservation.bed_number}` : "";
+
+  return {
+    id: reservation.reservation_id,
+    kind,
+    title: kind === "icu" ? "ICU Reservation" : "Bed Reservation",
+    hospital: hospitalName,
+    department: wardName,
+    patient: `Patient ${patientId}`,
+    date: requestedAt.date,
+    time: requestedAt.time,
+    status: mapReservationStatus(reservation.reservation_status),
+    charge: Number(payment?.total_amount ?? 0),
+    serviceFee: 0,
+    payment: mapPaymentStatus(payment?.payment_status),
+    createdAt: reservation.created_at,
+    requestedAt: reservation.requested_at,
+    approvedAt: reservation.approved_at,
+    patientId: reservation.user_id,
+    medicalEventId: reservation.medical_event_id,
+    ward: wardName,
+    bed: reservation.bed_number ? String(reservation.bed_number) : undefined,
+    bedStatus: reservation.bed_status,
+    severity: reservation.severity,
+    eventStatus: reservation.event_status,
+    description: `${reservation.user_description ?? "Reservation request"}${bedLabel}`,
+  } as HospitalServiceRequest;
+}
+
+function mapActiveCaseToRequest(activeCase: HospitalActiveCase, hospitalName: string): HospitalServiceRequest {
+  const createdAt = parseApiDate(activeCase.created_at);
+  const patientName = [activeCase.first_name, activeCase.last_name].filter(Boolean).join(" ") || `Patient ${activeCase.user_id.slice(0, 8)}`;
+  return {
+    id: activeCase.event_id,
+    kind: "emergency",
+    title: "Emergency SOS",
+    hospital: hospitalName,
+    department: "Emergency",
+    patient: patientName,
+    date: createdAt.date,
+    time: createdAt.time,
+    status: mapEventStatus(activeCase.event_status),
+    charge: 0,
+    serviceFee: 0,
+    payment: "unpaid",
+    createdAt: activeCase.created_at,
+    patientId: activeCase.user_id,
+    phone: activeCase.phone ?? undefined,
+    severity: activeCase.severity,
+    eventStatus: activeCase.event_status,
+    location: [activeCase.event_location_latitude, activeCase.event_location_longitude].filter(Boolean).join(", "),
+    description: activeCase.user_description ?? "Active emergency case",
+  } as HospitalServiceRequest;
+}
+
+function parseApiDate(value?: string | null) {
+  if (!value) return { date: "—", time: "—" };
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return { date: value.slice(0, 10), time: "—" };
+  return {
+    date: date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }),
+    time: date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }),
+  };
+}
+
+function mapReservationStatus(status?: string | null): HospitalRequestStatus {
+  switch (status?.toUpperCase()) {
+    case "APPROVED":
+    case "CONFIRMED":
+      return "confirmed";
+    case "COMPLETED":
+      return "completed";
+    case "CANCELLED":
+    case "CANCELED":
+      return "cancelled";
+    default:
+      return "pending";
+  }
+}
+
+function mapEventStatus(status?: string | null): HospitalRequestStatus {
+  switch (status?.toUpperCase()) {
+    case "COMPLETED":
+      return "completed";
+    case "CANCELLED":
+    case "CANCELED":
+      return "cancelled";
+    case "ACTIVE":
+    case "PENDING":
+      return "pending";
+    default:
+      return "accepted";
+  }
+}
+
+function mapPaymentStatus(status?: string | null): HospitalRequestPayment {
+  switch (status?.toUpperCase()) {
+    case "PAID":
+      return "paid";
+    case "COLLECTED":
+      return "collected";
+    case "SETTLED":
+      return "settled";
+    case "PENDING":
+      return "pending";
+    default:
+      return "unpaid";
+  }
 }
 
 const ambulances: Ambulance[] = [

@@ -73,6 +73,7 @@ MedLink consists of:
 ### Database
 
 - PostgreSQL
+- Supabase Postgres
 - Docker
 
 ### Shared Packages
@@ -279,6 +280,36 @@ Connection String:
 ```env
 DATABASE_URL=postgresql://medlink:MedLink2026@localhost:5432/medlink
 ```
+
+## Supabase Setup
+
+Create a Supabase project, then copy these values from Project Settings.
+
+Backend API:
+
+```env
+# apps/api/.env
+DATABASE_URL=your-supabase-postgres-connection-string
+DB_SSL=true
+```
+
+Web app:
+
+```env
+# apps/web/.env.local
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
+
+Mobile app:
+
+```env
+# apps/mobile/.env
+EXPO_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
+
+Only use the public `anon` key in web/mobile apps. Keep database passwords and service-role keys on the backend only.
 
 ---
 

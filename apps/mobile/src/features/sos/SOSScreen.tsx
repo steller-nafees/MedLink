@@ -7,12 +7,18 @@ import {
   Pressable,
   TextInput,
   ActivityIndicator,
+  Alert,
   Linking,
   Animated,
   Easing,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Location from 'expo-location';
+import * as Clipboard from 'expo-clipboard';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import {
   Heart,
   Sparkles,
@@ -27,6 +33,8 @@ import {
   Star,
   Info,
   CheckCircle2,
+  Copy,
+  Download,
 } from 'lucide-react-native';
 import { theme } from '../../theme';
 import {
@@ -57,9 +65,11 @@ import {
   consultMedicalCondition,
   type AiMedicalResponse,
 } from '../../services/ai-medical';
-import { getNearbyHospitals, type NearbyHospital } from '../../services/hospitals';
+import { getHospitalById, getNearbyHospitals, type NearbyHospital } from '../../services/hospitals';
+import { createReservation } from '../../services/reservations';
+import { getReservations } from '../../services/patient-records';
 
-type Phase = 'input' | 'analyzing' | 'command' | 'summary';
+type Phase = 'input' | 'analyzing' | 'ambulance' | 'hospitals' | 'followup' | 'summary';
 
 type SosSummary = {
   hospitalName: string;
@@ -167,7 +177,11 @@ const FadeSlideIn: React.FC<{ children: React.ReactNode; delay?: number; style?:
 };
 
 export const SOSScreen: React.FC = () => {
-  const { guest, temporaryPassword } = useLocalSearchParams<{ guest?: string; temporaryPassword?: string }>();
+  const { phone: phoneParam, temporaryPassword: passwordParam, guest: guestParam } = useLocalSearchParams<{
+    phone?: string | string[];
+    temporaryPassword?: string | string[];
+    guest?: string | string[];
+  }>();
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>('input');
   const [text, setText] = useState('');
@@ -177,6 +191,7 @@ export const SOSScreen: React.FC = () => {
   const [selectedHospitalId, setSelectedHospitalId] = useState<string | null>(null);
   const [summary, setSummary] = useState<SosSummary | null>(null);
   const [aiResponse, setAiResponse] = useState<AiMedicalResponse | null>(null);
+  const [medicalEventId, setMedicalEventId] = useState<string | null>(null);
   const [severity, setSeverity] = useState<string>('LOW');
   const [showMoreHospitals, setShowMoreHospitals] = useState(false);
   const [bloodRequired, setBloodRequired] = useState<boolean | null>(null);
@@ -193,25 +208,47 @@ export const SOSScreen: React.FC = () => {
     setPhase('analyzing');
 
     try {
-      const location = await getCurrentLocation();
+      let location: { latitude: number; longitude: number };
+      if (Platform.OS === 'web') {
+        if (typeof navigator === 'undefined' || !navigator.geolocation) {
+          throw new Error('Location is not available in this browser. Please enable location access and try again.');
+        }
 
-      const [result, liveHospitals] = await Promise.all([
-        consultMedicalCondition({
-          userDescription: val,
-          ...location,
-          isEmergency: true,
-        }),
-        getNearbyHospitals(location.latitude, location.longitude),
-      ]);
+        location = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            ({ coords }) => resolve({ latitude: coords.latitude, longitude: coords.longitude }),
+            () => reject(new Error('We could not detect your location. Please allow location access and try again.')),
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+          );
+        });
+      } else {
+        const permission = await Location.requestForegroundPermissionsAsync();
+        if (permission.status !== Location.PermissionStatus.GRANTED) {
+          throw new Error('Location permission was denied. Please enable location access and try again.');
+        }
 
-      if (liveHospitals.length === 0) {
-        throw new Error('No hospitals were found near your current location. Please try again or call emergency services.');
+        const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        location = { latitude: position.coords.latitude, longitude: position.coords.longitude };
       }
 
-      setNearbyHospitals(liveHospitals.map(toSosHospital));
+      const hospitalsFromDb = await getNearbyHospitals(location.latitude, location.longitude, 100);
+      if (hospitalsFromDb.length === 0) {
+        throw new Error('No hospitals were found near your current location. Please try again from another location.');
+      }
+
+      setNearbyHospitals(hospitalsFromDb.map(toSosHospital));
+      setSelectedHospitalId(null);
+
+      const result = await consultMedicalCondition({
+        userDescription: val,
+        ...location,
+        isEmergency: true,
+      });
+
       setAiResponse(result.aiResponse);
+      setMedicalEventId(result.event.id);
       setSeverity(result.event.severity ?? 'LOW');
-      setPhase('command');
+      setPhase('ambulance');
     } catch (error) {
       setRequestError(error instanceof Error ? error.message : 'Unable to assess this emergency. Please try again.');
       setPhase('input');
@@ -231,12 +268,14 @@ export const SOSScreen: React.FC = () => {
     setSentTo([]);
     setSummary(null);
     setAiResponse(null);
+    setMedicalEventId(null);
     setNearbyHospitals([]);
     setSeverity('LOW');
     setRequestError('');
   };
 
   const finishSOS = async () => {
+    const guest = Array.isArray(guestParam) ? guestParam[0] : guestParam;
     if (guest === '1') {
       await clearAuthSession();
       router.replace('/(auth)');
@@ -249,6 +288,8 @@ export const SOSScreen: React.FC = () => {
   // Shared top inset so nothing ever sits under the status bar / notch,
   // on iOS and Android alike (edge-to-edge safe).
   const topInset = Math.max(insets.top, 12);
+  const guestPhone = Array.isArray(phoneParam) ? phoneParam[0] : phoneParam;
+  const temporaryPassword = Array.isArray(passwordParam) ? passwordParam[0] : passwordParam;
 
   if (!online) {
     return (
@@ -289,35 +330,44 @@ export const SOSScreen: React.FC = () => {
             <AnalyzingPhase text={text} />
           </FadeSlideIn>
         )}
-        {phase === 'command' && (
+        {phase === 'ambulance' && (
           <FadeSlideIn>
-            <CommandPhase
-              text={text}
-              reserved={reserved}
-              setReserved={setReserved}
+            <AmbulancePhase aiResponse={aiResponse} onContinue={() => setPhase('hospitals')} />
+          </FadeSlideIn>
+        )}
+        {phase === 'hospitals' && (
+          <FadeSlideIn>
+            <HospitalSelectionPhase
+              hospitals={nearbyHospitals}
               selectedHospitalId={selectedHospitalId}
               setSelectedHospitalId={setSelectedHospitalId}
-              showMoreHospitals={showMoreHospitals}
-              setShowMoreHospitals={setShowMoreHospitals}
+              medicalEventId={medicalEventId}
+              reserved={reserved}
+              setReserved={setReserved}
+              onContinue={() => setPhase('followup')}
+            />
+          </FadeSlideIn>
+        )}
+        {phase === 'followup' && aiResponse && (
+          <FadeSlideIn>
+            <ApprovalFollowupPhase
+              eventId={medicalEventId}
+              hospitalId={selectedHospitalId}
+              hospitalName={nearbyHospitals.find((hospital) => hospital.id === selectedHospitalId)?.name ?? 'your hospital'}
               bloodRequired={bloodRequired}
               setBloodRequired={setBloodRequired}
-              assessingBlood={assessingBlood}
-              setAssessingBlood={setAssessingBlood}
-              pendingDonor={pendingDonor}
-              setPendingDonor={setPendingDonor}
-              sentTo={sentTo}
-              setSentTo={setSentTo}
-              endSOS={endSOS}
-              aiResponse={aiResponse}
-              severity={severity}
-              hospitals={nearbyHospitals}
-              temporaryPassword={temporaryPassword}
+              onDone={() => endSOS({ hospitalName: nearbyHospitals.find((hospital) => hospital.id === selectedHospitalId)?.name ?? 'Hospital', bedReserved: !!reserved.bed, icuReserved: !!reserved.icu, ambulance: undefined, donorsContacted: sentTo.length, severity, aiResponse, temporaryPassword })}
             />
           </FadeSlideIn>
         )}
         {phase === 'summary' && summary && (
           <FadeSlideIn>
-            <SummaryPhase summary={summary} onDone={finishSOS} />
+            <SummaryPhase
+              summary={summary}
+              onDone={resetAndExit}
+              guestPhone={guestPhone}
+              temporaryPassword={temporaryPassword}
+            />
           </FadeSlideIn>
         )}
       </ScrollView>
@@ -989,6 +1039,124 @@ const OfflineResources: React.FC<OfflineResourcesProps> = ({ cache }) => {
   );
 };
 
+interface AmbulancePhaseProps {
+  aiResponse: AiMedicalResponse | null;
+  onContinue: () => void;
+}
+
+const AmbulancePhase: React.FC<AmbulancePhaseProps> = ({ aiResponse, onContinue }) => {
+  const nearest = ambulances.find((ambulance) => ambulance.status === 'available') ?? ambulances[0];
+  return (
+    <View style={{ gap: 16 }}>
+      <StepHeader step="1 of 3" title="Immediate help" subtitle="Stay with the patient while help is arranged." />
+      {aiResponse && (
+        <View style={{ borderRadius: theme.radii.xxl, backgroundColor: `${theme.colors.primary}12`, padding: 16, gap: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Sparkles size={16} color={theme.colors.primary} />
+            <Text style={{ fontSize: 13, fontWeight: 'bold', color: theme.colors.foreground }}>AI first-aid guidance</Text>
+          </View>
+          <Text style={{ fontSize: 13, lineHeight: 19, color: theme.colors.foreground }}>{aiResponse.first_aid}</Text>
+          <Text style={{ fontSize: 11.5, lineHeight: 16, color: theme.colors.mutedForeground }}>{aiResponse.summary}</Text>
+        </View>
+      )}
+      <SectionTitle title="Nearest ambulance" hint="Call only" />
+      <View style={{ borderRadius: theme.radii.xxxl, backgroundColor: theme.colors.card, padding: 16, gap: 10, ...theme.shadows.shadowCard }}>
+        <Text style={{ fontSize: 17, fontWeight: 'bold', color: theme.colors.foreground }}>{nearest.callSign}</Text>
+        <Text style={{ fontSize: 12.5, color: theme.colors.mutedForeground }}>{nearest.type} · {nearest.distanceKm} km away · ETA {nearest.etaMin} min</Text>
+        <CallButton label={`Call ${nearest.phone}`} phone={nearest.phone} tone="emergency" />
+      </View>
+      <PrimaryStepButton label="Select a hospital" onPress={onContinue} />
+    </View>
+  );
+};
+
+const StepHeader: React.FC<{ step: string; title: string; subtitle: string }> = ({ step, title, subtitle }) => (
+  <View style={{ gap: 5, marginBottom: 4 }}>
+    <Text style={{ fontSize: 11, fontWeight: 'bold', color: theme.colors.primary, textTransform: 'uppercase', letterSpacing: 0.6 }}>{step}</Text>
+    <Text style={{ fontSize: 25, fontWeight: 'bold', color: theme.colors.foreground }}>{title}</Text>
+    <Text style={{ fontSize: 13.5, lineHeight: 19, color: theme.colors.mutedForeground }}>{subtitle}</Text>
+  </View>
+);
+
+const PrimaryStepButton: React.FC<{ label: string; onPress: () => void; disabled?: boolean }> = ({ label, onPress, disabled }) => (
+  <TouchableOpacity disabled={disabled} onPress={onPress} style={{ borderRadius: 999, backgroundColor: theme.colors.primary, paddingVertical: 15, alignItems: 'center', opacity: disabled ? 0.45 : 1, ...theme.shadows.shadowFloat }} activeOpacity={0.8}>
+    <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.primaryForeground }}>{label}</Text>
+  </TouchableOpacity>
+);
+
+interface HospitalSelectionPhaseProps {
+  hospitals: Hospital[];
+  selectedHospitalId: string | null;
+  setSelectedHospitalId: (id: string | null) => void;
+  medicalEventId: string | null;
+  reserved: { bed?: boolean; icu?: boolean };
+  setReserved: (value: any) => void;
+  onContinue: () => void;
+}
+
+const HospitalSelectionPhase: React.FC<HospitalSelectionPhaseProps> = ({ hospitals, selectedHospitalId, setSelectedHospitalId, medicalEventId, reserved, setReserved, onContinue }) => {
+  const [detail, setDetail] = useState<Awaited<ReturnType<typeof getHospitalById>> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [reserving, setReserving] = useState<'bed' | 'icu' | null>(null);
+  const [error, setError] = useState('');
+  const selected = hospitals.find((hospital) => hospital.id === selectedHospitalId);
+
+  const selectHospital = async (hospital: Hospital) => {
+    setSelectedHospitalId(hospital.id);
+    setDetail(null);
+    setLoading(true);
+    setError('');
+    try { setDetail(await getHospitalById(hospital.id)); } catch (requestError) { setError(requestError instanceof Error ? requestError.message : 'Unable to load bed availability.'); } finally { setLoading(false); }
+  };
+
+  const reserve = async (mode: 'bed' | 'icu') => {
+    if (!detail || !medicalEventId || reserving || reserved[mode]) return;
+    setReserving(mode); setError('');
+    try {
+      const wards = mode === 'icu' ? detail.wards.filter((ward) => ward.ward_name.toLowerCase().includes('icu')) : detail.wards.filter((ward) => !ward.ward_name.toLowerCase().includes('icu'));
+      const ward = wards.find((candidate) => candidate.available_beds > 0);
+      const bed = ward && detail.beds.find((candidate) => candidate.ward_id === ward.id && candidate.bed_status === 'AVAILABLE');
+      if (!ward || !bed) throw new Error(`No available ${mode === 'icu' ? 'ICU' : 'ward'} bed was found.`);
+      await createReservation({ medicalEventId, hospitalId: detail.id, wardId: ward.id, bedId: bed.id, reservationMode: mode === 'icu' ? 'ICU' : 'EMERGENCY' });
+      setReserved({ ...reserved, [mode]: true });
+    } catch (requestError) { setError(requestError instanceof Error ? requestError.message : 'Unable to reserve this bed.'); } finally { setReserving(null); }
+  };
+
+  return (
+    <View style={{ gap: 12 }}>
+      <StepHeader step="2 of 3" title="Choose a hospital" subtitle="Compare live capacity, then reserve the right care area." />
+      {hospitals.map((hospital) => <HospitalListItem key={hospital.id} hospital={hospital} selected={hospital.id === selectedHospitalId} onSelect={() => void selectHospital(hospital)} />)}
+      {selected && <View style={{ borderRadius: theme.radii.xxl, backgroundColor: theme.colors.card, padding: 16, gap: 10, ...theme.shadows.shadowCard }}>
+        <Text style={{ fontSize: 15, fontWeight: 'bold', color: theme.colors.foreground }}>{selected.name} capacity</Text>
+        {loading ? <ActivityIndicator color={theme.colors.primary} /> : detail && <>
+          {detail.wards.map((ward) => <View key={ward.id} style={{ flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: `${theme.colors.border}66`, paddingVertical: 9 }}><Text style={{ fontSize: 12.5, color: theme.colors.foreground }}>{ward.ward_name}</Text><Text style={{ fontSize: 12.5, fontWeight: 'bold', color: ward.available_beds ? theme.colors.success : theme.colors.emergency }}>{ward.available_beds} available</Text></View>)}
+          <ActionButton label={reserving === 'bed' ? 'Reserving ward bed...' : reserved.bed ? 'Ward bed reserved' : 'Reserve ward bed'} icon={BedDouble} active={!!reserved.bed} onClick={() => void reserve('bed')} />
+          <ActionButton label={reserving === 'icu' ? 'Reserving ICU bed...' : reserved.icu ? 'ICU bed reserved' : 'Reserve ICU bed'} icon={Activity} tone="emergency" active={!!reserved.icu} onClick={() => void reserve('icu')} />
+        </>}
+        {!!error && <Text style={{ fontSize: 12, lineHeight: 17, color: theme.colors.emergency }}>{error}</Text>}
+      </View>}
+      <PrimaryStepButton label="Continue to hospital response" disabled={!selectedHospitalId || (!reserved.bed && !reserved.icu)} onPress={onContinue} />
+    </View>
+  );
+};
+
+interface ApprovalFollowupPhaseProps { eventId: string | null; hospitalId: string | null; hospitalName: string; bloodRequired: boolean | null; setBloodRequired: (value: boolean | null) => void; onDone: () => void; }
+
+const ApprovalFollowupPhase: React.FC<ApprovalFollowupPhaseProps> = ({ eventId, hospitalId, hospitalName, bloodRequired, setBloodRequired, onDone }) => {
+  const [approved, setApproved] = useState(false);
+  useEffect(() => {
+    let active = true;
+    const check = async () => { if (!eventId) return; try { const reservations = await getReservations(); const match = reservations.find((reservation) => reservation.medical_event_id === eventId); if (active && match?.reservation_status.toUpperCase() === 'APPROVED') { setApproved((wasApproved) => { if (!wasApproved) Alert.alert('Hospital accepted', `${hospitalName} approved your emergency request and reserved ${match.ward_name ?? 'a hospital bed'}.`); return true; }); } } catch { /* polling retries on the next interval */ } };
+    void check(); const timer = setInterval(() => void check(), 5000); return () => { active = false; clearInterval(timer); };
+  }, [eventId]);
+  const donors = approved && bloodRequired ? matchDonors('O+', hospitalId ?? '', { limit: 5 }) : [];
+  return <View style={{ gap: 14 }}>
+    <StepHeader step="3 of 3" title={approved ? 'Hospital accepted' : 'Waiting for hospital'} subtitle={approved ? `${hospitalName} has approved your request.` : `Your request is pending with ${hospitalName}. This screen checks for approval automatically.`} />
+    {!approved && <View style={{ alignItems: 'center', paddingVertical: 28, gap: 10 }}><ActivityIndicator size="large" color={theme.colors.primary} /><Text style={{ fontSize: 13, color: theme.colors.mutedForeground }}>Waiting for a response...</Text></View>}
+    {approved && <>{bloodRequired === true && <><SectionTitle title="Blood donors" hint="Call the nearest eligible donors" />{donors.map((donor) => <View key={donor.id} style={{ borderRadius: theme.radii.xxl, backgroundColor: theme.colors.card, padding: 14, gap: 8, ...theme.shadows.shadowCard }}><Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.foreground }}>{donor.name} · {donor.group}</Text><Text style={{ fontSize: 12, color: theme.colors.mutedForeground }}>{donor.distanceKm} km from hospital · {donor.status}</Text><CallButton label="Call donor" phone={donor.phone} /></View>)}</>}{bloodRequired === null && <Text style={{ fontSize: 13, color: theme.colors.foreground }}>Does the hospital need blood donors for this admission?</Text>}{bloodRequired === null && <View style={{ flexDirection: 'row', gap: 10 }}><PrimaryStepButton label="Yes, show donors" onPress={() => setBloodRequired(true)} /><TouchableOpacity onPress={() => setBloodRequired(false)} style={{ flex: 1, borderRadius: 999, borderWidth: 1, borderColor: theme.colors.border, paddingVertical: 15, alignItems: 'center' }}><Text style={{ fontSize: 13, fontWeight: 'bold', color: theme.colors.foreground }}>No</Text></TouchableOpacity></View>}<PrimaryStepButton label="Finish SOS" onPress={onDone} /></>}
+  </View>;
+};
+
 /* ────────────────────────────────────────────────────────────────── */
 /* COMMAND PHASE                                                      */
 /* ────────────────────────────────────────────────────────────────── */
@@ -1011,6 +1179,7 @@ interface CommandPhaseProps {
   setSentTo: (ids: string[]) => void;
   endSOS: (s: SosSummary) => void;
   aiResponse: AiMedicalResponse | null;
+  medicalEventId: string | null;
   severity: string;
   hospitals: Hospital[];
   temporaryPassword?: string;
@@ -1034,6 +1203,7 @@ const CommandPhase: React.FC<CommandPhaseProps> = ({
   setSentTo,
   endSOS,
   aiResponse,
+  medicalEventId,
   severity,
   hospitals,
   temporaryPassword,
@@ -1047,6 +1217,39 @@ const CommandPhase: React.FC<CommandPhaseProps> = ({
   const requiredGroup: BloodGroup = 'O+';
   const matchedDonors = hospitalSelected && bloodRequired ? matchDonors(requiredGroup, primary.id, { limit: 5 }) : [];
   const bookedAmbulance = ambulances.find((a) => a.id === reserved.ambulance);
+  const [reservationError, setReservationError] = useState('');
+  const [reserving, setReserving] = useState<'bed' | 'icu' | null>(null);
+
+  const reserveBed = async (mode: 'bed' | 'icu') => {
+    if (!medicalEventId || !primary?.id || reserving || reserved[mode]) return;
+
+    setReservationError('');
+    setReserving(mode);
+    try {
+      const hospital = await getHospitalById(primary.id);
+      const wards = mode === 'icu'
+        ? hospital.wards.filter((ward) => ward.ward_name.toLowerCase().includes('icu'))
+        : hospital.wards.filter((ward) => !ward.ward_name.toLowerCase().includes('icu'));
+      const ward = wards.find((candidate) => candidate.available_beds > 0);
+      if (!ward) throw new Error(`No available ${mode === 'icu' ? 'ICU' : 'emergency'} ward was found at this hospital.`);
+
+      const bed = hospital.beds.find((candidate) => candidate.ward_id === ward.id && candidate.bed_status === 'AVAILABLE');
+      if (!bed) throw new Error(`No available ${mode === 'icu' ? 'ICU' : 'emergency'} bed was found at this hospital.`);
+
+      await createReservation({
+        medicalEventId,
+        hospitalId: primary.id,
+        wardId: ward.id,
+        bedId: bed.id,
+        reservationMode: mode === 'icu' ? 'ICU' : 'EMERGENCY',
+      });
+      setReserved({ ...reserved, [mode]: true });
+    } catch (error) {
+      setReservationError(error instanceof Error ? error.message : 'Unable to reserve this bed right now.');
+    } finally {
+      setReserving(null);
+    }
+  };
 
   // Auto-assess blood when hospital selected
   useEffect(() => {
@@ -1238,18 +1441,19 @@ const CommandPhase: React.FC<CommandPhaseProps> = ({
           />
           <ActionButton
             active={reserved.bed}
-            onClick={() => setReserved({ ...reserved, bed: !reserved.bed })}
-            label={reserved.bed ? 'Bed reserved' : 'Reserve emergency bed'}
+            onClick={() => reserveBed('bed')}
+            label={reserving === 'bed' ? 'Reserving bed...' : reserved.bed ? 'Bed reserved' : 'Reserve emergency bed'}
             icon={BedDouble}
           />
           <ActionButton
             active={reserved.icu}
-            onClick={() => setReserved({ ...reserved, icu: !reserved.icu })}
-            label={reserved.icu ? 'ICU reserved' : 'Reserve ICU bed'}
+            onClick={() => reserveBed('icu')}
+            label={reserving === 'icu' ? 'Reserving ICU bed...' : reserved.icu ? 'ICU reserved' : 'Reserve ICU bed'}
             icon={Activity}
             tone="emergency"
           />
         </View>
+        {!!reservationError && <Text style={{ marginTop: 8, color: theme.colors.emergency, fontSize: 12 }}>{reservationError}</Text>}
 
         <CallButton label={`Call hospital · ${primary.phone}`} phone={primary.phone} style={{ marginTop: 10 }} />
       </View>
@@ -1845,15 +2049,52 @@ const ActionButton: React.FC<ActionButtonProps> = ({ label, icon: Icon, onClick,
 interface SummaryPhaseProps {
   summary: SosSummary;
   onDone: () => void;
+  guestPhone?: string;
+  temporaryPassword?: string;
 }
 
-const SummaryPhase: React.FC<SummaryPhaseProps> = ({ summary, onDone }) => {
+const SummaryPhase: React.FC<SummaryPhaseProps> = ({ summary, onDone, guestPhone, temporaryPassword }) => {
   // Checkmark springs in with a slight overshoot — the classic
   // "success" micro-interaction — instead of appearing instantly.
   const checkScale = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.spring(checkScale, { toValue: 1, friction: 5, tension: 120, useNativeDriver: true }).start();
   }, [checkScale]);
+
+  const hasTemporaryCredentials = Boolean(guestPhone && temporaryPassword);
+  const credentialText = `Emergency phone number: ${guestPhone}\nTemporary password: ${temporaryPassword}`;
+
+  const copyCredentials = async () => {
+    await Clipboard.setStringAsync(credentialText);
+    Alert.alert('Copied', 'Your emergency number and temporary password are on the clipboard.');
+  };
+
+  const downloadCredentials = async () => {
+    if (!FileSystem.cacheDirectory) {
+      Alert.alert('Unable to download', 'A local file location is not available on this device.');
+      return;
+    }
+
+    try {
+      const fileUri = `${FileSystem.cacheDirectory}medlink-emergency-credentials.txt`;
+      await FileSystem.writeAsStringAsync(fileUri, credentialText, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert('File ready', 'The credentials file was created, but sharing is not available on this device.');
+        return;
+      }
+
+      await Sharing.shareAsync(fileUri, {
+        mimeType: 'text/plain',
+        dialogTitle: 'Save emergency credentials',
+        UTI: 'public.plain-text',
+      });
+    } catch {
+      Alert.alert('Unable to download', 'We could not create the credentials file. Please try again.');
+    }
+  };
 
   return (
     <View style={{ flex: 1, alignItems: 'center', paddingVertical: 40 }}>
@@ -1969,6 +2210,49 @@ const SummaryPhase: React.FC<SummaryPhaseProps> = ({ summary, onDone }) => {
           First aid: {summary.aiResponse.first_aid}
         </Text>
       </View>
+
+      {hasTemporaryCredentials && (
+        <View
+          style={{
+            width: '100%',
+            borderRadius: theme.radii.xxxl,
+            borderWidth: 1,
+            borderColor: `${theme.colors.primary}33`,
+            backgroundColor: theme.colors.card,
+            padding: 16,
+            marginBottom: 16,
+            gap: 12,
+          }}
+        >
+          <Text style={{ fontSize: 13, fontWeight: 'bold', color: theme.colors.foreground }}>
+            Emergency login details
+          </Text>
+          <View style={{ gap: 6 }}>
+            <Text style={{ fontSize: 11.5, color: theme.colors.mutedForeground }}>Phone number</Text>
+            <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.foreground }}>{guestPhone}</Text>
+            <Text style={{ fontSize: 11.5, color: theme.colors.mutedForeground, marginTop: 4 }}>Temporary password</Text>
+            <Text selectable style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.foreground }}>
+              {temporaryPassword}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <Pressable
+              onPress={copyCredentials}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 999, borderWidth: 1, borderColor: theme.colors.border, paddingVertical: 11 }}
+            >
+              <Copy size={15} color={theme.colors.primary} />
+              <Text style={{ fontSize: 12, fontWeight: 'bold', color: theme.colors.primary }}>Copy</Text>
+            </Pressable>
+            <Pressable
+              onPress={downloadCredentials}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 999, backgroundColor: theme.colors.primary, paddingVertical: 11 }}
+            >
+              <Download size={15} color={theme.colors.primaryForeground} />
+              <Text style={{ fontSize: 12, fontWeight: 'bold', color: theme.colors.primaryForeground }}>Download</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
 
       {/* Coordination fee */}
       <View
