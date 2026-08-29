@@ -16,8 +16,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "../../../theme";
 import {
   getMedicalEvents,
+  getPayments,
   getReservations,
   type MedicalEvent,
+  type PatientPayment,
   type Reservation,
 } from "../../../services/patient-records";
 
@@ -28,6 +30,7 @@ export default function PatientActivityScreen() {
   const [tab, setTab] = useState<ActivityFilter>("Emergency");
   const [events, setEvents] = useState<MedicalEvent[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [payments, setPayments] = useState<PatientPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,13 +50,15 @@ export default function PatientActivityScreen() {
     setError(null);
 
     try {
-      const [eventRecords, reservationRecords] = await Promise.all([
+      const [eventRecords, reservationRecords, paymentRecords] = await Promise.all([
         getMedicalEvents(),
         getReservations(),
+        getPayments(),
       ]);
 
       setEvents(eventRecords);
       setReservations(reservationRecords);
+      setPayments(paymentRecords);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Could not load activity.");
     } finally {
@@ -168,7 +173,12 @@ export default function PatientActivityScreen() {
         ) : reservations.length ? (
           <View style={styles.requestList}>
             {reservations.map((reservation) => (
-              <ReservationActivityCard key={reservation.id} reservation={reservation} palette={palette} />
+                <ReservationActivityCard
+                  key={reservation.id}
+                  reservation={reservation}
+                  payment={payments.find((record) => record.reservation_id === reservation.id)}
+                  palette={palette}
+                />
             ))}
           </View>
         ) : (
@@ -213,7 +223,15 @@ function EventCard({ event, palette }: { event: MedicalEvent; palette: ReturnTyp
   );
 }
 
-function ReservationActivityCard({ reservation, palette }: { reservation: Reservation; palette: ReturnType<typeof getPalette> }) {
+function ReservationActivityCard({
+  reservation,
+  payment,
+  palette,
+}: {
+  reservation: Reservation;
+  payment?: PatientPayment;
+  palette: ReturnType<typeof getPalette>;
+}) {
   const styles = createStyles(palette);
 
   return (
@@ -240,6 +258,12 @@ function ReservationActivityCard({ reservation, palette }: { reservation: Reserv
         <StatusPill label={displayEnum(reservation.reservation_mode)} tone="info" palette={palette} />
         <Text style={styles.date}>{formatDate(reservation.requested_at ?? reservation.created_at)}</Text>
       </View>
+      {payment ? (
+        <View style={styles.paymentRow}>
+          <Text style={styles.paymentLabel}>Payment {displayEnum(payment.payment_status)}</Text>
+          <Text style={styles.paymentAmount}>BDT {Number(payment.total_amount).toFixed(2)}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -388,6 +412,9 @@ const createStyles = (palette: ReturnType<typeof getPalette>) =>
     requestTitle: { fontFamily: theme.fonts.bold, fontWeight: "700", fontSize: 15, lineHeight: 19, color: palette.foreground },
     hospital: { fontFamily: theme.fonts.regular, fontSize: 12.5, lineHeight: 17, color: palette.muted },
     metadataRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 12 },
+    paymentRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 14, borderTopWidth: 1, borderTopColor: palette.border, paddingTop: 12 },
+    paymentLabel: { fontFamily: theme.fonts.semiBold, fontWeight: "600", fontSize: 12, lineHeight: 16, color: palette.foreground },
+    paymentAmount: { fontFamily: theme.fonts.bold, fontWeight: "700", fontSize: 12, lineHeight: 16, color: theme.colors.success },
     statusPill: { alignSelf: "flex-start", borderRadius: theme.radii.pill, paddingHorizontal: 10, paddingVertical: 4 },
     statusText: { fontFamily: theme.fonts.semiBold, fontWeight: "600", fontSize: 10.5, lineHeight: 13, letterSpacing: 0.5 },
     primaryPill: { backgroundColor: theme.colors.primaryContainer }, primaryText: { color: theme.colors.primary },

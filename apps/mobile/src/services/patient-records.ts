@@ -25,6 +25,16 @@ export type Reservation = {
   updated_at: string;
 };
 
+export type PatientPayment = {
+  payment_id: string;
+  reservation_id: string;
+  total_amount: number | string;
+  payment_method: string | null;
+  payment_status: string;
+  paid_at: string | null;
+  created_at: string;
+};
+
 export type MedicalEvent = {
   id: string;
   user_id: string;
@@ -110,4 +120,8 @@ export function getReservations(): Promise<Reservation[]> {
 
 export function getMedicalEvents(): Promise<MedicalEvent[]> {
   return requestList<MedicalEvent>("/api/v1/events?limit=100");
+}
+
+export function getPayments(): Promise<PatientPayment[]> {
+  return requestList<PatientPayment>("/api/v1/payments");
 }
