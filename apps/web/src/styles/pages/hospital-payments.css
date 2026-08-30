@@ -1,4 +1,8 @@
 .hospital-payments { max-width: 1400px; margin: 0 auto; color: var(--hospital-text); }
+.payment-page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.payment-primary-button, .payment-submit-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 8px; background: var(--hospital-primary); color: white; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; padding: 10px 14px; white-space: nowrap; }
+.payment-primary-button:disabled, .payment-submit-button:disabled { cursor: not-allowed; opacity: .55; }
+.payment-error { margin: 12px 0; color: var(--hospital-emergency); font-size: 13px; }
 .hospital-payments h1, .hospital-payments h2, .hospital-payments p { margin: 0; }
 .payment-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
 .payment-stat { padding: 20px; border: 1px solid var(--hospital-border); border-radius: 24px; background: var(--hospital-surface); box-shadow: 0 8px 24px rgb(23 37 47 / 5%); }
@@ -13,6 +17,9 @@
 .payment-table tbody tr:hover { background: color-mix(in srgb, var(--hospital-bg) 40%, transparent); }
 .payment-table td:first-child strong, .payment-table td:first-child span { display: block; }
 .payment-table td:first-child span { color: var(--hospital-muted); font-size: 11.5px; }
+.invoice-id { display: inline-flex; align-items: center; gap: 7px; color: var(--hospital-primary) !important; font-weight: 600; }
+.payment-amount { font-weight: 700; white-space: nowrap; }
+.payment-empty { color: var(--hospital-muted); padding: 32px !important; text-align: center; }
 .payment-fee { color: var(--hospital-primary); font-weight: 600; }
 .payment-status, .payment-pill { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
 .payment-status-pending, .payment-pill-pending { background: color-mix(in srgb, var(--hospital-warning) 10%, transparent); color: var(--hospital-warning); }
@@ -24,4 +31,15 @@
 .payment-pill-collected { background: color-mix(in srgb, var(--hospital-info) 10%, transparent); color: var(--hospital-info); }
 .payment-action { text-align: right; }
 .tabular-nums { font-variant-numeric: tabular-nums; }
+.payment-modal-backdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 20px; background: rgb(15 23 32 / 35%); }
+.payment-modal { width: min(100%, 460px); border: 1px solid var(--hospital-border); border-radius: 16px; background: var(--hospital-surface); box-shadow: 0 20px 60px rgb(15 23 32 / 20%); padding: 24px; }
+.payment-modal-head { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.payment-modal h2 { font-size: 20px; }
+.payment-modal p { margin-top: 5px; color: var(--hospital-muted); font-size: 13px; }
+.payment-close-button { align-self: flex-start; border: 0; background: transparent; color: var(--hospital-muted); cursor: pointer; padding: 4px; }
+.payment-modal label { display: block; margin-bottom: 7px; font-size: 12px; font-weight: 600; }
+.payment-modal select { width: 100%; border: 1px solid var(--hospital-border); border-radius: 8px; background: white; color: var(--hospital-text); font: inherit; font-size: 13px; padding: 11px; }
+.payment-fee-summary { display: flex; align-items: center; justify-content: space-between; margin: 18px 0; border-radius: 8px; background: var(--hospital-bg); padding: 14px; font-size: 13px; }
+.payment-fee-summary strong { color: var(--hospital-primary); }
+.payment-submit-button { width: 100%; }
 @media (max-width: 700px) { .payment-stats { grid-template-columns: 1fr; } }

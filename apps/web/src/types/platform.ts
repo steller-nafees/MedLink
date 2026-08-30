@@ -7,6 +7,7 @@ export type PlatformUser = {
   phone: string;
   registered: string;
   status: AccountStatus;
+  role?: "general_user" | "ambulance_driver" | "hospital_admin";
 };
 
 export type HospitalAccount = {
@@ -70,6 +71,14 @@ export type AuditEvent = {
   actor: string;
   target: string;
   time: string;
+};
+
+export type RecentLoginUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: "General Users" | "Hospital" | "Ambulance Drivers";
+  lastLogin: string;
 };
 
 export type MonthlyRevenue = {

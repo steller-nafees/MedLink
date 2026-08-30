@@ -6,6 +6,7 @@ import type {
   DriverApplication,
   AdminNotification,
   AuditEvent,
+  RecentLoginUser,
   MonthlyRevenue,
   UserGrowth,
   ActivityTrend,
@@ -93,6 +94,29 @@ const auditLog: AuditEvent[] = [
   { id: "L-9008", event: "Settlement recorded", actor: "Alex Nguyen", target: "Square Hospital · ৳200,000", time: "2026-07-25 13:41" },
 ];
 
+const recentLogins: RecentLoginUser[] = [
+  { id: "R-101", name: "Nusrat Jahan", email: "nusrat.j@gmail.com", role: "General Users", lastLogin: "Today · 08:42" },
+  { id: "R-102", name: "Rafiqul Islam", email: "rafiq.islam@gmail.com", role: "General Users", lastLogin: "Today · 08:16" },
+  { id: "R-103", name: "Abdul Karim", email: "abdul.karim@medlink.io", role: "Ambulance Drivers", lastLogin: "Today · 07:51" },
+  { id: "R-104", name: "Square Hospital", email: "ops@squarehospital.com", role: "Hospital", lastLogin: "Today · 07:28" },
+  { id: "R-105", name: "Mehjabin Chowdhury", email: "mehjabin.c@gmail.com", role: "General Users", lastLogin: "Today · 06:59" },
+  { id: "R-106", name: "Sohel Rana", email: "sohel.rana@lifelinebd.com", role: "Ambulance Drivers", lastLogin: "Today · 06:31" },
+  { id: "R-107", name: "Evercare Hospital", email: "support@evercarebd.com", role: "Hospital", lastLogin: "Yesterday · 18:42" },
+  { id: "R-108", name: "Shakib Hasan", email: "shakib.hasan@outlook.com", role: "General Users", lastLogin: "Yesterday · 17:23" },
+  { id: "R-109", name: "Mizanur Rahman", email: "mizanur.rahman@bayrescue.com", role: "Ambulance Drivers", lastLogin: "Yesterday · 16:58" },
+  { id: "R-110", name: "Sadia Rahman", email: "sadia.rahman@gmail.com", role: "General Users", lastLogin: "Yesterday · 15:15" },
+  { id: "R-111", name: "National Heart Foundation", email: "admin@nhfbd.org", role: "Hospital", lastLogin: "Yesterday · 14:40" },
+  { id: "R-112", name: "Nazmul Hoque", email: "nazmul.hoque@medlink.io", role: "Ambulance Drivers", lastLogin: "Yesterday · 13:34" },
+  { id: "R-113", name: "Farhana Akter", email: "farhana.akter@gmail.com", role: "General Users", lastLogin: "Jun 28 · 20:12" },
+  { id: "R-114", name: "Ibn Sina Diagnostic", email: "care@ibnsina.com", role: "Hospital", lastLogin: "Jun 28 · 18:55" },
+  { id: "R-115", name: "Jamal Uddin", email: "jamal.uddin@quickcareems.com", role: "Ambulance Drivers", lastLogin: "Jun 28 · 17:44" },
+  { id: "R-116", name: "Imran Kabir", email: "imran.kabir@gmail.com", role: "General Users", lastLogin: "Jun 27 · 12:08" },
+  { id: "R-117", name: "Green Life Hospital", email: "operations@greenlifebd.com", role: "Hospital", lastLogin: "Jun 27 · 10:19" },
+  { id: "R-118", name: "Habibur Rahman", email: "habibur.rahman@cityambulance.com", role: "Ambulance Drivers", lastLogin: "Jun 26 · 21:05" },
+  { id: "R-119", name: "Lamia Sultana", email: "lamia.s@gmail.com", role: "General Users", lastLogin: "Jun 26 · 19:07" },
+  { id: "R-120", name: "City Care Clinic", email: "info@citycareclinic.com", role: "Hospital", lastLogin: "Jun 25 · 09:13" },
+];
+
 const monthlyRevenue: MonthlyRevenue[] = [
   { m: "Feb", revenue: 68000, cases: 68 },
   { m: "Mar", revenue: 94000, cases: 94 },
@@ -165,6 +189,7 @@ export const platformService = {
   }),
   getAdminNotifications: async () => adminNotifications,
   getAuditLog: async () => auditLog,
+  getRecentLogins: async (): Promise<RecentLoginUser[]> => recentLogins,
   getMonthlyRevenue: async () => monthlyRevenue,
   getUserGrowth: async () => userGrowth,
   getActivityTrend: async () => activityTrend,

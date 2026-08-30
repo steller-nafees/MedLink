@@ -1,10 +1,10 @@
-import { UserPlus, Ban, Wallet, ServerCog, type LucideIcon } from "lucide-react";
+import { UserRoundPlus, ShieldAlert, WalletCards, ServerCog, type LucideIcon } from "lucide-react";
 import type { AdminNotification } from "@/types/platform";
 
 const meta: Record<AdminNotification["kind"], { icon: LucideIcon; cls: string }> = {
-  registration: { icon: UserPlus, cls: "bg-primary-container text-primary" },
-  suspension: { icon: Ban, cls: "bg-destructive/10 text-destructive" },
-  settlement: { icon: Wallet, cls: "bg-warning/10 text-warning" },
+  registration: { icon: UserRoundPlus, cls: "bg-primary-container text-primary" },
+  suspension: { icon: ShieldAlert, cls: "bg-destructive/10 text-destructive" },
+  settlement: { icon: WalletCards, cls: "bg-warning/10 text-warning" },
   system: { icon: ServerCog, cls: "bg-info/10 text-info" },
 };
 

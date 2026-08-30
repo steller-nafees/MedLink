@@ -70,9 +70,10 @@ export type HospitalPayment = {
   payment_id: string;
   reservation_id: string;
   total_amount: number | string;
-  payment_method: string;
+  payment_method: string | null;
   payment_status: string;
   paid_at: string | null;
+  created_at: string;
   patient_id: string;
   patient_first_name?: string;
   patient_last_name?: string;
@@ -116,7 +117,7 @@ export async function updateBedStatus(bedId: string, bedStatus: HospitalBed["bed
 }
 
 export async function getHospitalReservationsFromApi() {
-  const response = await api.get<ApiResponse<Record<string, unknown>[]>>("/hospital/reservations");
+  const response = await api.get<ApiResponse<HospitalReservationRecord[]>>("/hospital/reservations");
   return response.data.data;
 }
 
@@ -127,6 +128,16 @@ export async function approveReservation(reservationId: string) {
 
 export async function getHospitalPaymentsFromApi() {
   const response = await api.get<ApiResponse<HospitalPayment[]>>("/hospital/payments");
+  return response.data.data;
+}
+
+export async function createHospitalPayment(input: {
+  reservationId: string;
+  totalAmount: number;
+  paymentMethod: string;
+  paymentStatus: "PAID";
+}) {
+  const response = await api.post<ApiResponse<HospitalPayment>>("/hospital/payments", input);
   return response.data.data;
 }
 

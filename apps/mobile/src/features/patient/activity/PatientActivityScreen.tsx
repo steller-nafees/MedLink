@@ -11,13 +11,15 @@ import {
 } from "react-native";
 import { BedDouble, RefreshCw, Siren, CalendarX, AlertTriangle } from "lucide-react-native";
 import { StatusBar } from "expo-status-bar";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "../../../theme";
 import {
   getMedicalEvents,
+  getPayments,
   getReservations,
   type MedicalEvent,
+  type PatientPayment,
   type Reservation,
 } from "../../../services/patient-records";
 
@@ -25,9 +27,11 @@ const filters = ["Emergency", "Bookings"] as const;
 type ActivityFilter = (typeof filters)[number];
 
 export default function PatientActivityScreen() {
+  const router = useRouter();
   const [tab, setTab] = useState<ActivityFilter>("Emergency");
   const [events, setEvents] = useState<MedicalEvent[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [payments, setPayments] = useState<PatientPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +40,18 @@ export default function PatientActivityScreen() {
   const palette = useMemo(() => getPalette(isDark), [isDark]);
   const styles = useMemo(() => createStyles(palette), [palette]);
   const emergencyEvents = useMemo(() => events.filter((event) => event.is_emergency), [events]);
+
+  const handleCompleteEvent = useCallback((eventId: string) => {
+    setEvents((currentEvents) =>
+      currentEvents.map((event) =>
+        event.id === eventId ? { ...event, event_status: "COMPLETED" } : event,
+      ),
+    );
+  }, []);
+
+  const handleDeleteEvent = useCallback((eventId: string) => {
+    setEvents((currentEvents) => currentEvents.filter((event) => event.id !== eventId));
+  }, []);
 
   const loadActivity = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
@@ -47,13 +63,15 @@ export default function PatientActivityScreen() {
     setError(null);
 
     try {
-      const [eventRecords, reservationRecords] = await Promise.all([
+      const [eventRecords, reservationRecords, paymentRecords] = await Promise.all([
         getMedicalEvents(),
         getReservations(),
+        getPayments(),
       ]);
 
       setEvents(eventRecords);
       setReservations(reservationRecords);
+      setPayments(paymentRecords);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Could not load activity.");
     } finally {
@@ -153,7 +171,24 @@ export default function PatientActivityScreen() {
           emergencyEvents.length ? (
             <View style={styles.requestList}>
               {emergencyEvents.map((event) => (
-                <EventCard key={event.id} event={event} palette={palette} />
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  palette={palette}
+                  onComplete={handleCompleteEvent}
+                  onDelete={handleDeleteEvent}
+                  onResume={() =>
+                    router.push({
+                      pathname: "/sos",
+                      params: {
+                        resume: "1",
+                        eventId: event.id,
+                        eventText: event.user_description ?? "",
+                        eventSeverity: event.severity ?? "LOW",
+                      },
+                    })
+                  }
+                />
               ))}
             </View>
           ) : (
@@ -168,7 +203,12 @@ export default function PatientActivityScreen() {
         ) : reservations.length ? (
           <View style={styles.requestList}>
             {reservations.map((reservation) => (
-              <ReservationActivityCard key={reservation.id} reservation={reservation} palette={palette} />
+                <ReservationActivityCard
+                  key={reservation.id}
+                  reservation={reservation}
+                  payment={payments.find((record) => record.reservation_id === reservation.id)}
+                  palette={palette}
+                />
             ))}
           </View>
         ) : (
@@ -185,11 +225,30 @@ export default function PatientActivityScreen() {
   );
 }
 
-function EventCard({ event, palette }: { event: MedicalEvent; palette: ReturnType<typeof getPalette> }) {
+function EventCard({
+  event,
+  palette,
+  onResume,
+  onComplete,
+  onDelete,
+}: {
+  event: MedicalEvent;
+  palette: ReturnType<typeof getPalette>;
+  onResume: () => void;
+  onComplete: (eventId: string) => void;
+  onDelete: (eventId: string) => void;
+}) {
   const styles = createStyles(palette);
+  const normalizedStatus = event.event_status?.toUpperCase();
+  const canShowPendingActions = normalizedStatus === "PENDING" || normalizedStatus === "IN_PROGRESS" || normalizedStatus === "ACTIVE";
 
   return (
-    <View style={styles.requestCard}>
+    <Pressable
+      onPress={onResume}
+      accessibilityRole="button"
+      accessibilityLabel={`Resume emergency activity ${event.user_description ?? "medical event"}`}
+      style={({ pressed }) => [styles.requestCard, pressed && styles.requestCardPressed]}
+    >
       <View style={styles.requestTopRow}>
         <View style={styles.requestIcon}>
           <Siren size={20} color={theme.colors.emergency} strokeWidth={2} />
@@ -209,11 +268,54 @@ function EventCard({ event, palette }: { event: MedicalEvent; palette: ReturnTyp
         <StatusPill label={displayEnum(event.event_status)} tone={getRecordTone(event.event_status)} palette={palette} />
         <Text style={styles.date}>{formatDate(event.created_at)}</Text>
       </View>
-    </View>
+
+      {canShowPendingActions ? (
+        <View style={styles.actionRow}>
+          <Pressable
+            onPress={(eventPress) => {
+              eventPress.stopPropagation?.();
+              onComplete(event.id);
+            }}
+            style={({ pressed }) => [styles.actionButton, styles.completeButton, pressed && styles.actionButtonPressed]}
+          >
+            <Text style={styles.completeButtonText}>Complete</Text>
+          </Pressable>
+          <Pressable
+            onPress={(eventPress) => {
+              eventPress.stopPropagation?.();
+              onDelete(event.id);
+            }}
+            style={({ pressed }) => [styles.actionButton, styles.deleteButton, pressed && styles.actionButtonPressed]}
+          >
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          </Pressable>
+        </View>
+      ) : normalizedStatus === "COMPLETED" ? (
+        <View style={styles.actionRow}>
+          <Pressable
+            onPress={(eventPress) => {
+              eventPress.stopPropagation?.();
+              onDelete(event.id);
+            }}
+            style={({ pressed }) => [styles.actionButton, styles.deleteButton, pressed && styles.actionButtonPressed]}
+          >
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          </Pressable>
+        </View>
+      ) : null}
+    </Pressable>
   );
 }
 
-function ReservationActivityCard({ reservation, palette }: { reservation: Reservation; palette: ReturnType<typeof getPalette> }) {
+function ReservationActivityCard({
+  reservation,
+  payment,
+  palette,
+}: {
+  reservation: Reservation;
+  payment?: PatientPayment;
+  palette: ReturnType<typeof getPalette>;
+}) {
   const styles = createStyles(palette);
 
   return (
@@ -240,6 +342,12 @@ function ReservationActivityCard({ reservation, palette }: { reservation: Reserv
         <StatusPill label={displayEnum(reservation.reservation_mode)} tone="info" palette={palette} />
         <Text style={styles.date}>{formatDate(reservation.requested_at ?? reservation.created_at)}</Text>
       </View>
+      {payment ? (
+        <View style={styles.paymentRow}>
+          <Text style={styles.paymentLabel}>Payment {displayEnum(payment.payment_status)}</Text>
+          <Text style={styles.paymentAmount}>BDT {Number(payment.total_amount).toFixed(2)}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -380,6 +488,7 @@ const createStyles = (palette: ReturnType<typeof getPalette>) =>
 
     requestList: { gap: 10, paddingHorizontal: 20 },
     requestCard: { borderWidth: 1, borderColor: palette.border, borderRadius: theme.radii.xxxl, backgroundColor: palette.surface, padding: 16, ...theme.shadows.shadowCard },
+    requestCardPressed: { opacity: 0.9 },
     requestTopRow: { flexDirection: "row", alignItems: "flex-start", gap: 14 },
     requestIcon: { width: 44, height: 44, flexShrink: 0, alignItems: "center", justifyContent: "center", borderRadius: theme.radii.lg, backgroundColor: theme.colors.emergencyLight },
     bookingIcon: { backgroundColor: theme.colors.primaryContainer },
@@ -388,6 +497,16 @@ const createStyles = (palette: ReturnType<typeof getPalette>) =>
     requestTitle: { fontFamily: theme.fonts.bold, fontWeight: "700", fontSize: 15, lineHeight: 19, color: palette.foreground },
     hospital: { fontFamily: theme.fonts.regular, fontSize: 12.5, lineHeight: 17, color: palette.muted },
     metadataRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 12 },
+    actionRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14 },
+    actionButton: { flex: 1, alignItems: "center", justifyContent: "center", borderRadius: theme.radii.lg, paddingVertical: 10, borderWidth: 1 },
+    actionButtonPressed: { opacity: 0.85 },
+    completeButton: { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+    deleteButton: { backgroundColor: palette.surface, borderColor: palette.border },
+    completeButtonText: { fontFamily: theme.fonts.semiBold, fontWeight: "600", fontSize: 12.5, lineHeight: 16, color: theme.colors.primaryForeground },
+    deleteButtonText: { fontFamily: theme.fonts.semiBold, fontWeight: "600", fontSize: 12.5, lineHeight: 16, color: palette.foreground },
+    paymentRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 14, borderTopWidth: 1, borderTopColor: palette.border, paddingTop: 12 },
+    paymentLabel: { fontFamily: theme.fonts.semiBold, fontWeight: "600", fontSize: 12, lineHeight: 16, color: palette.foreground },
+    paymentAmount: { fontFamily: theme.fonts.bold, fontWeight: "700", fontSize: 12, lineHeight: 16, color: theme.colors.success },
     statusPill: { alignSelf: "flex-start", borderRadius: theme.radii.pill, paddingHorizontal: 10, paddingVertical: 4 },
     statusText: { fontFamily: theme.fonts.semiBold, fontWeight: "600", fontSize: 10.5, lineHeight: 13, letterSpacing: 0.5 },
     primaryPill: { backgroundColor: theme.colors.primaryContainer }, primaryText: { color: theme.colors.primary },

@@ -11,7 +11,7 @@ export function Table({
     <div className="overflow-x-auto">
       <table className="w-full text-left text-[13px]">
         <thead>
-          <tr className="border-b border-border/70 bg-surface-variant/50 text-[10.5px] uppercase tracking-widest text-muted-foreground">
+          <tr className="border-b border-border/70 bg-surface-variant/50 text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground">
             {head.map((h, i) => (
               <th key={i} className="whitespace-nowrap px-5 py-3 font-semibold">
                 {h}
@@ -28,16 +28,18 @@ export function Table({
 export function Td({
   children,
   className = "",
+  colSpan,
 }: {
   children?: ReactNode;
   className?: string;
+  colSpan?: number;
 }) {
-  return <td className={`px-5 py-3.5 align-middle ${className}`}>{children}</td>;
+  return <td colSpan={colSpan} className={`px-5 py-3.5 align-middle ${className}`}>{children}</td>;
 }
 
 export function Tr({ children }: { children: ReactNode }) {
   return (
-    <tr className="border-b border-border/50 transition last:border-0 hover:bg-surface-variant/40">
+    <tr className="border-b border-border/60 transition-colors last:border-0 hover:bg-surface-variant/40">
       {children}
     </tr>
   );

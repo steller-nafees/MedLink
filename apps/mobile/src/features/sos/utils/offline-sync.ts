@@ -48,7 +48,6 @@ export type EmergencyCache = {
 };
 
 export const emergencyHotlines = [
-  { label: 'National Emergency', number: '999' },
   { label: 'Ambulance Service', number: '+880 1712-334455' },
   { label: 'Fire Service', number: '102' },
   { label: 'MedLink Support', number: '+880 9610-000111' },

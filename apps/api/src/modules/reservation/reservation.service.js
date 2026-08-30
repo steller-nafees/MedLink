@@ -9,6 +9,9 @@ const createError = (message, statusCode) => {
 const createReservation = async ({
     medicalEventId, userId, hospitalId, wardId, bedId, reservationMode,
 }) => reservationRepository.withTransaction(async (client) => {
+    const persistedReservationMode = reservationMode === "ICU"
+        ? "EMERGENCY"
+        : reservationMode;
     const event = await reservationRepository.findMedicalEventForUpdate(client, medicalEventId);
 
     if (!event) {
@@ -64,7 +67,12 @@ const createReservation = async ({
     }
 
     const reservation = await reservationRepository.insertReservation(client, {
-        medicalEventId, userId, hospitalId, wardId, bedId, reservationMode,
+        medicalEventId,
+        userId,
+        hospitalId,
+        wardId,
+        bedId,
+        reservationMode: persistedReservationMode,
     });
 
     await reservationRepository.linkEventToHospital(client, medicalEventId, hospitalId);

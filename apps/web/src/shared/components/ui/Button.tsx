@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-type ButtonVariant = "primary" | "secondary" | "ghost";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "success";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode;
@@ -27,14 +27,18 @@ export function Button({
 export function GhostButton({
   children,
   className = "",
+  tone,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode;
+  tone?: "primary" | "success" | "danger";
 }) {
+  const variant = tone === "success" ? "success" : tone === "danger" ? "danger" : "secondary";
+
   return (
     <Button
-      variant="ghost"
-      className={className}
+      variant={variant}
+      className={`ui-button-ghost ${className}`}
       {...props}
     >
       {children}

@@ -25,16 +25,6 @@ import { getActiveCases, getHospitalDashboard, getHospitalDashboardAnalytics, ty
 type Severity = "critical" | "high" | "moderate" | "low";
 type Icon = typeof Activity;
 
-type Emergency = {
-	id: string;
-	patient: string;
-	age: number;
-	severity: Severity;
-	summary: string;
-	eta: string;
-	ambulance: string;
-};
-
 const severityStyle: Record<Severity, { bg: string; text: string }> = {
 	critical: { bg: "severity-critical", text: "severity-critical-text" },
 	high: { bg: "severity-high", text: "severity-high-text" },

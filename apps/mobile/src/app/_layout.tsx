@@ -32,7 +32,7 @@ export default function RootLayout() {
       if (!active) return;
 
       const group = segments[0];
-      const route = segments[1];
+      const route = segments.length > 1 ? segments[1] : undefined;
       const protectedRoute = group === "(patient)" || group === "(ambulance)";
 
       if (emergency && (group !== "(patient)" || route !== "sos")) {

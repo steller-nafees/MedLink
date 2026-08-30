@@ -1,202 +1,203 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import {
-  Users,
-  Truck,
-  Building2,
-  Siren,
-  Droplet,
-  CalendarCheck,
-  Wallet,
-  Hourglass,
-  ShieldCheck,
-  ArrowUpRight,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Building2, CalendarCheck2, Search, ShieldCheck, Truck, Users } from "lucide-react";
 import { PageHeader } from "@/shared/components/ui/PageHeader";
 import { StatCard } from "@/shared/components/ui/StatCard";
 import { Card } from "@/shared/components/ui/Card";
-import { Badge } from "@/shared/components/ui/Badge";
-import { AreaChart } from "@/shared/components/charts/AreaChart";
+import { PieChart } from "@/shared/components/charts/PieChart";
+import { FilterTabs } from "@/shared/components/ui/FilterTabs";
+import { SearchInput } from "@/shared/components/ui/SearchInput";
 import { platformService } from "@/services/platform.service";
-import { bdt } from "@/shared/utils/format";
-import type { Totals, MonthlyRevenue, Settlement, HospitalApplication, DriverApplication, AuditEvent } from "@/types/platform";
+import type { RecentLoginUser, Totals } from "@/types/platform";
+
+const roleColors = ["#4a90e2", "#e76f6f", "#16a89c"];
+const roleFilterOptions = ["All", "General Users", "Hospital", "Ambulance Drivers"] as const;
+type RoleFilter = (typeof roleFilterOptions)[number];
 
 export function AdminDashboardPage() {
-  const [data, setData] = useState<{
-    totals: Totals | null;
-    revenueStats: { totalRevenue: number; totalOutstanding: number } | null;
-    monthlyRevenue: MonthlyRevenue[];
-    settlements: Settlement[];
-    hospitalApps: HospitalApplication[];
-    driverApps: DriverApplication[];
-    auditLog: AuditEvent[];
-  }>({
-    totals: null,
-    revenueStats: null,
-    monthlyRevenue: [],
-    settlements: [],
-    hospitalApps: [],
-    driverApps: [],
-    auditLog: [],
-  });
+  const [totals, setTotals] = useState<Totals | null>(null);
+  const [loggedInUsers, setLoggedInUsers] = useState<RecentLoginUser[]>([]);
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>("All");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     async function loadData() {
-      const [
-        totals,
-        revenueStats,
-        monthlyRevenue,
-        settlements,
-        hospitalApps,
-        driverApps,
-        auditLog,
-      ] = await Promise.all([
+      const [nextTotals, nextUsers] = await Promise.all([
         platformService.getTotals(),
-        platformService.getOverallRevenueStats(),
-        platformService.getMonthlyRevenue(),
-        platformService.getSettlements(),
-        platformService.getHospitalApplications(),
-        platformService.getDriverApplications(),
-        platformService.getAuditLog(),
+        platformService.getRecentLogins(),
       ]);
 
-      setData({
-        totals,
-        revenueStats,
-        monthlyRevenue,
-        settlements,
-        hospitalApps,
-        driverApps,
-        auditLog,
-      });
+      setTotals(nextTotals);
+      setLoggedInUsers(nextUsers);
     }
+
     loadData();
   }, []);
 
-  if (!data.totals || !data.revenueStats) return null; // or loading state
+  const distribution = useMemo(() => {
+    if (!totals) return [];
 
-  const pending = data.hospitalApps.length + data.driverApps.length;
+    return [
+      { name: "General Users", value: totals.users },
+      { name: "Ambulance Drivers", value: totals.drivers },
+      { name: "Hospitals", value: totals.hospitals },
+    ];
+  }, [totals]);
+
+  const filteredUsers = useMemo(() => {
+    const normalized = search.trim().toLowerCase();
+
+    return loggedInUsers.filter((user) => {
+      const matchesRole = roleFilter === "All" || user.role === roleFilter;
+      const matchesSearch =
+        normalized.length === 0 ||
+        user.name.toLowerCase().includes(normalized) ||
+        user.email.toLowerCase().includes(normalized) ||
+        user.role.toLowerCase().includes(normalized);
+
+      return matchesRole && matchesSearch;
+    });
+  }, [loggedInUsers, roleFilter, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / 10));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedUsers = filteredUsers.slice((currentPage - 1) * 10, currentPage * 10);
+
+  useEffect(() => {
+    setPage(1);
+  }, [roleFilter, search]);
+
+  if (!totals) return null;
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6">
+    <div className="admin-dashboard mx-auto max-w-[1400px] space-y-6">
       <PageHeader
         eyebrow="Platform overview"
         title="Good morning, Alex."
-        subtitle={`Platform is healthy · 99.98% uptime this month · ${pending} approvals waiting.`}
+        subtitle="Operating status is stable across patients, providers, and care teams."
         action={
-          <Link
-            to="/admin/verification"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-[12.5px] font-semibold text-primary-foreground shadow-card transition hover:opacity-90"
-          >
-            <ShieldCheck className="size-4" /> Review {pending} applications
-          </Link>
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-2 text-[12px] font-semibold text-foreground shadow-card">
+            <ShieldCheck className="size-4 text-primary" />
+            <span>{totals.hospitals} active care partners</span>
+          </div>
         }
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total general users" value={data.totals.users.toLocaleString()} sub="+8.3% vs last month" icon={Users} tone="primary" />
-        <StatCard label="Ambulance drivers" value={data.totals.drivers.toString()} sub="+27 this month" icon={Truck} tone="info" />
-        <StatCard label="Hospitals" value={data.totals.hospitals.toString()} sub="2 pending verification" icon={Building2} tone="info" />
-        <StatCard label="Emergency SOS cases" value={data.totals.sos.toLocaleString()} sub="Lifetime billable cases" icon={Siren} tone="warning" />
-        <StatCard label="Blood donation requests" value={data.totals.blood.toLocaleString()} sub="+18% vs last month" icon={Droplet} tone="warning" />
-        <StatCard label="Hospital reservations" value={data.totals.reservations.toLocaleString()} sub="+11.4% vs last month" icon={CalendarCheck} tone="neutral" />
-        <StatCard label="Total revenue generated" value={bdt(data.revenueStats.totalRevenue)} sub="৳1,000 service fee per SOS" icon={Wallet} tone="success" />
-        <StatCard label="Pending settlements" value={bdt(data.revenueStats.totalOutstanding)} sub="Across 4 hospitals" icon={Hourglass} tone="warning" />
+        <StatCard label="Total general users" value={totals.users.toLocaleString()} sub="+8.3% vs last month" icon={Users} tone="primary" />
+        <StatCard label="Ambulance drivers" value={totals.drivers.toLocaleString()} sub="+27 this month" icon={Truck} tone="info" />
+        <StatCard label="Hospitals" value={totals.hospitals.toLocaleString()} sub="2 pending verification" icon={Building2} tone="success" />
+        <StatCard label="Reservations" value={totals.reservations.toLocaleString()} sub="+11.4% vs last month" icon={CalendarCheck2} tone="neutral" />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4">
         <Card
-          className="lg:col-span-2"
-          title="Revenue trend"
-          subtitle="Service fee revenue over the last 6 months"
-          action={
-            <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-success">
-              <ArrowUpRight className="size-3.5" /> +15.8%
-            </span>
-          }
+          title="User distribution"
+          subtitle="Live platform membership by role"
+          action={<span className="text-[11.5px] font-semibold text-muted-foreground">{totals.users + totals.drivers + totals.hospitals} total accounts</span>}
         >
-          <AreaChart data={data.monthlyRevenue} dataKey="revenue" formatter={(v: number) => bdt(v)} />
-        </Card>
-
-        <Card title="Top hospitals by revenue" subtitle="Current billing cycle" bodyClassName="p-0">
-          <ul className="divide-y divide-border/60">
-            {[...data.settlements]
-              .sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0))
-              .slice(0, 5)
-              .map((s) => (
-                <li key={s.hospital} className="flex items-center gap-3 px-5 py-3.5">
-                  <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary-container text-primary">
-                    <Building2 className="size-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-semibold">{s.hospital}</p>
-                    <p className="text-[11.5px] text-muted-foreground">{s.cases} SOS cases</p>
-                  </div>
-                  <p className="text-[13px] font-bold tabular-nums">{bdt(s.revenue ?? 0)}</p>
-                </li>
-              ))}
-          </ul>
+          <div className="grid gap-6 md:grid-cols-[minmax(0,220px)_1fr] md:items-center">
+            <div className="h-52 w-full md:h-60">
+              <PieChart data={distribution} dataKey="value" formatter={(value: number) => `${value.toLocaleString()} accounts`} />
+            </div>
+            <ul className="space-y-3">
+              {distribution.map((item, i) => {
+                const percent = ((item.value / (totals.users + totals.drivers + totals.hospitals)) * 100).toFixed(1);
+                return (
+                  <li key={item.name} className="rounded-2xl border border-border/70 bg-surface-variant/40 p-3">
+                    <div className="flex items-center gap-3">
+                      <span className="size-3 rounded-full" style={{ background: roleColors[i % roleColors.length] }} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[13px] font-semibold text-foreground">{item.name}</span>
+                          <span className="text-[12px] font-medium text-muted-foreground">{percent}%</span>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">{item.value.toLocaleString()} users</p>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card
-          title="Pending approvals"
-          subtitle="Hospital and driver applications"
-          action={
-            <Link to="/admin/verification" className="text-[12px] font-semibold text-primary">
-              Open verification center
-            </Link>
-          }
-          bodyClassName="p-0"
-        >
-          <ul className="divide-y divide-border/60">
-            {data.hospitalApps.slice(0, 2).map((a) => (
-              <li key={a.id} className="flex items-center gap-3 px-5 py-3.5">
-                <Building2 className="size-4 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold">{a.name}</p>
-                  <p className="text-[11.5px] text-muted-foreground">Hospital · submitted {a.submitted}</p>
-                </div>
-                <Badge status="pending" />
-              </li>
-            ))}
-            {data.driverApps.slice(0, 2).map((a) => (
-              <li key={a.id} className="flex items-center gap-3 px-5 py-3.5">
-                <Truck className="size-4 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold">{a.name}</p>
-                  <p className="text-[11.5px] text-muted-foreground">{a.reg} · {a.type}</p>
-                </div>
-                <Badge status="pending" />
-              </li>
-            ))}
-          </ul>
-        </Card>
+      <Card
+        title="Recent logged-in users"
+        subtitle="Latest access activity across the platform"
+        bodyClassName="p-0"
+      >
+        <div className="flex flex-col gap-3 border-b border-border/70 p-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-1 flex-col gap-3 md:flex-row md:items-center">
+            <div className="w-full md:max-w-[260px]">
+              <SearchInput value={search} onChange={setSearch} placeholder="Search name or email" />
+            </div>
+            <FilterTabs options={roleFilterOptions} value={roleFilter} onChange={setRoleFilter} />
+          </div>
+          <div className="text-[12px] font-medium text-muted-foreground">
+            {filteredUsers.length} results
+          </div>
+        </div>
 
-        <Card
-          title="Recent activity"
-          subtitle="Latest audit events"
-          action={
-            <Link to="/admin/audit" className="text-[12px] font-semibold text-primary">
-              View all logs
-            </Link>
-          }
-          bodyClassName="p-0"
-        >
-          <ul className="divide-y divide-border/60">
-            {data.auditLog.slice(0, 5).map((l) => (
-              <li key={l.id} className="flex items-center gap-3 px-5 py-3.5">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-semibold">{l.event}</p>
-                  <p className="truncate text-[11.5px] text-muted-foreground">{l.target}</p>
-                </div>
-                <p className="shrink-0 text-[11.5px] text-muted-foreground tabular-nums">{l.time}</p>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-[13px]">
+            <thead>
+              <tr className="border-b border-border/70 bg-surface-variant/50 text-[10.5px] uppercase tracking-[0.15em] text-muted-foreground">
+                <th className="px-5 py-3 font-semibold">User name</th>
+                <th className="px-5 py-3 font-semibold">Email</th>
+                <th className="px-5 py-3 font-semibold">Role</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-5 py-10 text-center text-sm text-muted-foreground">
+                    No matching users found.
+                  </td>
+                </tr>
+              ) : (
+                paginatedUsers.map((user) => (
+                  <tr key={user.id} className="border-b border-border/50 last:border-0 hover:bg-surface-variant/40">
+                    <td className="px-5 py-3.5 font-medium text-foreground">{user.name}</td>
+                    <td className="px-5 py-3.5 text-muted-foreground">{user.email}</td>
+                    <td className="px-5 py-3.5">
+                      <span className="inline-flex rounded-full bg-primary-container px-2.5 py-1 text-[11px] font-semibold text-primary">
+                        {user.role}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex flex-col gap-3 border-t border-border/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+            <Search className="size-3.5" />
+            <span>Page {currentPage} of {totalPages}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="rounded-full border border-border bg-surface px-3 py-1.5 text-[12px] font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="rounded-full border border-border bg-surface px-3 py-1.5 text-[12px] font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }
