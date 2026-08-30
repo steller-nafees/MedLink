@@ -177,10 +177,22 @@ const FadeSlideIn: React.FC<{ children: React.ReactNode; delay?: number; style?:
 };
 
 export const SOSScreen: React.FC = () => {
-  const { phone: phoneParam, temporaryPassword: passwordParam, guest: guestParam } = useLocalSearchParams<{
+  const {
+    phone: phoneParam,
+    temporaryPassword: passwordParam,
+    guest: guestParam,
+    resume: resumeParam,
+    eventText: eventTextParam,
+    eventSeverity: eventSeverityParam,
+    eventId: eventIdParam,
+  } = useLocalSearchParams<{
     phone?: string | string[];
     temporaryPassword?: string | string[];
     guest?: string | string[];
+    resume?: string | string[];
+    eventText?: string | string[];
+    eventSeverity?: string | string[];
+    eventId?: string | string[];
   }>();
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>('input');
@@ -254,6 +266,20 @@ export const SOSScreen: React.FC = () => {
       setPhase('input');
     }
   };
+
+  useEffect(() => {
+    const shouldResume = Array.isArray(resumeParam) ? resumeParam[0] : resumeParam;
+    const textFromParams = Array.isArray(eventTextParam) ? eventTextParam[0] : eventTextParam;
+    const severityFromParams = Array.isArray(eventSeverityParam) ? eventSeverityParam[0] : eventSeverityParam;
+    const eventFromParams = Array.isArray(eventIdParam) ? eventIdParam[0] : eventIdParam;
+
+    if (shouldResume === '1' && textFromParams) {
+      setText(textFromParams);
+      setSeverity(severityFromParams || 'LOW');
+      setMedicalEventId(eventFromParams ?? null);
+      setPhase('input');
+    }
+  }, [resumeParam, eventTextParam, eventSeverityParam, eventIdParam]);
 
   const endSOS = (s: SosSummary) => {
     setSummary(s);
@@ -986,10 +1012,7 @@ const OfflineResources: React.FC<OfflineResourcesProps> = ({ cache }) => {
               overflow: 'hidden',
             }}
           >
-            {[
-              { label: 'National Emergency', number: '999' },
-              { label: 'Ambulance Service', number: '+880 1712-334455' },
-            ].map((h, i) => (
+            {[{ label: 'Ambulance Service', number: '+880 1712-334455' }].map((h, i) => (
               <TouchableOpacity
                 key={h.number}
                 onPress={() => Linking.openURL(`tel:${h.number}`)}
