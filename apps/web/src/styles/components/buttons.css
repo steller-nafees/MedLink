@@ -17,6 +17,30 @@
   box-shadow: 0 20px 50px -12px rgb(22 168 156 / 25%);
 }
 
+.ui-button-secondary {
+  border-color: var(--border);
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.ui-button-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--foreground);
+}
+
+.ui-button-success {
+  border-color: transparent;
+  background: linear-gradient(135deg, rgba(31, 122, 68, 0.15), rgba(31, 122, 68, 0.08));
+  color: var(--success, #1f7a44);
+}
+
+.ui-button-danger {
+  border-color: transparent;
+  background: linear-gradient(135deg, rgba(214, 69, 69, 0.12), rgba(214, 69, 69, 0.06));
+  color: var(--destructive, #d64545);
+}
+
 .today-button,
 .emergency-button,
 .accept-button,

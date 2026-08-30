@@ -12,12 +12,9 @@ export const tooltipStyle = {
 } as const;
 
 export const pieColors = [
-  "var(--color-primary)",
-  "var(--color-secondary)",
-  "var(--color-accent)",
-  "var(--color-info)",
-  "var(--color-warning)",
-  "var(--color-success)",
+  "#4a90e2",
+  "#e76f6f",
+  "#16a89c",
 ];
 
 export const bdt = (n: number) =>

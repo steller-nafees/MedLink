@@ -85,14 +85,14 @@ function TabItem({
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
       accessibilityLabel={label}
-      style={styles.tabItem}
+      style={[styles.tabItem, active && styles.tabItemActive]}
     >
-      <View style={[styles.iconChip, active && styles.iconChipActive]}>
+      <View style={styles.iconChip}>
         <Icon
           size={18}
           strokeWidth={active ? 2.1 : 2}
-          color={active ? "#FFFFFF" : "#16A89C"}
-          fill={active ? "#16A89C" : "none"}
+          color="#16A89C"
+          fill="none"
         />
       </View>
       <Text
@@ -334,6 +334,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     alignItems: "center",
     zIndex: 35,
+    width: 140, // fixed width so the box is symmetric before translateX runs
+    left: -70,  // -width / 2, pre-centers the box on the anchor point
   },
 
   fanPressable: {
@@ -403,13 +405,19 @@ const styles = StyleSheet.create({
     gap: 2,
   },
 
-  /* Tab item */
+  /* Tab item — the whole icon+label group is the pill now */
   tabItem: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     gap: 4,
-    paddingVertical: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderRadius: 20,
+  },
+
+  tabItemActive: {
+    backgroundColor: "rgba(22,168,156,0.12)",
   },
 
   iconChip: {
@@ -418,10 +426,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-  },
-
-  iconChipActive: {
-    backgroundColor: "#16A89C",
   },
 
   tabLabel: {

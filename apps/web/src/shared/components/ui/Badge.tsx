@@ -1,5 +1,5 @@
 const statusMap: Record<string, string> = {
-  active: "bg-success/10 text-success",
+  active: "bg-transparent text-foreground",
   verified: "bg-success/10 text-success",
   operational: "bg-success/10 text-success",
   pending: "bg-warning/10 text-warning",
@@ -12,7 +12,7 @@ export function Badge({ status }: { status: string }) {
   const statusCls = statusMap[status] ?? "bg-surface-variant text-foreground/70";
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-widest ${statusCls}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-0 py-0 text-[11px] font-bold uppercase tracking-[0.12em] ${statusCls}`}
     >
       <span className="size-1.5 rounded-full bg-current" />
       {status}
