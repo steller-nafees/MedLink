@@ -7,6 +7,7 @@ import { AdminDashboardPage } from "@/features/admin/dashboard/AdminDashboardPag
 import { AdminAnalyticsPage } from "@/features/admin/analytics/AdminAnalyticsPage";
 import { AdminUsersPage } from "@/features/admin/users/AdminUsersPage";
 import { AdminHospitalsPage } from "@/features/admin/hospitals/AdminHospitalsPage";
+import { AdminAmbulanceProvidersPage } from "@/features/admin/ambulance-providers/AdminAmbulanceProvidersPage";
 import { AdminDriversPage } from "@/features/admin/drivers/AdminDriversPage";
 import { AdminVerificationPage } from "@/features/admin/verification/AdminVerificationPage";
 import { AdminRevenuePage } from "@/features/admin/revenue/AdminRevenuePage";
@@ -52,6 +53,7 @@ function AdminPage() {
         <Route path="analytics" element={<AdminAnalyticsPage />} />
         <Route path="users" element={<AdminUsersPage />} />
         <Route path="hospitals" element={<AdminHospitalsPage />} />
+        <Route path="ambulance-providers" element={<AdminAmbulanceProvidersPage />} />
         <Route path="drivers" element={<AdminDriversPage />} />
         <Route
           path="verification"
