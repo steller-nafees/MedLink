@@ -24,4 +24,4 @@ export function FilterTabs<T extends string>({
       ))}
     </div>
   );
-}
+} 
