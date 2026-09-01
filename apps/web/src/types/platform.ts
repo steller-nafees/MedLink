@@ -7,7 +7,12 @@ export type PlatformUser = {
   phone: string;
   registered: string;
   status: AccountStatus;
+<<<<<<< HEAD
+  role?: "customer" | "ambulance_driver" | "hospital_admin" | "super_admin";
+  subtitle?: string;
+=======
   role?: "general_user" | "ambulance_driver" | "hospital_admin";
+>>>>>>> f50fe42674a87e01de03044ea25c5084327dc131
 };
 
 export type HospitalAccount = {
