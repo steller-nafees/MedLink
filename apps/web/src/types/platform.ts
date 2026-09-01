@@ -7,8 +7,12 @@ export type PlatformUser = {
   phone: string;
   registered: string;
   status: AccountStatus;
+<<<<<<< HEAD
   role?: "customer" | "ambulance_driver" | "hospital_admin" | "super_admin";
   subtitle?: string;
+=======
+  role?: "general_user" | "ambulance_driver" | "hospital_admin";
+>>>>>>> f50fe42674a87e01de03044ea25c5084327dc131
 };
 
 export type HospitalAccount = {
@@ -19,17 +23,6 @@ export type HospitalAccount = {
   registered: string;
   verification: "verified" | "pending" | "suspended";
   contact: string;
-
-  // Additional backend fields
-  licenseNumber?: string;
-  email?: string;
-  phone?: string;
-  website?: string;
-  address?: string;
-  latitude?: number;
-  longitude?: number;
-  hospitalStatus?: "OPEN" | "CLOSED" | "UNDER_MAINTENANCE";
-  description?: string;
 };
 
 export type DriverAccount = {
@@ -40,17 +33,6 @@ export type DriverAccount = {
   type: "ALS" | "Critical Care" | "Basic Life Support";
   provider: string;
   status: AccountStatus;
-};
-
-export type AmbulanceProviderAccount = {
-  id: string;
-  providerName: string;
-  providerPhone: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-  isActive: boolean;
-  registered: string; // for display
 };
 
 export type HospitalApplication = {

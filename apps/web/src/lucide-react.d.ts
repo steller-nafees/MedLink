@@ -50,12 +50,14 @@ declare module "lucide-react" {
   export const Search: ComponentType<IconProps>;
   export const ServerCog: ComponentType<IconProps>;
   export const Settings: ComponentType<IconProps>;
+  export const Shield: ComponentType<IconProps>;
   export const ShieldAlert: ComponentType<IconProps>;
   export const ShieldCheck: ComponentType<IconProps>;
   export const Siren: ComponentType<IconProps>;
   export const Sparkles: ComponentType<IconProps>;
   export const Stethoscope: ComponentType<IconProps>;
   export const Tag: ComponentType<IconProps>;
+  export const Trash2: ComponentType<IconProps>;
   export const Truck: ComponentType<IconProps>;
   export const TrendingUp: ComponentType<IconProps>;
   export const Upload: ComponentType<IconProps>;
@@ -63,6 +65,7 @@ declare module "lucide-react" {
   export const Users: ComponentType<IconProps>;
   export const UserRound: ComponentType<IconProps>;
   export const UserRoundPlus: ComponentType<IconProps>;
+  export const Pencil: ComponentType<IconProps>;
   export const Wallet: ComponentType<IconProps>;
   export const WalletCards: ComponentType<IconProps>;
   export const X: ComponentType<IconProps>;
