@@ -18,21 +18,20 @@ import type {
   UptimeData,
   DauData
 } from "@/types/platform";
-import { api } from "./api";
 
 export const SOS_SERVICE_FEE = 1000; // BDT per Emergency SOS case
 
 const platformUsers: PlatformUser[] = [
-  { id: "U-10241", name: "Nusrat Jahan", email: "nusrat.j@gmail.com", phone: "+8801711234501", registered: "2026-01-14", status: "active", role: "customer" },
-  { id: "U-10242", name: "Rafiqul Islam", email: "rafiq.islam@gmail.com", phone: "+8801711234502", registered: "2026-01-22", status: "active", role: "customer" },
-  { id: "U-10243", name: "Tanvir Ahmed", email: "tanvir.ahmed@yahoo.com", phone: "+8801711234503", registered: "2026-02-03", status: "suspended", role: "customer" },
-  { id: "U-10244", name: "Mehjabin Chowdhury", email: "mehjabin.c@gmail.com", phone: "+8801711234504", registered: "2026-02-19", status: "active", role: "customer" },
-  { id: "U-10245", name: "Shakib Hasan", email: "shakib.hasan@outlook.com", phone: "+8801711234505", registered: "2026-03-02", status: "active", role: "customer" },
-  { id: "U-10246", name: "Farhana Akter", email: "farhana.akter@gmail.com", phone: "+8801711234506", registered: "2026-03-27", status: "pending", role: "customer" },
-  { id: "U-10247", name: "Imran Kabir", email: "imran.kabir@gmail.com", phone: "+8801711234507", registered: "2026-04-11", status: "active", role: "customer" },
-  { id: "U-10248", name: "Sadia Rahman", email: "sadia.rahman@gmail.com", phone: "+8801711234508", registered: "2026-05-06", status: "active", role: "customer" },
-  { id: "U-10249", name: "Arif Mahmud", email: "arif.mahmud@gmail.com", phone: "+8801711234509", registered: "2026-06-01", status: "suspended", role: "customer" },
-  { id: "U-10250", name: "Lamia Sultana", email: "lamia.s@gmail.com", phone: "+8801711234510", registered: "2026-07-09", status: "active", role: "customer" },
+  { id: "U-10241", name: "Nusrat Jahan", email: "nusrat.j@gmail.com", phone: "+8801711234501", registered: "2026-01-14", status: "active" },
+  { id: "U-10242", name: "Rafiqul Islam", email: "rafiq.islam@gmail.com", phone: "+8801711234502", registered: "2026-01-22", status: "active" },
+  { id: "U-10243", name: "Tanvir Ahmed", email: "tanvir.ahmed@yahoo.com", phone: "+8801711234503", registered: "2026-02-03", status: "suspended" },
+  { id: "U-10244", name: "Mehjabin Chowdhury", email: "mehjabin.c@gmail.com", phone: "+8801711234504", registered: "2026-02-19", status: "active" },
+  { id: "U-10245", name: "Shakib Hasan", email: "shakib.hasan@outlook.com", phone: "+8801711234505", registered: "2026-03-02", status: "active" },
+  { id: "U-10246", name: "Farhana Akter", email: "farhana.akter@gmail.com", phone: "+8801711234506", registered: "2026-03-27", status: "pending" },
+  { id: "U-10247", name: "Imran Kabir", email: "imran.kabir@gmail.com", phone: "+8801711234507", registered: "2026-04-11", status: "active" },
+  { id: "U-10248", name: "Sadia Rahman", email: "sadia.rahman@gmail.com", phone: "+8801711234508", registered: "2026-05-06", status: "active" },
+  { id: "U-10249", name: "Arif Mahmud", email: "arif.mahmud@gmail.com", phone: "+8801711234509", registered: "2026-06-01", status: "suspended" },
+  { id: "U-10250", name: "Lamia Sultana", email: "lamia.s@gmail.com", phone: "+8801711234510", registered: "2026-07-09", status: "active" },
 ];
 
 const hospitalAccounts: HospitalAccount[] = [
@@ -179,115 +178,8 @@ const dauSeries: DauData[] = Array.from({ length: 14 }).map((_, i) => ({
 }));
 
 export const platformService = {
-  getUsers: async (): Promise<PlatformUser[]> => {
-    try {
-      const response = await api.get("/admin/users?limit=1000");
-      const users = response.data.data;
-      return users.map((u: any) => {
-        let roleName: "customer" | "ambulance_driver" | "hospital_admin" | "super_admin" = "customer";
-        if (u.role_type === "HOSPITAL_ADMIN") roleName = "hospital_admin";
-        else if (u.role_type === "AMBULANCE_ADMIN") roleName = "ambulance_driver";
-        else if (u.role_type === "SUPER_ADMIN") roleName = "super_admin";
-        
-        let status = "suspended";
-        if (u.is_active) {
-          status = u.is_verified ? "active" : "pending";
-        }
-
-        let displayName = "Unknown User";
-        let subtitle: string | undefined = undefined;
-
-        if (u.first_name) displayName = u.last_name ? `${u.first_name} ${u.last_name}` : u.first_name;
-        else if (u.email) displayName = u.email.split("@")[0];
-        else {
-          const formattedRole = roleName.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-          displayName = `${formattedRole} User`;
-          if (u.phone) subtitle = u.phone;
-        }
-
-        return {
-          id: u.id,
-          name: displayName,
-          email: u.email || "No email provided",
-          phone: u.phone || "N/A",
-          registered: u.created_at ? new Date(u.created_at).toISOString().split('T')[0] : "Unknown",
-          status,
-          role: roleName,
-          subtitle,
-        };
-      });
-    } catch (error) {
-      console.error("Failed to fetch users", error);
-      return platformUsers;
-    }
-  },
-  getHospitals: async (): Promise<HospitalAccount[]> => {
-    try {
-      const response = await api.get("/admin/hospitals?limit=1000");
-      const hospitals = response.data.data;
-      return hospitals.map((h: any) => ({
-        id: h.id,
-        name: h.hospital_name || "Unknown Hospital",
-        type: "General Hospital", // Default for display as backend doesn't store this exactly
-        location: h.address || "No location",
-        registered: h.created_at ? new Date(h.created_at).toISOString().split('T')[0] : "Unknown",
-        verification: h.hospital_status === "OPEN" ? "verified" : h.hospital_status === "CLOSED" ? "suspended" : "pending",
-        contact: h.phone || "No contact",
-        
-        // Raw backend fields for edit modal
-        licenseNumber: h.license_number,
-        email: h.email,
-        phone: h.phone,
-        website: h.website,
-        address: h.address,
-        latitude: h.latitude,
-        longitude: h.longitude,
-        hospitalStatus: h.hospital_status,
-        description: h.description,
-      }));
-    } catch (error) {
-      console.error("Failed to fetch hospitals", error);
-      return hospitalAccounts;
-    }
-  },
-  createHospital: async (payload: any) => {
-    const response = await api.post("/admin/hospitals", payload);
-    return response.data;
-  },
-  updateHospital: async (id: string, payload: any) => {
-    const response = await api.put(`/admin/hospitals/${id}`, payload);
-    return response.data;
-  },
-  deleteHospital: async (id: string) => {
-    return (await api.delete(`/admin/hospitals/${id}`)).data.data;
-  },
-
-  getAmbulanceProviders: async (): Promise<any[]> => {
-    const response = await api.get('/admin/ambulance-providers');
-    return response.data.data.map((p: any) => ({
-      id: p.ambulance_provider_id,
-      providerName: p.provider_name || "Unknown Provider",
-      providerPhone: p.provider_phone || "",
-      address: p.address || "",
-      latitude: p.latitude || 0,
-      longitude: p.longitude || 0,
-      isActive: p.is_active,
-      registered: new Date(p.created_at).toISOString().split("T")[0],
-    }));
-  },
-
-  createAmbulanceProvider: async (payload: any) => {
-    return (await api.post('/admin/ambulance-providers', payload)).data.data;
-  },
-
-  updateAmbulanceProvider: async (id: string, payload: any) => {
-    return (await api.put(`/admin/ambulance-providers/${id}`, payload)).data.data;
-  },
-
-  deleteAmbulanceProvider: async (id: string) => {
-    return (await api.delete(`/admin/ambulance-providers/${id}`)).data.data;
-  },
-
+  getUsers: async () => platformUsers,
+  getHospitals: async () => hospitalAccounts,
   getDrivers: async () => driverAccounts,
   getHospitalApplications: async () => hospitalApplications,
   getDriverApplications: async () => driverApplications,
@@ -297,56 +189,11 @@ export const platformService = {
   }),
   getAdminNotifications: async () => adminNotifications,
   getAuditLog: async () => auditLog,
-  getRecentLogins: async (): Promise<RecentLoginUser[]> => {
-    try {
-      const response = await api.get("/admin/users?limit=50");
-      const users = response.data.data;
-      return users.map((u: any) => {
-        let roleName = "Customer";
-        if (u.role_type === "HOSPITAL_ADMIN") roleName = "Hospital Admin";
-        else if (u.role_type === "AMBULANCE_ADMIN") roleName = "Ambulance Driver";
-        else if (u.role_type === "SUPER_ADMIN") roleName = "Super Admin";
-
-        let displayName = "Unknown User";
-        if (u.first_name) displayName = u.last_name ? `${u.first_name} ${u.last_name}` : u.first_name;
-        else if (u.email) displayName = u.email.split("@")[0];
-        else {
-          displayName = `${roleName} User`;
-        }
-
-        return {
-          id: u.id,
-          name: displayName,
-          email: u.email || "No email provided",
-          role: roleName,
-          lastLogin: u.last_login ? new Date(u.last_login).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', ' ·') : "Never",
-        };
-      });
-    } catch (error) {
-      console.error("Failed to fetch recent logins", error);
-      return recentLogins;
-    }
-  },
+  getRecentLogins: async (): Promise<RecentLoginUser[]> => recentLogins,
   getMonthlyRevenue: async () => monthlyRevenue,
   getUserGrowth: async () => userGrowth,
   getActivityTrend: async () => activityTrend,
-  getTotals: async (): Promise<Totals> => {
-    try {
-      const response = await api.get("/admin/dashboard");
-      const data = response.data.data;
-      return {
-        users: data.totalUsers,
-        drivers: data.totalAmbulanceProviders,
-        hospitals: data.totalHospitals,
-        reservations: data.totalReservations,
-        sos: totals.sos,
-        blood: totals.blood,
-      };
-    } catch (error) {
-      console.error("Failed to fetch dashboard totals", error);
-      return totals;
-    }
-  },
+  getTotals: async () => totals,
   getOverallRevenueStats: async () => {
     const totalCases = settlementRows.reduce((a, s) => a + s.cases, 0);
     const totalRevenue = totalCases * SOS_SERVICE_FEE;

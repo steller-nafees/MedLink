@@ -40,6 +40,7 @@ export function DashboardShell({
   const [collapsed, setCollapsed] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const userInitials = initials(user.name);
@@ -155,11 +156,47 @@ export function DashboardShell({
           })}
         </nav>
 
-        <button type="button" className="dashboard-support-button">
+        <button type="button" className="dashboard-support-button" onClick={() => setSupportOpen(true)}>
           <HelpCircle className="dashboard-support-icon" aria-hidden="true" />
           {showLabels && <span>Contact support</span>}
         </button>
       </aside>
+
+      {supportOpen && (
+        <div
+          className="dashboard-support-modal-backdrop"
+          role="presentation"
+          onClick={() => setSupportOpen(false)}
+        >
+          <div
+            className="dashboard-support-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dashboard-support-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="dashboard-support-modal-close"
+              aria-label="Close support contact dialog"
+              onClick={() => setSupportOpen(false)}
+            >
+              ×
+            </button>
+            <div className="dashboard-support-modal-icon">
+              <HelpCircle aria-hidden="true" />
+            </div>
+            <h2 id="dashboard-support-title">Contact support</h2>
+            <p>
+              Need help with MedLink? Our support team is here to assist you with any issue or
+              question.
+            </p>
+            <a href="mailto:support@medlink.com" className="dashboard-support-email">
+              support@medlink.com
+            </a>
+          </div>
+        </div>
+      )}
 
       <div className="dashboard-content">
         <header className="dashboard-header glass">
