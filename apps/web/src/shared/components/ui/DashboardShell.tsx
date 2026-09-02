@@ -1,5 +1,5 @@
 import { useEffect, useState, type ComponentType, type ReactNode } from "react";
-import { Bell, ChevronDown, HelpCircle, LogOut, Search, Settings, User } from "lucide-react";
+import { Bell, ChevronDown, HelpCircle, LogOut, Search, Send, Settings, User, X } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import dashboardLogo from "@/assets/images/Logos/medlink_dashboard_white.png";
 import compactLogo from "@/assets/images/Logos/medlink_compact_white.png";
@@ -40,6 +40,7 @@ export function DashboardShell({
   const [collapsed, setCollapsed] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const userInitials = initials(user.name);
@@ -49,6 +50,7 @@ export function DashboardShell({
   useEffect(() => {
     setMobileNavOpen(false);
     setProfileOpen(false);
+    setSupportOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -155,7 +157,7 @@ export function DashboardShell({
           })}
         </nav>
 
-        <button type="button" className="dashboard-support-button">
+        <button type="button" className="dashboard-support-button" onClick={() => setSupportOpen(true)}>
           <HelpCircle className="dashboard-support-icon" aria-hidden="true" />
           {showLabels && <span>Contact support</span>}
         </button>
@@ -231,6 +233,59 @@ export function DashboardShell({
         </header>
         <main className="dashboard-main">{children}</main>
       </div>
+
+      {supportOpen && (
+        <div className="request-modal-backdrop" onClick={() => setSupportOpen(false)}>
+          <div className="request-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="request-modal-header">
+              <div>
+                <div className="request-modal-kind">Support <span>Contact Us</span></div>
+              </div>
+              <button
+                type="button"
+                className="request-modal-close"
+                onClick={() => setSupportOpen(false)}
+                aria-label="Close support"
+              >
+                <X />
+              </button>
+            </div>
+            <div className="request-modal-body">
+              <div className="request-info-card">
+                <div className="request-info-title">
+                  <Send className="size-4" />
+                  <h3>Get in touch</h3>
+                </div>
+                <div className="request-info-content">
+                  <p style={{ marginBottom: "16px", lineHeight: "1.6" }}>
+                    Have questions or need assistance? Our support team is here to help you. Reach out to us via email and we'll get back to you as soon as possible.
+                  </p>
+                  <div style={{ display: "flex", justifyContent: "center", marginTop: "20px" }}>
+                    <a
+                      href="mailto:support@medlink.com"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        padding: "8px 16px",
+                        borderRadius: "999px",
+                        background: "color-mix(in srgb, var(--hospital-primary) 10%, transparent)",
+                        color: "var(--hospital-primary)",
+                        textDecoration: "none",
+                        fontWeight: "600",
+                        fontSize: "13px",
+                      }}
+                    >
+                      <Send className="size-4" />
+                      support@medlink.com
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

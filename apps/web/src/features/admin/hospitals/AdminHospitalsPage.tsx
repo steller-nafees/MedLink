@@ -1,16 +1,17 @@
 import { useMemo, useState, useEffect } from "react";
-import { Building2, MapPin, Plus, X, Pencil, Trash2 } from "lucide-react";
-import { PageHeader } from "@/shared/components/ui/PageHeader";
-import { Card } from "@/shared/components/ui/Card";
+import { Building2, MapPin, Plus, X, Pencil, Trash2, Shield } from "lucide-react";
+import { PageHead } from "@/shared/components/ui/ReservationPrimitives";
 import { SearchInput } from "@/shared/components/ui/SearchInput";
-import { FilterTabs } from "@/shared/components/ui/FilterTabs";
-import { Table, Td, Tr, EmptyRow } from "@/shared/components/ui/Table";
-import { Badge, TypeChip } from "@/shared/components/ui/Badge";
-import { GhostButton } from "@/shared/components/ui/Button";
 import { platformService } from "@/services/platform.service";
 import type { HospitalAccount } from "@/types/platform";
 
 const filters = ["all", "verified", "pending", "suspended"] as const;
+const filterLabels: Record<typeof filters[number], string> = {
+  all: "All",
+  verified: "Verified",
+  pending: "Pending",
+  suspended: "Suspended"
+};
 
 export function AdminHospitalsPage() {
   const [q, setQ] = useState("");
@@ -86,46 +87,46 @@ export function AdminHospitalsPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+
     try {
+      const latitude = Number(formData.latitude);
+      const longitude = Number(formData.longitude);
+
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        alert("Please enter valid latitude and longitude values.");
+        return;
+      }
+
+      const hospitalPayload = {
+        hospitalName: formData.hospitalName.trim(),
+        licenseNumber: formData.licenseNumber.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        website: formData.website?.trim() || undefined,
+        address: formData.address.trim(),
+        latitude,
+        longitude,
+        hospitalStatus: formData.hospitalStatus,
+        description: formData.description?.trim() || undefined,
+      };
+
       if (editingHospital) {
-        await platformService.updateHospital(editingHospital.id, {
-          hospitalName: formData.hospitalName,
-          licenseNumber: formData.licenseNumber,
-          email: formData.email,
-          phone: formData.phone,
-          website: formData.website || undefined,
-          address: formData.address,
-          latitude: Number(formData.latitude),
-          longitude: Number(formData.longitude),
-          hospitalStatus: formData.hospitalStatus,
-          description: formData.description,
-        });
+        await platformService.updateHospital(editingHospital.id, hospitalPayload);
       } else {
         await platformService.createHospital({
-          hospital: {
-            hospitalName: formData.hospitalName,
-            licenseNumber: formData.licenseNumber,
-            email: formData.email,
-            phone: formData.phone,
-            website: formData.website || undefined,
-            address: formData.address,
-            latitude: Number(formData.latitude),
-            longitude: Number(formData.longitude),
-            hospitalStatus: formData.hospitalStatus,
-            description: formData.description,
-          },
+          hospital: hospitalPayload,
           admin: {
-            email: formData.adminEmail,
-            phone: formData.adminPhone,
-            password: formData.adminPassword
-          }
+            email: formData.adminEmail.trim(),
+            phone: formData.adminPhone.trim(),
+            password: formData.adminPassword,
+          },
         });
       }
       setIsModalOpen(false);
       await loadData();
     } catch (error) {
       console.error("Save failed", error);
-      alert("Failed to save hospital. Check console for details.");
+      alert(error instanceof Error ? error.message : "Failed to save hospital. Check console for details.");
     } finally {
       setIsSaving(false);
     }
@@ -162,163 +163,251 @@ export function AdminHospitalsPage() {
   }, [q, filter, hospitals]);
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <PageHeader
-          eyebrow="Providers"
-          title="Hospital management"
+    <main className="hospital-requests">
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-end", gap: "16px", marginBottom: "20px" }}>
+        <PageHead 
+          title="Hospital management" 
           subtitle={`${hospitals.length} registered hospitals · ${hospitals.filter((h) => h.verification === "pending").length} awaiting verification`}
         />
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", marginBottom: "16px" }}>
+        <div className="request-tabs" style={{ marginBottom: 0 }}>
+          {filters.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={filter === tab ? "active" : ""}
+              onClick={() => setFilter(tab)}
+            >
+              {filterLabels[tab]}
+            </button>
+          ))}
+        </div>
+
         <button 
           onClick={handleOpenCreate}
-          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            borderRadius: "999px",
+            background: "#14b8a6",
+            color: "#ffffff",
+            border: "1px solid #14b8a6",
+            padding: "10px 18px",
+            fontSize: "13px",
+            fontWeight: 600,
+            lineHeight: 1,
+            boxShadow: "0 8px 20px rgba(20, 184, 166, 0.2)",
+            whiteSpace: "nowrap",
+          }}
         >
           <Plus className="size-4" />
           Add Hospital
         </button>
       </div>
 
-      <Card bodyClassName="p-0">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 p-4">
-          <FilterTabs options={filters} value={filter} onChange={setFilter} />
-          <SearchInput value={q} onChange={setQ} placeholder="Search hospital, type or city…" />
-        </div>
+      {/* Filter Tabs */}
+      <div className="request-tabs" style={{ display: "none" }}>
+        {filters.map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            className={filter === tab ? "active" : ""}
+            onClick={() => setFilter(tab)}
+          >
+            {filterLabels[tab]}
+          </button>
+        ))}
+      </div>
 
-        <Table head={["Hospital", "Type", "Location", "Registered", "Verification", ""]}>
-          {!isLoading && rows.length === 0 && <EmptyRow colSpan={6} label="No hospitals match your search." />}
-          {isLoading && (
-            <Tr>
-              <Td colSpan={6}>
-                <div className="p-8 text-center text-sm text-muted-foreground">Loading...</div>
-              </Td>
-            </Tr>
-          )}
-          {!isLoading && rows.map((h) => (
-            <Tr key={h.id}>
-              <Td>
-                <div className="flex items-center gap-3">
-                  <div className="grid size-9 place-items-center rounded-xl bg-primary-container text-primary">
-                    <Building2 className="size-4" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">{h.name}</p>
-                    <p className="text-[11px] text-muted-foreground">{h.id} · {h.contact}</p>
-                  </div>
-                </div>
-              </Td>
-              <Td><TypeChip label={h.type} /></Td>
-              <Td>
-                <span className="inline-flex items-center gap-1 text-muted-foreground">
-                  <MapPin className="size-3.5" /> {h.location}
-                </span>
-              </Td>
-              <Td className="tabular-nums text-muted-foreground">{h.registered}</Td>
-              <Td><Badge status={h.verification} /></Td>
-              <Td>
-                <div className="flex justify-end gap-2">
-                  <GhostButton onClick={() => handleOpenEdit(h)}>
-                    <Pencil className="size-4 mr-1" /> Edit
-                  </GhostButton>
-                  
-                  {h.verification !== "verified" && (
-                    <GhostButton tone="success" onClick={() => handleUpdateStatus(h.id, "OPEN")}>
-                      Approve
-                    </GhostButton>
-                  )}
-                  {h.verification !== "suspended" && (
-                    <GhostButton tone="danger" onClick={() => handleUpdateStatus(h.id, "CLOSED")}>
-                      Suspend
-                    </GhostButton>
-                  )}
-                  <GhostButton tone="danger" onClick={() => handleDelete(h.id)}>
-                    <Trash2 className="size-4" />
-                  </GhostButton>
-                </div>
-              </Td>
-            </Tr>
-          ))}
-        </Table>
-      </Card>
+      {/* Search */}
+      <div style={{ marginBottom: "16px" }}>
+        <SearchInput value={q} onChange={setQ} placeholder="Search hospital, type or city…" />
+      </div>
 
-      {/* Basic Modal */}
+      {/* Panel with Rows */}
+      <section className="request-panel">
+        <header>
+          <div>
+            <h2>Hospitals</h2>
+            <p>{isLoading ? "Loading..." : `${rows.length} shown`}</p>
+          </div>
+        </header>
+
+        {isLoading && <p className="request-empty">Loading hospitals...</p>}
+
+        {!isLoading && rows.length === 0 && (
+          <p className="request-empty">No hospitals match your search.</p>
+        )}
+
+        {!isLoading && rows.length > 0 && (
+          <div className="request-row" style={{ opacity: 0.7, fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--hospital-muted)", borderBottom: "1px solid rgb(215 228 229 / 50%)", paddingBottom: "8px", marginBottom: "8px" }}>
+            <div className="request-kind" style={{ visibility: "hidden" }} />
+            <div className="request-patient"><strong>Hospital</strong></div>
+            <div className="request-date" style={{ minWidth: "140px" }}><strong>Location</strong></div>
+            <div className="request-charge" style={{ minWidth: "120px" }}><strong>Registered</strong></div>
+            <div className="request-badges"><strong>Status</strong></div>
+            <div className="request-row-actions" style={{ justifyContent: "flex-end" }}><strong>Actions</strong></div>
+          </div>
+        )}
+
+        {!isLoading && rows.map((h) => (
+          <div key={h.id} className="request-row">
+            <div className="request-kind request-kind-consultation">
+              <Building2 className="size-5" size={18} />
+            </div>
+            <div className="request-patient">
+              <strong>{h.name}</strong>
+              <span>{h.type} · {h.id}</span>
+            </div>
+            <div className="request-date" style={{ minWidth: "140px" }}>
+              <MapPin className="size-3.5 inline mr-1" size={14} />
+              {h.location}
+            </div>
+            <div className="request-charge" style={{ minWidth: "120px" }}>
+              <span>Registered </span><strong>{h.registered}</strong>
+            </div>
+            <div className="request-badges">
+              <span className={`request-status request-status-${h.verification}`}>{h.verification}</span>
+            </div>
+            <div className="request-row-actions" style={{ gap: "4px" }}>
+              <button 
+                type="button" 
+                className="request-action request-action-ghost"
+                onClick={() => handleOpenEdit(h)}
+                style={{ display: "flex", alignItems: "center", gap: "4px", padding: "6px 10px", fontSize: "11px" }}
+              >
+                <Pencil className="size-3" />
+              </button>
+              {h.verification !== "verified" && (
+                <button 
+                  type="button" 
+                  className="request-action request-action-primary"
+                  onClick={() => handleUpdateStatus(h.id, "OPEN")}
+                  style={{ fontSize: "11px", padding: "6px 10px" }}
+                >
+                  Approve
+                </button>
+              )}
+              {h.verification !== "suspended" && (
+                <button 
+                  type="button" 
+                  className="request-action request-action-danger"
+                  onClick={() => handleUpdateStatus(h.id, "CLOSED")}
+                  style={{ fontSize: "11px", padding: "6px 10px" }}
+                >
+                  Suspend
+                </button>
+              )}
+              <button 
+                type="button" 
+                className="request-action request-action-danger"
+                onClick={() => handleDelete(h.id)}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "6px 10px", fontSize: "11px" }}
+              >
+                <Trash2 className="size-3" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-background rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-border">
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <h3 className="font-semibold text-lg">{editingHospital ? "Edit Hospital" : "Add New Hospital"}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="p-1 rounded-md hover:bg-surface-variant text-muted-foreground">
-                <X className="size-5" />
+        <div className="request-modal-backdrop" onClick={() => setIsModalOpen(false)}>
+          <div className="request-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="request-modal-header">
+              <div>
+                <div className="request-modal-kind">{editingHospital ? "Edit Hospital" : "New Hospital"}</div>
+              </div>
+              <button 
+                type="button" 
+                className="request-modal-close" 
+                onClick={() => setIsModalOpen(false)}
+                aria-label="Close"
+              >
+                <X />
               </button>
             </div>
             
-            <div className="p-4 overflow-y-auto flex-1">
-              <form id="hospital-form" onSubmit={handleSave} className="space-y-6">
+            <div className="request-modal-body">
+              <form id="hospital-form" onSubmit={handleSave} className="space-y-4">
                 
-                <div className="space-y-4">
-                  <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Hospital Details</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium">Hospital Name *</label>
-                      <input required type="text" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.hospitalName} onChange={e => setFormData({...formData, hospitalName: e.target.value})} />
+                <div className="request-info-card">
+                  <div className="request-info-title">
+                    <Building2 className="size-4" />
+                    <h3>Hospital Details</h3>
+                  </div>
+                  <div className="request-info-content space-y-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Hospital Name *</label>
+                      <input required type="text" className="w-full p-2 rounded-md border border-input bg-background text-sm mt-1" value={formData.hospitalName} onChange={e => setFormData({...formData, hospitalName: e.target.value})} />
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium">License Number *</label>
-                      <input required type="text" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.licenseNumber} onChange={e => setFormData({...formData, licenseNumber: e.target.value})} />
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">License Number *</label>
+                      <input required type="text" className="w-full p-2 rounded-md border border-input bg-background text-sm mt-1" value={formData.licenseNumber} onChange={e => setFormData({...formData, licenseNumber: e.target.value})} />
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium">Hospital Email *</label>
-                      <input required type="email" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Email *</label>
+                      <input required type="email" className="w-full p-2 rounded-md border border-input bg-background text-sm mt-1" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium">Hospital Phone *</label>
-                      <input required type="text" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Phone *</label>
+                      <input required type="text" className="w-full p-2 rounded-md border border-input bg-background text-sm mt-1" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
                     </div>
-                    <div className="space-y-1 md:col-span-2">
-                      <label className="text-sm font-medium">Website</label>
-                      <input type="url" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.website} onChange={e => setFormData({...formData, website: e.target.value})} />
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Website</label>
+                      <input type="url" className="w-full p-2 rounded-md border border-input bg-background text-sm mt-1" value={formData.website} onChange={e => setFormData({...formData, website: e.target.value})} />
                     </div>
-                    <div className="space-y-1 md:col-span-2">
-                      <label className="text-sm font-medium">Address *</label>
-                      <input required type="text" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Address *</label>
+                      <input required type="text" className="w-full p-2 rounded-md border border-input bg-background text-sm mt-1" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium">Latitude *</label>
-                      <input required type="number" step="any" min="-90" max="90" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.latitude} onChange={e => setFormData({...formData, latitude: parseFloat(e.target.value)})} />
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Latitude *</label>
+                        <input required type="number" step="any" min="-90" max="90" className="w-full p-2 rounded-md border border-input bg-background text-sm mt-1" value={formData.latitude} onChange={e => setFormData({...formData, latitude: parseFloat(e.target.value)})} />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Longitude *</label>
+                        <input required type="number" step="any" min="-180" max="180" className="w-full p-2 rounded-md border border-input bg-background text-sm mt-1" value={formData.longitude} onChange={e => setFormData({...formData, longitude: parseFloat(e.target.value)})} />
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium">Longitude *</label>
-                      <input required type="number" step="any" min="-180" max="180" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.longitude} onChange={e => setFormData({...formData, longitude: parseFloat(e.target.value)})} />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-sm font-medium">Status</label>
-                      <select className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.hospitalStatus} onChange={e => setFormData({...formData, hospitalStatus: e.target.value})}>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Status</label>
+                      <select className="w-full p-2 rounded-md border border-input bg-background text-sm mt-1" value={formData.hospitalStatus} onChange={e => setFormData({...formData, hospitalStatus: e.target.value})}>
                         <option value="OPEN">Open (Verified)</option>
                         <option value="CLOSED">Closed (Suspended)</option>
                         <option value="UNDER_MAINTENANCE">Under Maintenance</option>
                       </select>
                     </div>
-                    <div className="space-y-1 md:col-span-2">
-                      <label className="text-sm font-medium">Description</label>
-                      <textarea className="w-full p-2 rounded-md border border-input bg-background h-20 text-sm" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Description</label>
+                      <textarea className="w-full p-2 rounded-md border border-input bg-background h-16 text-sm mt-1" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
                     </div>
                   </div>
                 </div>
 
                 {!editingHospital && (
-                  <div className="space-y-4 pt-4 border-t border-border">
-                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Admin Credentials</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-sm font-medium">Admin Email *</label>
-                        <input required type="email" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.adminEmail} onChange={e => setFormData({...formData, adminEmail: e.target.value})} />
+                  <div className="request-info-card">
+                    <div className="request-info-title">
+                      <Shield className="size-4" />
+                      <h3>Admin Credentials</h3>
+                    </div>
+                    <div className="request-info-content space-y-3">
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Admin Email *</label>
+                        <input required type="email" className="w-full p-2 rounded-md border border-input bg-background text-sm mt-1" value={formData.adminEmail} onChange={e => setFormData({...formData, adminEmail: e.target.value})} />
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-sm font-medium">Admin Phone *</label>
-                        <input required type="text" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.adminPhone} onChange={e => setFormData({...formData, adminPhone: e.target.value})} />
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Admin Phone *</label>
+                        <input required type="text" className="w-full p-2 rounded-md border border-input bg-background text-sm mt-1" value={formData.adminPhone} onChange={e => setFormData({...formData, adminPhone: e.target.value})} />
                       </div>
-                      <div className="space-y-1 md:col-span-2">
-                        <label className="text-sm font-medium">Admin Password *</label>
-                        <input required minLength={6} type="password" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.adminPassword} onChange={e => setFormData({...formData, adminPassword: e.target.value})} />
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Admin Password *</label>
+                        <input required minLength={6} type="password" className="w-full p-2 rounded-md border border-input bg-background text-sm mt-1" value={formData.adminPassword} onChange={e => setFormData({...formData, adminPassword: e.target.value})} />
                       </div>
                     </div>
                   </div>
@@ -326,11 +415,11 @@ export function AdminHospitalsPage() {
               </form>
             </div>
             
-            <div className="p-4 border-t border-border flex justify-end gap-3 bg-surface-variant/30">
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", padding: "16px 20px", borderTop: "1px solid var(--hospital-border)" }}>
               <button 
                 type="button" 
                 onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium rounded-md hover:bg-surface-variant transition border border-transparent"
+                className="request-action request-action-ghost"
                 disabled={isSaving}
               >
                 Cancel
@@ -338,15 +427,15 @@ export function AdminHospitalsPage() {
               <button 
                 type="submit" 
                 form="hospital-form"
-                className="px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition disabled:opacity-50"
+                className="request-action request-action-primary"
                 disabled={isSaving}
               >
-                {isSaving ? "Saving..." : "Save Hospital"}
+                {isSaving ? "Saving..." : "Save"}
               </button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }
