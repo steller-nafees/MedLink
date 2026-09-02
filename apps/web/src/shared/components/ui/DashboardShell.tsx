@@ -40,7 +40,6 @@ export function DashboardShell({
   const [collapsed, setCollapsed] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [supportOpen, setSupportOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const userInitials = initials(user.name);
@@ -157,7 +156,7 @@ export function DashboardShell({
           })}
         </nav>
 
-        <button type="button" className="dashboard-support-button" onClick={() => setSupportOpen(true)}>
+        <button type="button" className="dashboard-support-button">
           <HelpCircle className="dashboard-support-icon" aria-hidden="true" />
           {showLabels && <span>Contact support</span>}
         </button>
