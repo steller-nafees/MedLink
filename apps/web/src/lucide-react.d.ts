@@ -48,6 +48,7 @@ declare module "lucide-react" {
   export const Phone: ComponentType<IconProps>;
   export const Plus: ComponentType<IconProps>;
   export const Search: ComponentType<IconProps>;
+  export const Send: ComponentType<IconProps>;
   export const ServerCog: ComponentType<IconProps>;
   export const Settings: ComponentType<IconProps>;
   export const Shield: ComponentType<IconProps>;

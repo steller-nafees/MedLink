@@ -78,34 +78,40 @@ export function AdminAmbulanceProvidersPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+
     try {
+      const latitude = Number(formData.latitude);
+      const longitude = Number(formData.longitude);
+
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        alert("Please enter valid latitude and longitude values.");
+        return;
+      }
+
+      const providerPayload = {
+        providerName: formData.providerName.trim(),
+        providerPhone: formData.providerPhone.trim(),
+        address: formData.address.trim(),
+        latitude,
+        longitude,
+        isActive: formData.isActive,
+      };
+
       if (editingProvider) {
-        await platformService.updateAmbulanceProvider(editingProvider.id, {
-          providerName: formData.providerName,
-          providerPhone: formData.providerPhone,
-          address: formData.address,
-          latitude: Number(formData.latitude),
-          longitude: Number(formData.longitude),
-          isActive: formData.isActive,
-        });
+        await platformService.updateAmbulanceProvider(editingProvider.id, providerPayload);
       } else {
         await platformService.createAmbulanceProvider({
-          providerName: formData.providerName,
-          providerPhone: formData.providerPhone,
-          address: formData.address,
-          latitude: Number(formData.latitude),
-          longitude: Number(formData.longitude),
-          isActive: formData.isActive,
-          adminEmail: formData.adminEmail,
-          adminPhone: formData.adminPhone,
-          password: formData.adminPassword
+          ...providerPayload,
+          adminEmail: formData.adminEmail.trim(),
+          adminPhone: formData.adminPhone.trim(),
+          password: formData.adminPassword,
         });
       }
       setIsModalOpen(false);
       await loadData();
     } catch (error) {
       console.error("Save failed", error);
-      alert("Failed to save ambulance provider. Check console for details.");
+      alert(error instanceof Error ? error.message : "Failed to save ambulance provider. Check console for details.");
     } finally {
       setIsSaving(false);
     }

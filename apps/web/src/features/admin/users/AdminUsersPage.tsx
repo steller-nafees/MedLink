@@ -1,17 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Siren, User, Building2, AlertCircle, Shield } from "lucide-react";
+import { Siren, User, Building2, Shield } from "lucide-react";
 import { PageHeader } from "@/shared/components/ui/PageHeader";
-import { Card } from "@/shared/components/ui/Card";
 import { SearchInput } from "@/shared/components/ui/SearchInput";
-import { FilterTabs } from "@/shared/components/ui/FilterTabs";
-import { Table, Td, Tr, EmptyRow } from "@/shared/components/ui/Table";
-import { Badge } from "@/shared/components/ui/Badge";
 import type { PlatformUser } from "@/types/platform";
 import { platformService } from "@/services/platform.service";
 
-// types/platform.ts should have:
-// export type UserRole = "general_user" | "ambulance_driver" | "hospital_admin";
-// interface PlatformUser { ...; role: UserRole }
 type UserRole = "customer" | "ambulance_driver" | "hospital_admin" | "super_admin";
 
 const statusFilters = ["all", "active", "pending", "suspended"] as const;
@@ -26,41 +19,31 @@ const ROLE_META: Record<UserRole, { label: string; icon: typeof User; chip: stri
   super_admin: { label: "Super Admin", icon: Shield, chip: "bg-[#F3E8FF] text-[#7E22CE] ring-1 ring-inset ring-[#E9D5FF]" }
 };
 
-
-
-function RolePill({ role }: { role: UserRole | undefined }) {
-  const meta = ROLE_META[role as UserRole] || ROLE_META.customer;
-  const Icon = meta.icon;
+function UserRow({ user }: { user: PlatformUser }) {
+  const initials = user.name.split(" ").map((s) => s[0]).slice(0, 2).join("");
 
   return (
-    <span
-      className={[
-        "inline-flex min-w-[112px] flex-col items-center justify-center rounded-xl px-2 py-2 text-center",
-        meta.chip,
-      ].join(" ")}
-    >
-      <span className="flex items-center gap-1.5 text-[11px] font-medium">
-        <Icon className="size-3" />
-        {meta.label.split(" ")[0]}
-      </span>
-      <span className="mt-0.5 text-[10px] font-medium opacity-80">{meta.label.split(" ").slice(1).join(" ") || "User"}</span>
-    </span>
-  );
-}
-
-function RowSkeleton() {
-  return (
-    <Tr>
-      <Td colSpan={7}>
-        <div className="flex items-center gap-3 py-1">
-          <div className="size-9 animate-pulse rounded-full bg-muted" />
-          <div className="flex-1 space-y-1.5">
-            <div className="h-3 w-1/4 animate-pulse rounded bg-muted" />
-            <div className="h-2.5 w-1/6 animate-pulse rounded bg-muted" />
-          </div>
-        </div>
-      </Td>
-    </Tr>
+    <div className="request-row">
+      <div className="request-kind request-kind-consultation">
+        <span style={{ fontSize: "12px", fontWeight: "bold" }}>{initials}</span>
+      </div>
+      <div className="request-patient">
+        <strong>{user.name}</strong>
+        <span>{ROLE_META[user.role as UserRole]?.label || "User"} · {user.id}</span>
+      </div>
+      <div className="request-date" style={{ minWidth: "140px" }}>
+        {user.email}<br /><span style={{ fontSize: "11px" }}>{user.phone}</span>
+      </div>
+      <div className="request-charge" style={{ minWidth: "120px" }}>
+        <span>Registered </span><strong>{user.registered}</strong>
+      </div>
+      <div className="request-badges">
+        <span className={`request-status request-status-${user.status}`}>{user.status}</span>
+      </div>
+      <div className="request-row-actions">
+        <button type="button" className="request-action request-action-ghost">View</button>
+      </div>
+    </div>
   );
 }
 
@@ -105,9 +88,7 @@ export function AdminUsersPage() {
       .filter((u) => (status === "all" ? true : u.status === status))
       .filter((u) => (role === "all" ? true : u.role === role))
       .filter((u) =>
-        !needle
-          ? true
-          : [u.name, u.email, u.phone, u.id].some((v) => v.toLowerCase().includes(needle))
+        !needle ? true : [u.name, u.email, u.phone, u.id].some((v) => v.toLowerCase().includes(needle))
       );
   }, [q, status, role, users]);
 
@@ -115,121 +96,101 @@ export function AdminUsersPage() {
   const rows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
-    <div className="mx-auto max-w-[1400px] space-y-6">
-      <PageHeader
-        eyebrow="Accounts"
-        title="User management"
-        subtitle={`${users.length} accounts across all roles`}
-      />
+    <main className="hospital-requests">
+      <PageHeader eyebrow="Accounts" title="User management" subtitle={`${users.length} accounts across all roles`} />
 
-      <Card bodyClassName="p-0">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 p-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <FilterTabs options={statusFilters} value={status} onChange={setStatus} />
+      {/* Status Filter Tabs */}
+      <div className="request-tabs">
+        {statusFilters.map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            className={status === tab ? "active" : ""}
+            onClick={() => setStatus(tab)}
+          >
+            {tab === "all" ? "All" : tab.charAt(0).toUpperCase() + tab.slice(1)}
+          </button>
+        ))}
+      </div>
 
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as (typeof roleFilters)[number])}
-              className="h-9 rounded-lg border border-border/60 bg-background px-3 text-[13px] font-medium text-foreground outline-none transition-colors focus:border-[#16A89C] focus:ring-1 focus:ring-[#16A89C]/40"
-            >
-              {roleFilters.map((r) => (
-                <option key={r} value={r}>
-                  {r === "all" ? "All roles" : ROLE_META[r as UserRole].label}
-                </option>
-              ))}
-            </select>
-          </div>
+      {/* Role Filter & Search */}
+      <div style={{ display: "flex", gap: "12px", marginBottom: "16px", flexWrap: "wrap", alignItems: "center" }}>
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value as (typeof roleFilters)[number])}
+          style={{
+            padding: "8px 16px",
+            borderRadius: "999px",
+            border: "1px solid var(--hospital-border)",
+            background: "var(--hospital-surface)",
+            color: "var(--hospital-text)",
+            fontSize: "12.5px",
+            fontWeight: "600",
+            cursor: "pointer",
+          }}
+        >
+          {roleFilters.map((r) => (
+            <option key={r} value={r}>
+              {r === "all" ? "All roles" : ROLE_META[r as UserRole].label}
+            </option>
+          ))}
+        </select>
 
+        <div style={{ marginLeft: "auto" }}>
           <SearchInput value={q} onChange={setQ} placeholder="Search name, email or phone…" />
         </div>
+      </div>
 
-        <Table head={["User", "Role", "Email", "Phone", "Registered", "Status", ""]}>
-          {isLoading && Array.from({ length: 5 }).map((_, i) => <RowSkeleton key={i} />)}
+      {/* Error Alert */}
+      {error && <p role="alert" className="request-empty">{error}</p>}
 
-          {!isLoading && error && (
-            <Tr>
-              <Td colSpan={7}>
-                <div className="flex items-center justify-center gap-2 py-8 text-[13px] text-muted-foreground">
-                  <AlertCircle className="size-4" />
-                  {error}
-                </div>
-              </Td>
-            </Tr>
-          )}
-
-          {!isLoading && !error && rows.length === 0 && (
-            <EmptyRow colSpan={7} label="No users match your search." />
-          )}
-
-          {!isLoading &&
-            !error &&
-            rows.map((u) => (
-              <Tr key={u.id}>
-                <Td>
-                  <div className="flex items-center gap-3">
-                    <div className="grid size-10 place-items-center rounded-full bg-[#d8f6f3] text-[12px] font-bold text-[#0F7A70]">
-                      {u.name
-                        .split(" ")
-                        .map((s) => s[0])
-                        .slice(0, 2)
-                        .join("")}
-                    </div>
-                    <div>
-                      <p className="text-[14px] font-semibold leading-tight text-foreground">{u.name}</p>
-                      {u.subtitle && (
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">{u.subtitle}</p>
-                      )}
-                    </div>
-                  </div>
-                </Td>
-                <Td>
-                  <RolePill role={u.role as UserRole} />
-                </Td>
-                <Td className="text-muted-foreground">{u.email}</Td>
-                <Td className="tabular-nums text-muted-foreground">{u.phone}</Td>
-                <Td className="tabular-nums text-muted-foreground">{u.registered}</Td>
-                <Td>
-                  <Badge status={u.status} />
-                </Td>
-                <Td>
-                  <div className="flex justify-end">
-                    <button type="button" className="text-[12px] font-medium text-foreground transition hover:text-primary">
-                      View details
-                    </button>
-                  </div>
-                </Td>
-              </Tr>
-            ))}
-        </Table>
-
-        {!isLoading && !error && filtered.length > 0 && (
-          <div className="flex items-center justify-between border-t border-border/60 px-4 py-3 text-[12px] text-muted-foreground">
-            <span>
-              Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of{" "}
-              {filtered.length}
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-                className="rounded-md px-2 py-1 font-medium text-foreground disabled:opacity-40 hover:bg-[#16A89C]/10"
-              >
-                Prev
-              </button>
-              <span className="px-1 tabular-nums">
-                {page} / {totalPages}
-              </span>
-              <button
-                disabled={page === totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="rounded-md px-2 py-1 font-medium text-foreground disabled:opacity-40 hover:bg-[#16A89C]/10"
-              >
-                Next
-              </button>
-            </div>
+      {/* Panel with Rows */}
+      <section className="request-panel">
+        <header>
+          <div>
+            <h2>Users</h2>
+            <p>{isLoading ? "Loading..." : `${rows.length} shown`}</p>
           </div>
-        )}
-      </Card>
-    </div>
+        </header>
+
+        {isLoading && <p className="request-empty">Loading users...</p>}
+
+        {!isLoading && rows.map((user) => (
+          <UserRow key={user.id} user={user} />
+        ))}
+
+        {!isLoading && rows.length === 0 && <p className="request-empty">No users match your search.</p>}
+      </section>
+
+      {/* Pagination */}
+      {!isLoading && !error && filtered.length > 0 && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px", fontSize: "12px", color: "var(--hospital-muted)", borderTop: "1px solid rgb(215 228 229 / 50%)" }}>
+          <span>
+            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+          </span>
+          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+            <button
+              disabled={page === 1}
+              onClick={() => setPage((p) => p - 1)}
+              className="request-action request-action-ghost"
+              style={{ opacity: page === 1 ? "0.4" : "1" }}
+            >
+              Prev
+            </button>
+            <span style={{ padding: "6px 8px", fontSize: "12px" }}>
+              {page} / {totalPages}
+            </span>
+            <button
+              disabled={page === totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              className="request-action request-action-ghost"
+              style={{ opacity: page === totalPages ? "0.4" : "1" }}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+    </main>
   );
 }
