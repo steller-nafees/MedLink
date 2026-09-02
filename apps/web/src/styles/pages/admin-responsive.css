@@ -1,0 +1,171 @@
+.admin-console-content {
+  min-width: 0;
+  width: 100%;
+}
+
+.admin-console-content .ui-page-header {
+  min-width: 0;
+}
+
+.admin-console-content .ui-page-header > * {
+  min-width: 0;
+}
+
+.admin-console-content .ui-page-header h1,
+.admin-console-content .ui-page-header p {
+  overflow-wrap: anywhere;
+}
+
+.admin-console-content .overflow-x-auto {
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-console-content .overflow-x-auto table {
+  min-width: 680px;
+}
+
+.admin-console-content .recharts-responsive-container {
+  width: 100% !important;
+}
+
+.admin-console-content .request-modal,
+.admin-console-content [role="dialog"] {
+  min-width: 0;
+}
+
+@media (max-width: 1023px) {
+  .admin-console-content > .max-w-\[1400px\],
+  .admin-console-content > .hospital-requests {
+    max-width: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .admin-console-content {
+    overflow-wrap: anywhere;
+  }
+
+  .admin-console-content .ui-page-header,
+  .admin-provider-header {
+    align-items: stretch;
+  }
+
+  .admin-console-content .ui-page-header h1 {
+    font-size: 24px;
+  }
+
+  .admin-console-content .ui-page-header p {
+    max-width: 100%;
+  }
+
+  .admin-console-content .ui-page-actions,
+  .admin-console-content .ui-page-actions > *,
+  .admin-provider-header > button {
+    width: 100%;
+  }
+
+  .admin-console-content .ui-page-actions > *,
+  .admin-provider-header > button {
+    justify-content: center;
+  }
+
+  .admin-hospital-toolbar {
+    align-items: stretch !important;
+    flex-direction: column;
+  }
+
+  .admin-hospital-toolbar .request-tabs {
+    width: 100%;
+  }
+
+  .admin-hospital-toolbar > button {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .admin-users-toolbar {
+    align-items: stretch !important;
+  }
+
+  .admin-users-toolbar select,
+  .admin-users-search,
+  .admin-users-search > * {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-users-search {
+    margin-left: 0 !important;
+  }
+
+  .admin-console-content .request-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    max-width: 100%;
+    padding-bottom: 2px;
+  }
+
+  .admin-console-content .request-tabs button {
+    flex: 0 0 auto;
+  }
+
+  .admin-console-content .request-panel {
+    border-radius: 16px;
+  }
+
+  .admin-console-content .request-panel > header {
+    padding: 14px 16px;
+  }
+
+  .admin-console-content .request-row {
+    gap: 10px 12px;
+    padding: 14px 16px;
+  }
+
+  .admin-console-content .request-row-actions {
+    grid-column: 1 / -1;
+    margin-left: 52px;
+  }
+
+  .admin-console-content .request-modal-backdrop {
+    align-items: flex-end;
+    padding: 8px;
+  }
+
+  .admin-console-content .request-modal {
+    max-height: calc(100dvh - 16px);
+    border-radius: 16px 16px 10px 10px;
+  }
+
+  .admin-console-content .request-modal-body {
+    padding: 16px;
+  }
+
+  .admin-console-content .fixed.inset-0 > div {
+    max-height: calc(100dvh - 16px);
+  }
+
+  .admin-console-content .fixed.inset-0 > div > div:last-child {
+    flex-wrap: wrap;
+  }
+
+  .admin-console-content .fixed.inset-0 > div > div:last-child > button {
+    flex: 1 1 140px;
+  }
+}
+
+@media (max-width: 420px) {
+  .admin-console-content .ui-card {
+    border-radius: 16px;
+  }
+
+  .admin-console-content .request-row-actions {
+    margin-left: 0;
+  }
+
+  .admin-console-content .request-action {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+}

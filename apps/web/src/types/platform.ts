@@ -9,6 +9,9 @@ export type PlatformUser = {
   status: AccountStatus;
   role?: "customer" | "ambulance_driver" | "hospital_admin" | "super_admin";
   subtitle?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 export type HospitalAccount = {
@@ -17,7 +20,7 @@ export type HospitalAccount = {
   type: "General Hospital" | "Specialized Hospital" | "Diagnostic Center" | "Clinic";
   location: string;
   registered: string;
-  verification: "verified" | "pending" | "suspended";
+  verification: "OPEN" | "CLOSED" | "UNDER_MAINTENANCE" | "pending" | "suspended";
   contact: string;
 
   // Additional backend fields

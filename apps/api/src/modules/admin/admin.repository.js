@@ -12,16 +12,23 @@ const getAllUsers = async ({
 }) => {
     let query = `
         SELECT
-            id,
-            role_type,
-            email,
-            phone,
-            is_verified,
-            is_active,
-            last_login,
-            created_at,
-            updated_at
-        FROM users
+            u.id,
+            u.role_type,
+            u.email,
+            u.phone,
+            u.is_verified,
+            u.is_active,
+            u.last_login,
+            u.created_at,
+            u.updated_at,
+            up.first_name,
+            up.last_name,
+            up.address,
+            ul.latitude,
+            ul.longitude
+        FROM users u
+        LEFT JOIN user_profiles up ON up.user_id = u.id
+        LEFT JOIN user_locations ul ON ul.user_id = u.id
         WHERE 1 = 1
     `;
 
@@ -30,7 +37,7 @@ const getAllUsers = async ({
 
     if (userType) {
         query += `
-            AND role_type = $${parameterIndex}
+            AND u.role_type = $${parameterIndex}
         `;
 
         values.push(userType);
@@ -39,7 +46,7 @@ const getAllUsers = async ({
 
     if (status) {
         query += `
-            AND is_active = $${parameterIndex}
+            AND u.is_active = $${parameterIndex}
         `;
 
         values.push(status === "active");
@@ -47,7 +54,7 @@ const getAllUsers = async ({
     }
 
     query += `
-        ORDER BY created_at DESC
+        ORDER BY u.created_at DESC
         LIMIT $${parameterIndex}
         OFFSET $${parameterIndex + 1}
     `;

@@ -29,6 +29,7 @@
 @import "./pages/hospital-requests.css";
 @import "./pages/hospital-payments.css";
 @import "./pages/admin-dashboard.css";
+@import "./pages/admin-responsive.css";
 @import "./pages/auth.css";
 @import "./pages/landing.css";
 
