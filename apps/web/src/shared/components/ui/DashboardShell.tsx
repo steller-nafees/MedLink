@@ -45,6 +45,7 @@ export function DashboardShell({
   const userInitials = initials(user.name);
   const visibleNav = collapsed && !mobileNavOpen ? nav.filter((item) => !item.comingSoon) : nav;
   const showLabels = !collapsed || mobileNavOpen;
+  const [supportOpen, setSupportOpen] = useState(false);
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -243,7 +244,7 @@ export function DashboardShell({
               <button
                 type="button"
                 className="request-modal-close"
-                onClick={() => setSupportOpen(false)}
+                onClick={() => setSupportOpen(true)}
                 aria-label="Close support"
               >
                 <X />
