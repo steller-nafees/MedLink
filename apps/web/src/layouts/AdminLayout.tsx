@@ -50,7 +50,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
       onLogout={handleLogout}
       searchPlaceholder="Search users, hospitals, drivers, settlements…"
     >
-      {children}
+      <div className="admin-console-content">{children}</div>
     </DashboardShell>
   );
 }

@@ -40,12 +40,12 @@ export function DashboardShell({
   const [collapsed, setCollapsed] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const userInitials = initials(user.name);
   const visibleNav = collapsed && !mobileNavOpen ? nav.filter((item) => !item.comingSoon) : nav;
   const showLabels = !collapsed || mobileNavOpen;
-  const [supportOpen, setSupportOpen] = useState(false);
 
   useEffect(() => {
     setMobileNavOpen(false);
@@ -157,7 +157,7 @@ export function DashboardShell({
           })}
         </nav>
 
-        <button type="button" className="dashboard-support-button">
+        <button type="button" className="dashboard-support-button" onClick={() => setSupportOpen(true)}>
           <HelpCircle className="dashboard-support-icon" aria-hidden="true" />
           {showLabels && <span>Contact support</span>}
         </button>
@@ -244,7 +244,7 @@ export function DashboardShell({
               <button
                 type="button"
                 className="request-modal-close"
-                onClick={() => setSupportOpen(true)}
+                onClick={() => setSupportOpen(false)}
                 aria-label="Close support"
               >
                 <X />

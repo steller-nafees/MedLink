@@ -22,26 +22,13 @@ import { api } from "./api";
 
 export const SOS_SERVICE_FEE = 1000; // BDT per Emergency SOS case
 
-const platformUsers: PlatformUser[] = [
-  { id: "U-10241", name: "Nusrat Jahan", email: "nusrat.j@gmail.com", phone: "+8801711234501", registered: "2026-01-14", status: "active", role: "customer" },
-  { id: "U-10242", name: "Rafiqul Islam", email: "rafiq.islam@gmail.com", phone: "+8801711234502", registered: "2026-01-22", status: "active", role: "customer" },
-  { id: "U-10243", name: "Tanvir Ahmed", email: "tanvir.ahmed@yahoo.com", phone: "+8801711234503", registered: "2026-02-03", status: "suspended", role: "customer" },
-  { id: "U-10244", name: "Mehjabin Chowdhury", email: "mehjabin.c@gmail.com", phone: "+8801711234504", registered: "2026-02-19", status: "active", role: "customer" },
-  { id: "U-10245", name: "Shakib Hasan", email: "shakib.hasan@outlook.com", phone: "+8801711234505", registered: "2026-03-02", status: "active", role: "customer" },
-  { id: "U-10246", name: "Farhana Akter", email: "farhana.akter@gmail.com", phone: "+8801711234506", registered: "2026-03-27", status: "pending", role: "customer" },
-  { id: "U-10247", name: "Imran Kabir", email: "imran.kabir@gmail.com", phone: "+8801711234507", registered: "2026-04-11", status: "active", role: "customer" },
-  { id: "U-10248", name: "Sadia Rahman", email: "sadia.rahman@gmail.com", phone: "+8801711234508", registered: "2026-05-06", status: "active", role: "customer" },
-  { id: "U-10249", name: "Arif Mahmud", email: "arif.mahmud@gmail.com", phone: "+8801711234509", registered: "2026-06-01", status: "suspended", role: "customer" },
-  { id: "U-10250", name: "Lamia Sultana", email: "lamia.s@gmail.com", phone: "+8801711234510", registered: "2026-07-09", status: "active", role: "customer" },
-];
-
 const hospitalAccounts: HospitalAccount[] = [
-  { id: "H-2001", name: "Square Hospital", type: "General Hospital", location: "Panthapath, Dhaka", registered: "2025-11-04", verification: "verified", contact: "Dr. Kamrul Hasan" },
-  { id: "H-2002", name: "Evercare Hospital", type: "General Hospital", location: "Bashundhara, Dhaka", registered: "2025-11-21", verification: "verified", contact: "Dr. Nabila Haque" },
-  { id: "H-2003", name: "Ibn Sina Diagnostic", type: "Diagnostic Center", location: "Dhanmondi, Dhaka", registered: "2026-01-09", verification: "verified", contact: "Mr. Rezaul Karim" },
-  { id: "H-2004", name: "National Heart Foundation", type: "Specialized Hospital", location: "Mirpur, Dhaka", registered: "2026-02-17", verification: "verified", contact: "Dr. Sabbir Alam" },
+  { id: "H-2001", name: "Square Hospital", type: "General Hospital", location: "Panthapath, Dhaka", registered: "2025-11-04", verification: "OPEN", contact: "Dr. Kamrul Hasan" },
+  { id: "H-2002", name: "Evercare Hospital", type: "General Hospital", location: "Bashundhara, Dhaka", registered: "2025-11-21", verification: "OPEN", contact: "Dr. Nabila Haque" },
+  { id: "H-2003", name: "Ibn Sina Diagnostic", type: "Diagnostic Center", location: "Dhanmondi, Dhaka", registered: "2026-01-09", verification: "OPEN", contact: "Mr. Rezaul Karim" },
+  { id: "H-2004", name: "National Heart Foundation", type: "Specialized Hospital", location: "Mirpur, Dhaka", registered: "2026-02-17", verification: "OPEN", contact: "Dr. Sabbir Alam" },
   { id: "H-2005", name: "Popular Medical Centre", type: "General Hospital", location: "Chattogram", registered: "2026-04-02", verification: "pending", contact: "Dr. Tahmina Yasmin" },
-  { id: "H-2006", name: "City Care Clinic", type: "Clinic", location: "Sylhet", registered: "2026-05-28", verification: "suspended", contact: "Mr. Jahid Hossain" },
+  { id: "H-2006", name: "City Care Clinic", type: "Clinic", location: "Sylhet", registered: "2026-05-28", verification: "CLOSED", contact: "Mr. Jahid Hossain" },
   { id: "H-2007", name: "Green Life Hospital", type: "General Hospital", location: "Green Road, Dhaka", registered: "2026-06-30", verification: "pending", contact: "Dr. Anisur Rahman" },
 ];
 
@@ -214,11 +201,14 @@ export const platformService = {
           status,
           role: roleName,
           subtitle,
+          address: u.address || undefined,
+          latitude: u.latitude == null ? undefined : Number(u.latitude),
+          longitude: u.longitude == null ? undefined : Number(u.longitude),
         };
       });
     } catch (error) {
       console.error("Failed to fetch users", error);
-      return platformUsers;
+      throw error;
     }
   },
   getHospitals: async (): Promise<HospitalAccount[]> => {
@@ -231,7 +221,7 @@ export const platformService = {
         type: "General Hospital", // Default for display as backend doesn't store this exactly
         location: h.address || "No location",
         registered: h.created_at ? new Date(h.created_at).toISOString().split('T')[0] : "Unknown",
-        verification: h.hospital_status === "OPEN" ? "verified" : h.hospital_status === "CLOSED" ? "suspended" : "pending",
+        verification: h.hospital_status || "pending",
         contact: h.phone || "No contact",
         
         // Raw backend fields for edit modal
