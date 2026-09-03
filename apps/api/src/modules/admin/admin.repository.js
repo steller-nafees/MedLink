@@ -893,7 +893,13 @@ const getDashboardStats = async () => {
             (
                 SELECT COUNT(*)
                 FROM reservations
-            ) AS total_reservations
+            ) AS total_reservations,
+            (SELECT COUNT(*) FROM users WHERE created_at >= date_trunc('month', CURRENT_DATE)) AS users_this_month,
+            (SELECT COUNT(*) FROM users WHERE created_at >= date_trunc('month', CURRENT_DATE - INTERVAL '1 month') AND created_at < date_trunc('month', CURRENT_DATE)) AS users_last_month,
+            (SELECT COUNT(*) FROM ambulance_providers WHERE created_at >= date_trunc('month', CURRENT_DATE)) AS drivers_this_month,
+            (SELECT COUNT(*) FROM hospitals WHERE hospital_status IS NULL) AS pending_hospitals,
+            (SELECT COUNT(*) FROM reservations WHERE created_at >= date_trunc('month', CURRENT_DATE)) AS reservations_this_month,
+            (SELECT COUNT(*) FROM reservations WHERE created_at >= date_trunc('month', CURRENT_DATE - INTERVAL '1 month') AND created_at < date_trunc('month', CURRENT_DATE)) AS reservations_last_month
     `;
 
     const result = await pool.query(query);

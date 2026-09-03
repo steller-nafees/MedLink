@@ -370,6 +370,12 @@ const getAdminDashboard = async (req, res, next) => {
                 totalReservations: Number(
                     dashboard.total_reservations
                 ),
+                usersThisMonth: Number(dashboard.users_this_month),
+                usersLastMonth: Number(dashboard.users_last_month),
+                driversThisMonth: Number(dashboard.drivers_this_month),
+                pendingHospitals: Number(dashboard.pending_hospitals),
+                reservationsThisMonth: Number(dashboard.reservations_this_month),
+                reservationsLastMonth: Number(dashboard.reservations_last_month),
             },
         });
     } catch (error) {

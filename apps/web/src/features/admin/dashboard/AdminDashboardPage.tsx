@@ -13,6 +13,11 @@ const roleColors = ["#4a90e2", "#e76f6f", "#16a89c"];
 const roleFilterOptions = ["All", "General Users", "Hospital", "Ambulance Drivers"] as const;
 type RoleFilter = (typeof roleFilterOptions)[number];
 
+function percentageChange(current = 0, previous = 0) {
+  if (previous === 0) return current > 0 ? "new" : "0%";
+  return `${current - previous >= 0 ? "+" : ""}${(((current - previous) / previous) * 100).toFixed(1)}%`;
+}
+
 export function AdminDashboardPage() {
   const [totals, setTotals] = useState<Totals | null>(null);
   const [loggedInUsers, setLoggedInUsers] = useState<RecentLoginUser[]>([]);
@@ -69,6 +74,9 @@ export function AdminDashboardPage() {
 
   if (!totals) return null;
 
+  const usersChange = percentageChange(totals.usersThisMonth, totals.usersLastMonth);
+  const reservationsChange = percentageChange(totals.reservationsThisMonth, totals.reservationsLastMonth);
+
   return (
     <div className="admin-dashboard mx-auto max-w-[1400px] space-y-6">
       <PageHeader
@@ -84,10 +92,10 @@ export function AdminDashboardPage() {
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total general users" value={totals.users.toLocaleString()} sub="+8.3% vs last month" icon={Users} tone="primary" />
-        <StatCard label="Ambulance drivers" value={totals.drivers.toLocaleString()} sub="+27 this month" icon={Truck} tone="info" />
-        <StatCard label="Hospitals" value={totals.hospitals.toLocaleString()} sub="2 pending verification" icon={Building2} tone="success" />
-        <StatCard label="Reservations" value={totals.reservations.toLocaleString()} sub="+11.4% vs last month" icon={CalendarCheck2} tone="neutral" />
+        <StatCard label="Total general users" value={totals.users.toLocaleString()} sub={`${usersChange} vs last month`} icon={Users} tone="primary" />
+        <StatCard label="Ambulance drivers" value={totals.drivers.toLocaleString()} sub={`+${(totals.driversThisMonth ?? 0).toLocaleString()} this month`} icon={Truck} tone="info" />
+        <StatCard label="Hospitals" value={totals.hospitals.toLocaleString()} sub={`${(totals.pendingHospitals ?? 0).toLocaleString()} pending verification`} icon={Building2} tone="success" />
+        <StatCard label="Reservations" value={totals.reservations.toLocaleString()} sub={`${reservationsChange} vs last month`} icon={CalendarCheck2} tone="neutral" />
       </div>
 
       <div className="grid gap-4">

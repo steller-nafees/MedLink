@@ -50,7 +50,7 @@ export function StatCard({
   const helperText = sub ?? (available !== undefined && percentage !== undefined ? `${available} available · ${Math.round(percentage)}% capacity` : "");
 
   return (
-    <section className="ui-card p-5">
+    <section className="ui-card flex h-full flex-col p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[12px] font-medium uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
@@ -61,7 +61,7 @@ export function StatCard({
         </span>
       </div>
       {helperText && (
-        <div className={`mt-4 inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium ${colors.glow}`}>
+        <div className={`mt-auto min-h-8 self-start inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium ${colors.glow}`}>
           {helperText}
         </div>
       )}
