@@ -172,3 +172,22 @@ export type DauData = {
   d: number;
   dau: number;
 };
+
+export type RegistrationTrend = {
+  m: string;
+  users: number;
+  providers: number;
+  hospitals: number;
+};
+
+export type EmergencyTrend = {
+  d: string;
+  sos: number;
+};
+
+export type AnalyticsSnapshot = {
+  totals: Totals;
+  registrations: RegistrationTrend[];
+  emergencyEvents: EmergencyTrend[];
+  emergencyHistoryIsPartial: boolean;
+};

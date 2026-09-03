@@ -343,6 +343,77 @@ export const platformService = {
       return totals;
     }
   },
+  getAnalyticsSnapshot: async (): Promise<import("@/types/platform").AnalyticsSnapshot> => {
+    const [totalsResult, usersResult, hospitalsResult, providersResult] = await Promise.all([
+      platformService.getTotals(),
+      api.get("/admin/users?limit=1000&offset=0"),
+      api.get("/admin/hospitals?limit=1000&offset=0"),
+      api.get("/admin/ambulance-providers?limit=1000&offset=0"),
+    ]);
+
+    const registrationMonths = Array.from({ length: 6 }, (_, index) => {
+      const date = new Date();
+      date.setUTCDate(1);
+      date.setUTCMonth(date.getUTCMonth() - (5 - index));
+      return {
+        key: `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`,
+        label: date.toLocaleDateString("en-US", { month: "short" }),
+      };
+    });
+
+    const countByMonth = (records: Array<{ created_at?: string }>) =>
+      registrationMonths.map(({ key }) => records.reduce((count, record) => {
+        if (!record.created_at) return count;
+        const date = new Date(record.created_at);
+        const recordKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+        return count + (recordKey === key ? 1 : 0);
+      }, 0));
+
+    const users = usersResult.data.data ?? [];
+    const hospitals = hospitalsResult.data.data ?? [];
+    const providers = providersResult.data.data ?? [];
+    const userCounts = countByMonth(users);
+    const hospitalCounts = countByMonth(hospitals);
+    const providerCounts = countByMonth(providers);
+    const registrations = registrationMonths.map(({ label }, index) => ({
+      m: label,
+      users: userCounts[index],
+      providers: providerCounts[index],
+      hospitals: hospitalCounts[index],
+    }));
+
+    const events: Array<{ created_at?: string; is_emergency?: boolean }> = [];
+    const eventPageSize = 100;
+    const eventPageLimit = 10;
+    let offset = 0;
+    let emergencyHistoryIsPartial = false;
+
+    for (let page = 0; page < eventPageLimit; page += 1) {
+      const response = await api.get(`/events?limit=${eventPageSize}&offset=${offset}`);
+      const pageEvents = response.data.data ?? [];
+      events.push(...pageEvents);
+      if (pageEvents.length < eventPageSize) break;
+      offset += eventPageSize;
+      if (page === eventPageLimit - 1) emergencyHistoryIsPartial = true;
+    }
+
+    const emergencyEvents = events
+      .filter((event) => event.is_emergency && event.created_at)
+      .reduce<Record<string, number>>((counts, event) => {
+        const key = new Date(event.created_at as string).toISOString().slice(0, 10);
+        counts[key] = (counts[key] ?? 0) + 1;
+        return counts;
+      }, {});
+
+    return {
+      totals: totalsResult,
+      registrations,
+      emergencyEvents: Object.entries(emergencyEvents)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([d, sos]) => ({ d, sos })),
+      emergencyHistoryIsPartial,
+    };
+  },
   getOverallRevenueStats: async () => {
     const totalCases = settlementRows.reduce((a, s) => a + s.cases, 0);
     const totalRevenue = totalCases * SOS_SERVICE_FEE;

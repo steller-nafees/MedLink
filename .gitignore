@@ -44,3 +44,5 @@ AGENTS.md
 #UI Kit
 ui-kit
 docs/*
+
+legacy-backend/*
