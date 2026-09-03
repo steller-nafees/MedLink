@@ -12,6 +12,10 @@ export type AmbulanceProvider = {
   updated_at: string;
 };
 
+export type NearbyAmbulanceProvider = AmbulanceProvider & {
+  distance_km: number;
+};
+
 class AmbulanceRequestError extends Error {}
 
 async function request<T>(path: string, expectArray: boolean): Promise<T> {
@@ -110,4 +114,11 @@ export function deleteMyAccount(userId: string) {
 
 export async function getMyAmbulanceProvider(): Promise<AmbulanceProvider> {
   return request<AmbulanceProvider>("/api/v1/ambulances/me", false);
+}
+
+export function getNearbyAmbulances(latitude: number, longitude: number, radius = 100) {
+  return request<NearbyAmbulanceProvider[]>(
+    `/api/v1/ambulances/nearby?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}&radius=${encodeURIComponent(radius)}`,
+    true,
+  );
 }

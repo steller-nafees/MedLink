@@ -49,7 +49,7 @@ import {
 } from './components';
 import {
   hospitals as mockHospitals,
-  ambulances,
+  ambulances as mockAmbulances,
   emergencySuggestions,
   SOS_COORDINATION_FEE_BDT,
   type Hospital,
@@ -70,6 +70,7 @@ import {
   type AiMedicalResponse,
 } from '../../services/ai-medical';
 import { getHospitalById, getNearbyHospitals, type NearbyHospital } from '../../services/hospitals';
+import { getNearbyAmbulances, type NearbyAmbulanceProvider } from '../../services/ambulance';
 import { createReservation } from '../../services/reservations';
 import { getPayments, getReservations } from '../../services/patient-records';
 import { getBloodDonors, type BloodDonor } from '../../services/blood';
@@ -108,6 +109,24 @@ function toSosHospital(hospital: NearbyHospital): Hospital {
   };
 }
 
+function toSosAmbulance(ambulance: NearbyAmbulanceProvider): Ambulance {
+  const distanceKm = Number(ambulance.distance_km);
+
+  return {
+    id: ambulance.id,
+    callSign: ambulance.provider_name,
+    reg: ambulance.provider_name,
+    provider: ambulance.provider_name,
+    driver: 'Dispatch desk',
+    type: 'BLS',
+    crew: 'Ambulance dispatch team',
+    etaMin: Math.max(1, Math.round(distanceKm * 4)),
+    distanceKm,
+    phone: ambulance.phone ?? '',
+    status: 'available',
+  };
+}
+
 function toRankedDonor(donor: BloodDonor): RankedDonor {
   return {
     id: donor.donor_id,
@@ -124,8 +143,13 @@ function toRankedDonor(donor: BloodDonor): RankedDonor {
   };
 }
 
-async function findApiDonors(recipient: BloodGroup, limit = 5): Promise<RankedDonor[]> {
-  const result = await getBloodDonors({ limit: 100 });
+async function findApiDonors(recipient: BloodGroup, limit = 5, latitude?: number | null, longitude?: number | null): Promise<RankedDonor[]> {
+  const result = await getBloodDonors({
+    limit: 100,
+    radius: latitude != null && longitude != null ? 100 : undefined,
+    latitude: latitude ?? undefined,
+    longitude: longitude ?? undefined,
+  });
   return result.donors
     .filter((donor) => canDonateTo(donor.blood_group, recipient))
     .map(toRankedDonor)
@@ -239,6 +263,7 @@ export const SOSScreen: React.FC = () => {
   const [assessingBlood, setAssessingBlood] = useState(false);
   const [requestError, setRequestError] = useState('');
   const [nearbyHospitals, setNearbyHospitals] = useState<Hospital[]>([]);
+  const [nearbyAmbulances, setNearbyAmbulances] = useState<Ambulance[]>([]);
 
   const { online, cache, justSynced } = useEmergencySync();
   const insets = useSafeAreaInsets();
@@ -291,12 +316,13 @@ export const SOSScreen: React.FC = () => {
           bloodBank: [...hospital.bloodBank],
           coord: { ...hospital.coord },
         })),
+        ambulances: nearbyAmbulances,
       };
       void AsyncStorage.setItem(`${SOS_CHECKPOINT_PREFIX}${medicalEventId}`, JSON.stringify(checkpoint)).catch(() => undefined);
     } catch {
       // Local checkpointing must never interrupt the emergency workflow.
     }
-  }, [medicalEventId, phase, text, reserved, pendingDonor, sentTo, selectedHospitalId, bloodRequired, severity, aiResponse, nearbyHospitals]);
+  }, [medicalEventId, phase, text, reserved, pendingDonor, sentTo, selectedHospitalId, bloodRequired, severity, aiResponse, nearbyHospitals, nearbyAmbulances]);
 
   const submit = async (val: string) => {
     setText(val);
@@ -327,12 +353,16 @@ export const SOSScreen: React.FC = () => {
         location = { latitude: position.coords.latitude, longitude: position.coords.longitude };
       }
 
-      const hospitalsFromDb = await getNearbyHospitals(location.latitude, location.longitude, 100);
+      const [hospitalsFromDb, ambulancesFromDb] = await Promise.all([
+        getNearbyHospitals(location.latitude, location.longitude, 100),
+        getNearbyAmbulances(location.latitude, location.longitude, 100),
+      ]);
       if (hospitalsFromDb.length === 0) {
         throw new Error('No hospitals were found near your current location. Please try again from another location.');
       }
 
       setNearbyHospitals(hospitalsFromDb.map(toSosHospital));
+      setNearbyAmbulances(ambulancesFromDb.map(toSosAmbulance));
       setSelectedHospitalId(null);
 
       const result = await consultMedicalCondition({
@@ -362,7 +392,7 @@ export const SOSScreen: React.FC = () => {
         const stored = eventFromParams ? await AsyncStorage.getItem(`${SOS_CHECKPOINT_PREFIX}${eventFromParams}`) : null;
         if (stored) {
           try {
-            const saved = JSON.parse(stored) as Partial<{ phase: Phase; text: string; reserved: { bed?: boolean; icu?: boolean; ambulance?: string }; pendingDonor: RankedDonor | null; sentTo: string[]; selectedHospitalId: string | null; bloodRequired: boolean | null; severity: string; aiResponse: AiMedicalResponse | null; hospitals: Hospital[] }>;
+            const saved = JSON.parse(stored) as Partial<{ phase: Phase; text: string; reserved: { bed?: boolean; icu?: boolean; ambulance?: string }; pendingDonor: RankedDonor | null; sentTo: string[]; selectedHospitalId: string | null; bloodRequired: boolean | null; severity: string; aiResponse: AiMedicalResponse | null; hospitals: Hospital[]; ambulances: Ambulance[] }>;
             setText(saved.text ?? textFromParams);
             setSeverity(saved.severity ?? severityFromParams ?? 'LOW');
             setMedicalEventId(eventFromParams ?? null);
@@ -373,6 +403,7 @@ export const SOSScreen: React.FC = () => {
             setBloodRequired(saved.bloodRequired ?? null);
             setAiResponse(saved.aiResponse ?? null);
             setNearbyHospitals(saved.hospitals ?? []);
+            setNearbyAmbulances(saved.ambulances ?? []);
             setPhase(saved.phase && saved.phase !== 'summary' ? saved.phase : 'input');
             return;
           } catch {
@@ -404,6 +435,7 @@ export const SOSScreen: React.FC = () => {
     setAiResponse(null);
     setMedicalEventId(null);
     setNearbyHospitals([]);
+    setNearbyAmbulances([]);
     setSeverity('LOW');
     setRequestError('');
   };
@@ -466,7 +498,7 @@ export const SOSScreen: React.FC = () => {
         )}
         {phase === 'ambulance' && (
           <FadeSlideIn>
-            <AmbulancePhase aiResponse={aiResponse} onContinue={() => setPhase('hospitals')} />
+              <AmbulancePhase ambulances={nearbyAmbulances} aiResponse={aiResponse} onContinue={() => setPhase('hospitals')} />
           </FadeSlideIn>
         )}
         {phase === 'hospitals' && (
@@ -498,12 +530,13 @@ export const SOSScreen: React.FC = () => {
         {phase === 'active' && aiResponse && (
           <FadeSlideIn>
             <ActiveResponsePhase
+              ambulances={nearbyAmbulances}
               hospital={nearbyHospitals.find((hospital) => hospital.id === selectedHospitalId)}
               reserved={reserved}
               eventId={medicalEventId}
               selectedDonor={pendingDonor}
               bloodRequired={bloodRequired}
-              onComplete={() => endSOS({ hospitalName: nearbyHospitals.find((hospital) => hospital.id === selectedHospitalId)?.name ?? 'Hospital', bedReserved: !!reserved.bed, icuReserved: !!reserved.icu, ambulance: reserved.ambulance ? { callSign: ambulances.find((ambulance) => ambulance.id === reserved.ambulance)?.callSign ?? reserved.ambulance } : undefined, donorsContacted: sentTo.length, severity, aiResponse, temporaryPassword })}
+              onComplete={() => endSOS({ hospitalName: nearbyHospitals.find((hospital) => hospital.id === selectedHospitalId)?.name ?? 'Hospital', bedReserved: !!reserved.bed, icuReserved: !!reserved.icu, ambulance: reserved.ambulance ? { callSign: nearbyAmbulances.find((ambulance) => ambulance.id === reserved.ambulance)?.callSign ?? reserved.ambulance } : undefined, donorsContacted: sentTo.length, severity, aiResponse, temporaryPassword })}
             />
           </FadeSlideIn>
         )}
@@ -1184,12 +1217,13 @@ const OfflineResources: React.FC<OfflineResourcesProps> = ({ cache }) => {
 };
 
 interface AmbulancePhaseProps {
+  ambulances: Ambulance[];
   aiResponse: AiMedicalResponse | null;
   onContinue: () => void;
 }
 
-const AmbulancePhase: React.FC<AmbulancePhaseProps> = ({ aiResponse, onContinue }) => {
-  const nearest = ambulances.find((ambulance) => ambulance.status === 'available') ?? ambulances[0];
+const AmbulancePhase: React.FC<AmbulancePhaseProps> = ({ ambulances, aiResponse, onContinue }) => {
+  const nearest = ambulances[0];
   return (
     <View style={{ gap: 16 }}>
       <StepHeader step="1 of 3" title="Immediate help" subtitle="Stay with the patient while help is arranged." />
@@ -1203,12 +1237,12 @@ const AmbulancePhase: React.FC<AmbulancePhaseProps> = ({ aiResponse, onContinue 
           <Text style={{ fontSize: 11.5, lineHeight: 16, color: theme.colors.mutedForeground }}>{aiResponse.summary}</Text>
         </View>
       )}
-      <SectionTitle title="Nearest ambulance" hint="Call only" />
-      <View style={{ borderRadius: theme.radii.xxxl, backgroundColor: theme.colors.card, padding: 16, gap: 10, ...theme.shadows.shadowCard }}>
+      <SectionTitle title="Nearest ambulance" hint={ambulances.length ? `${ambulances.length} units nearby` : 'No active units found'} />
+      {nearest ? <View style={{ borderRadius: theme.radii.xxxl, backgroundColor: theme.colors.card, padding: 16, gap: 10, ...theme.shadows.shadowCard }}>
         <Text style={{ fontSize: 17, fontWeight: 'bold', color: theme.colors.foreground }}>{nearest.callSign}</Text>
-        <Text style={{ fontSize: 12.5, color: theme.colors.mutedForeground }}>{nearest.type} · {nearest.distanceKm} km away · ETA {nearest.etaMin} min</Text>
-        <CallButton label={`Call ${nearest.phone}`} phone={nearest.phone} tone="emergency" />
-      </View>
+        <Text style={{ fontSize: 12.5, color: theme.colors.mutedForeground }}>{nearest.distanceKm} km away · ETA {nearest.etaMin} min</Text>
+        <CallButton label={`Call ${nearest.phone || 'ambulance dispatch'}`} phone={nearest.phone} tone="emergency" />
+      </View> : <Text style={{ fontSize: 13, color: theme.colors.mutedForeground }}>No active ambulance providers were found within 100 km of your location.</Text>}
       <PrimaryStepButton label="Select a hospital" onPress={onContinue} />
     </View>
   );
@@ -1298,9 +1332,22 @@ const ApprovalFollowupPhase: React.FC<ApprovalFollowupPhaseProps> = ({ eventId, 
     void check(); const timer = setInterval(() => void check(), 5000); return () => { active = false; clearInterval(timer); };
   }, [eventId, hospitalName, onRedirect]);
   useEffect(() => {
-    if (!approved || !bloodRequired) { setDonors([]); return; }
-    void findApiDonors('O+').then(setDonors).catch(() => setDonors([]));
-  }, [approved, bloodRequired]);
+    if (!bloodRequired) { setDonors([]); return; }
+    if (!hospitalId) { setDonors([]); return; }
+
+    let active = true;
+    void getHospitalById(hospitalId)
+      .then((hospital) => {
+        if (hospital.latitude == null || hospital.longitude == null) {
+          throw new Error('The selected hospital location is unavailable.');
+        }
+        return findApiDonors('O+', 5, hospital.latitude, hospital.longitude);
+      })
+      .then((nextDonors) => { if (active) setDonors(nextDonors); })
+      .catch(() => { if (active) setDonors([]); });
+
+    return () => { active = false; };
+  }, [bloodRequired, hospitalId]);
   return <View style={{ gap: 14 }}>
     <StepHeader step="3 of 3" title={approved ? 'Hospital accepted' : 'Waiting for hospital'} subtitle={approved ? `${hospitalName} has approved your request.` : `Your request is pending with ${hospitalName}. This screen checks for approval automatically.`} />
     {!approved && <View style={{ alignItems: 'center', paddingVertical: 28, gap: 10 }}><ActivityIndicator size="large" color={theme.colors.primary} /><Text style={{ fontSize: 13, color: theme.colors.mutedForeground }}>Waiting for a response...</Text></View>}
@@ -1464,7 +1511,7 @@ const CommandPhase: React.FC<CommandPhaseProps> = ({
   const hospitalSelected = selectedHospitalId !== null;
   const requiredGroup: BloodGroup = 'O+';
   const [matchedDonors, setMatchedDonors] = useState<RankedDonor[]>([]);
-  const bookedAmbulance = ambulances.find((a) => a.id === reserved.ambulance);
+  const bookedAmbulance = mockAmbulances.find((a) => a.id === reserved.ambulance);
   const [reservationError, setReservationError] = useState('');
   const [reserving, setReserving] = useState<'bed' | 'icu' | null>(null);
 
@@ -1896,11 +1943,11 @@ const CommandPhase: React.FC<CommandPhaseProps> = ({
       {/* Ambulance section */}
       <SectionTitle
         title={reserved.ambulance ? 'Your ambulance' : 'Nearest ambulance'}
-        hint={reserved.ambulance ? 'Request accepted' : `${ambulances.length} units nearby`}
+        hint={reserved.ambulance ? 'Request accepted' : `${mockAmbulances.length} units nearby`}
       />
 
       <View style={{ marginBottom: 20, gap: 10 }}>
-        {(reserved.ambulance ? ambulances.filter((a) => a.id === reserved.ambulance) : ambulances.slice(0, 2)).map(
+        {(reserved.ambulance ? mockAmbulances.filter((a) => a.id === reserved.ambulance) : mockAmbulances.slice(0, 2)).map(
           (a) => (
             <AmbulanceCard
               key={a.id}
@@ -2686,13 +2733,14 @@ const SummaryRow: React.FC<SummaryRowProps> = ({ label, value, icon: Icon, posit
 };
 
 const ActiveResponsePhase: React.FC<{
+  ambulances: Ambulance[];
   hospital?: Hospital;
   reserved: { bed?: boolean; icu?: boolean; ambulance?: string };
   eventId: string | null;
   selectedDonor: RankedDonor | null;
   bloodRequired: boolean | null;
   onComplete: () => void;
-}> = ({ hospital, reserved, eventId, selectedDonor, bloodRequired, onComplete }) => {
+}> = ({ ambulances, hospital, reserved, eventId, selectedDonor, bloodRequired, onComplete }) => {
   const [reservation, setReservation] = useState<Awaited<ReturnType<typeof getReservations>>[number] | undefined>();
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
 

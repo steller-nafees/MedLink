@@ -21,7 +21,6 @@ type TabDef = {
   key: Key;
   icon: typeof Home;
   match: (p: string) => boolean;
-  center: boolean;
 };
 
 const tabs: TabDef[] = [
@@ -30,18 +29,16 @@ const tabs: TabDef[] = [
     key: "home",
     icon: Home,
     match: (p) => p === "/(ambulance)" || p === "/(ambulance)/index",
-    center: false,
   },
   {
     route: "/(ambulance)/profile",
     key: "profile",
     icon: User,
     match: (p) => p.includes("/profile"),
-    center: false,
   },
 ];
 
-/* ─── Normal Tab Item ─── */
+/* ─── Tab Item ─── */
 function TabItem({
   route,
   label,
@@ -61,14 +58,14 @@ function TabItem({
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
       accessibilityLabel={label}
-      style={styles.tabItem}
+      style={[styles.tabItem, active && styles.tabItemActive]}
     >
-      <View style={[styles.iconChip, active && styles.iconChipActive]}>
+      <View style={styles.iconChip}>
         <Icon
           size={18}
           strokeWidth={active ? 2.1 : 2}
-          color={active ? "#FFFFFF" : "#16A89C"}
-          fill={active ? "#16A89C" : "none"}
+          color="#16A89C"
+          fill="none"
         />
       </View>
       <Text
@@ -127,12 +124,12 @@ export function DriverTabBar({ hideNav = false }: { hideNav?: boolean }) {
 
 /* ─── Styles ─── */
 const styles = StyleSheet.create({
-  /* Nav container — absolutely positioned at bottom with 16px inset */
+  /* Nav container — absolutely positioned at bottom */
   navContainer: {
     position: "absolute",
     left: 16,
     right: 16,
-    bottom: 16, // bottom-4 = 16px
+    bottom: 20,
     zIndex: 20,
   },
 
@@ -161,13 +158,19 @@ const styles = StyleSheet.create({
     gap: 2,
   },
 
-  /* Tab item */
+  /* Tab item — pill-shaped active state, matches patient bar */
   tabItem: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     gap: 4,
-    paddingVertical: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderRadius: 20,
+  },
+
+  tabItemActive: {
+    backgroundColor: "rgba(22,168,156,0.12)",
   },
 
   iconChip: {
@@ -178,32 +181,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  iconChipActive: {
-    backgroundColor: "#16A89C",
-  },
-
   tabLabel: {
     fontSize: 10,
     lineHeight: 10,
     color: "#16A89C",
     fontFamily: theme.fonts.medium,
-  },
-
-  /* Center button */
-  centerSlot: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  centerButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: "center",
-    justifyContent: "center",
-    transform: [{ translateY: -24 }],
-    borderWidth: 5,
-    ...theme.shadows.shadowFanButton,
   },
 });

@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  useColorScheme,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -21,9 +20,7 @@ const chips = ["All", "Open", "Closed"];
 export default function HospitalsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
-  const palette = getPalette(isDark);
+  const palette = getPalette();
   const styles = createStyles(palette);
   const [active, setActive] = useState("All");
   const [query, setQuery] = useState("");
@@ -171,8 +168,8 @@ function getMapPoint(hospital: Hospital, list: Hospital[], index: number) {
   return { x: 12 + (((hospital.longitude - Math.min(...longitudes)) / longitudeRange) * 76), y: 12 + ((1 - ((hospital.latitude - Math.min(...latitudes)) / latitudeRange)) * 70) };
 }
 
-function getPalette(isDark: boolean) {
-  return isDark ? { background: theme.colors.backgroundDark, surface: theme.colors.surfaceDark, variant: theme.colors.container, foreground: theme.colors.primaryForeground, muted: theme.colors.primaryLight, border: theme.colors.borderDark } : { background: theme.colors.background, surface: theme.colors.surface, variant: theme.colors.surfaceVariant, foreground: theme.colors.foreground, muted: theme.colors.mutedForeground, border: theme.colors.border };
+function getPalette() {
+  return { background: theme.colors.background, surface: theme.colors.surface, variant: theme.colors.surfaceVariant, foreground: theme.colors.foreground, muted: theme.colors.mutedForeground, border: theme.colors.border };
 }
 
 const createStyles = (palette: ReturnType<typeof getPalette>) => StyleSheet.create({

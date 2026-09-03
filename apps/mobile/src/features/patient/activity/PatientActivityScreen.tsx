@@ -7,7 +7,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  useColorScheme,
   View,
 } from "react-native";
 import { BedDouble, Download, RefreshCw, Siren, CalendarX, AlertTriangle } from "lucide-react-native";
@@ -43,8 +42,7 @@ export default function PatientActivityScreen() {
   const [error, setError] = useState<string | null>(null);
   const [hiddenActivityIds, setHiddenActivityIds] = useState<string[]>([]);
   const insets = useSafeAreaInsets();
-  const isDark = useColorScheme() === "dark";
-  const palette = useMemo(() => getPalette(isDark), [isDark]);
+  const palette = useMemo(() => getPalette(), []);
   const styles = useMemo(() => createStyles(palette), [palette]);
   const emergencyEvents = useMemo(() => events.filter((event) => event.is_emergency), [events]);
 
@@ -115,7 +113,7 @@ export default function PatientActivityScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style={isDark ? "light" : "dark"} />
+      <StatusBar style="dark" />
 
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <View>
@@ -568,24 +566,15 @@ function escapeHtml(value: string) {
   })[character] ?? character);
 }
 
-function getPalette(isDark: boolean) {
-  return isDark
-    ? {
-        background: theme.colors.backgroundDark,
-        surface: theme.colors.surfaceDark,
-        variant: theme.colors.container,
-        foreground: theme.colors.primaryForeground,
-        muted: theme.colors.primaryLight,
-        border: theme.colors.borderDark,
-      }
-    : {
-        background: theme.colors.background,
-        surface: theme.colors.surface,
-        variant: theme.colors.surfaceVariant,
-        foreground: theme.colors.foreground,
-        muted: theme.colors.mutedForeground,
-        border: theme.colors.borderLight,
-      };
+function getPalette() {
+  return {
+    background: theme.colors.background,
+    surface: theme.colors.surface,
+    variant: theme.colors.surfaceVariant,
+    foreground: theme.colors.foreground,
+    muted: theme.colors.mutedForeground,
+    border: theme.colors.borderLight,
+  };
 }
 
 const createStyles = (palette: ReturnType<typeof getPalette>) =>

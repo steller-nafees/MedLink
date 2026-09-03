@@ -33,6 +33,17 @@ const severityStyle: Record<Severity, { bg: string; text: string }> = {
 	low: { bg: "severity-low", text: "severity-low-text" },
 };
 
+function normalizeSeverity(rawSeverity: string | null | undefined): Severity {
+	switch (rawSeverity?.trim().toLowerCase()) {
+		case "critical": return "critical";
+		case "high": return "high";
+		case "medium":
+		case "moderate": return "moderate";
+		case "low": return "low";
+		default: return "moderate";
+	}
+}
+
 const severityColors: Record<HospitalDashboardAnalytics["bySeverity"][number]["name"], string> = {
 	Critical: "var(--hospital-emergency)",
 	High: "var(--hospital-warning)",
@@ -92,7 +103,7 @@ export function HospitalDashboardPage() {
 		id: activeCase.event_id,
 		patient: [activeCase.first_name, activeCase.last_name].filter(Boolean).join(" ") || "Unnamed patient",
 		age: 0,
-		severity: activeCase.severity.toLowerCase() as Severity,
+		severity: normalizeSeverity(activeCase.severity),
 		summary: activeCase.user_description || "Active medical event",
 		eta: "—",
 		ambulance: "—",

@@ -1,14 +1,12 @@
 // Ported from ui-kit/src/routes/patient.settings.tsx and ui-kit/src/lib/medlink/app-settings.tsx.
 
 export type SettingsLanguage = "en" | "bn";
-export type SettingsAppearance = "light" | "dark" | "system";
-
 const englishCopy = {
-  settings: "Settings", language: "Language", languageHint: "Applies across the whole app", appearance: "Appearance", light: "Light", dark: "Dark", system: "System", notifications: "Notifications", privacyPolicy: "Privacy Policy", helpSupport: "Help & Support", logout: "Log Out",
+  settings: "Settings", language: "Language", languageHint: "Applies across the whole app", notifications: "Notifications", privacyPolicy: "Privacy Policy", helpSupport: "Help & Support", logout: "Log Out",
 } as const;
 
 const banglaCopy: Record<keyof typeof englishCopy, string> = {
-  settings: "সেটিংস", language: "ভাষা", languageHint: "পুরো অ্যাপে প্রযোজ্য", appearance: "থিম", light: "লাইট", dark: "ডার্ক", system: "সিস্টেম", notifications: "নোটিফিকেশন", privacyPolicy: "গোপনীয়তা নীতি", helpSupport: "সহায়তা", logout: "লগ আউট",
+  settings: "সেটিংস", language: "ভাষা", languageHint: "পুরো অ্যাপে প্রযোজ্য", notifications: "নোটিফিকেশন", privacyPolicy: "গোপনীয়তা নীতি", helpSupport: "সহায়তা", logout: "লগ আউট",
 };
 
 export const settingsCopy = { en: englishCopy, bn: banglaCopy } as const;

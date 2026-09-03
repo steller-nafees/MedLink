@@ -112,7 +112,7 @@ export function AmbulanceProfileScreen() {
   };
 
   return (
-    <DriverShell showLanguage={false} hideNav={false}>
+    <DriverShell showLanguage={false} hideNav={true}>
       <DriverHeader title={t("profile")} />
 
       <ScrollView
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingBottom: 40,
+    paddingBottom: 120,
   },
   section: {
     marginHorizontal: 20,
