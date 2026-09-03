@@ -30,6 +30,18 @@ const getAllUsers = async ({
     };
 };
 
+const getUserDetails = async (userId) => {
+    const user = await adminRepository.getUserDetailsById(userId);
+
+    if (!user) {
+        const error = new Error("User not found");
+        error.statusCode = 404;
+        throw error;
+    }
+
+    return user;
+};
+
 // ============================================================
 // UPDATE USER ROLE
 // ============================================================
@@ -435,6 +447,7 @@ const getAdminDashboard = async () => {
 
 module.exports = {
     getAllUsers,
+    getUserDetails,
     updateUserRole,
     updateUserStatus,
     getAllHospitals,

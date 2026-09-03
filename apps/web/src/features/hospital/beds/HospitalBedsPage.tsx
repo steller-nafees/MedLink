@@ -26,7 +26,15 @@ function WardCard({ ward }: { ward: HospitalWard }) {
 export function HospitalBedsPage() {
 	const [beds, setBeds] = useState<HospitalBed[]>([]);
 	const [error, setError] = useState<string | null>(null);
-	useEffect(() => { getHospitalBedsFromApi().then(setBeds).catch((requestError: unknown) => setError(requestError instanceof Error ? requestError.message : "Unable to load beds")); }, []);
+	useEffect(() => {
+		let cancelled = false;
+		const loadBeds = () => getHospitalBedsFromApi()
+			.then((nextBeds) => { if (!cancelled) setBeds(nextBeds); })
+			.catch((requestError: unknown) => { if (!cancelled) setError(requestError instanceof Error ? requestError.message : "Unable to load beds"); });
+		loadBeds();
+		const intervalId = window.setInterval(loadBeds, 5000);
+		return () => { cancelled = true; window.clearInterval(intervalId); };
+	}, []);
 	const wards = Array.from(new Set(beds.map((bed) => bed.ward_name))).map((name, index) => ({ name, tone: index % 2 ? "primary" as const : "emergency" as const, beds: beds.filter((bed) => bed.ward_name === name).map((bed, bedIndex) => ({ id: bedIndex + 1, occupied: bed.bed_status !== "AVAILABLE" })) }));
 	const total = beds.length;
 	const available = beds.filter((bed) => bed.bed_status === "AVAILABLE").length;

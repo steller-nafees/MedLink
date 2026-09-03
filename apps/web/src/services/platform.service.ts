@@ -11,6 +11,7 @@ import type {
   UserGrowth,
   ActivityTrend,
   Totals,
+  CompletedSosRevenue,
   SosDaily,
   RevenueByHospital,
   SettlementRate,
@@ -65,21 +66,21 @@ const settlementRows = [
 const adminNotifications: AdminNotification[] = [
   { id: "N1", kind: "registration", title: "New hospital registration", body: "Rangpur Community Hospital submitted an application for verification.", time: "12 min ago", unread: true },
   { id: "N2", kind: "registration", title: "New ambulance driver registration", body: "Alamgir Hossain · Dhaka Metro Cha 17-2255 · Critical Care", time: "1 hr ago", unread: true },
-  { id: "N3", kind: "settlement", title: "Settlement overdue", body: "Popular Medical Centre has ৳34,000 outstanding for over 30 days.", time: "4 hrs ago", unread: true },
+  { id: "N3", kind: "settlement", title: "Settlement overdue", body: "Popular Medical Centre has BDT 34,000 outstanding for over 30 days.", time: "4 hrs ago", unread: true },
   { id: "N4", kind: "suspension", title: "Hospital suspended", body: "City Care Clinic was suspended after repeated verification failures.", time: "Yesterday" },
   { id: "N5", kind: "suspension", title: "Driver suspended", body: "Habibur Rahman was suspended pending licence re-verification.", time: "2 days ago" },
   { id: "N6", kind: "system", title: "System alert resolved", body: "Elevated API latency in the Dhaka region returned to normal.", time: "3 days ago" },
 ];
 
 const auditLog: AuditEvent[] = [
-  { id: "L-9001", event: "Settlement recorded", actor: "Alex Nguyen", target: "Evercare Hospital · ৳198,000", time: "2026-07-31 09:12" },
+  { id: "L-9001", event: "Settlement recorded", actor: "Alex Nguyen", target: "Evercare Hospital · BDT 198,000", time: "2026-07-31 09:12" },
   { id: "L-9002", event: "Driver approved", actor: "Alex Nguyen", target: "Mizanur Rahman · D-3004", time: "2026-07-30 17:48" },
   { id: "L-9003", event: "Account suspended", actor: "System", target: "Arif Mahmud · U-10249", time: "2026-07-30 11:05" },
   { id: "L-9004", event: "Hospital registered", actor: "Self-service", target: "Rangpur Community Hospital", time: "2026-07-29 15:22" },
   { id: "L-9005", event: "Hospital approved", actor: "Farzana Rahim", target: "National Heart Foundation · H-2004", time: "2026-07-28 10:39" },
   { id: "L-9006", event: "User registered", actor: "Self-service", target: "Lamia Sultana · U-10250", time: "2026-07-27 08:14" },
   { id: "L-9007", event: "Driver approved", actor: "Farzana Rahim", target: "Nazmul Hoque · D-3006", time: "2026-07-26 19:02" },
-  { id: "L-9008", event: "Settlement recorded", actor: "Alex Nguyen", target: "Square Hospital · ৳200,000", time: "2026-07-25 13:41" },
+  { id: "L-9008", event: "Settlement recorded", actor: "Alex Nguyen", target: "Square Hospital · BDT 200,000", time: "2026-07-25 13:41" },
 ];
 
 const recentLogins: RecentLoginUser[] = [
@@ -343,6 +344,77 @@ export const platformService = {
       return totals;
     }
   },
+  getAnalyticsSnapshot: async (): Promise<import("@/types/platform").AnalyticsSnapshot> => {
+    const [totalsResult, usersResult, hospitalsResult, providersResult] = await Promise.all([
+      platformService.getTotals(),
+      api.get("/admin/users?limit=1000&offset=0"),
+      api.get("/admin/hospitals?limit=1000&offset=0"),
+      api.get("/admin/ambulance-providers?limit=1000&offset=0"),
+    ]);
+
+    const registrationMonths = Array.from({ length: 6 }, (_, index) => {
+      const date = new Date();
+      date.setUTCDate(1);
+      date.setUTCMonth(date.getUTCMonth() - (5 - index));
+      return {
+        key: `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`,
+        label: date.toLocaleDateString("en-US", { month: "short" }),
+      };
+    });
+
+    const countByMonth = (records: Array<{ created_at?: string }>) =>
+      registrationMonths.map(({ key }) => records.reduce((count, record) => {
+        if (!record.created_at) return count;
+        const date = new Date(record.created_at);
+        const recordKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+        return count + (recordKey === key ? 1 : 0);
+      }, 0));
+
+    const users = usersResult.data.data ?? [];
+    const hospitals = hospitalsResult.data.data ?? [];
+    const providers = providersResult.data.data ?? [];
+    const userCounts = countByMonth(users);
+    const hospitalCounts = countByMonth(hospitals);
+    const providerCounts = countByMonth(providers);
+    const registrations = registrationMonths.map(({ label }, index) => ({
+      m: label,
+      users: userCounts[index],
+      providers: providerCounts[index],
+      hospitals: hospitalCounts[index],
+    }));
+
+    const events: Array<{ created_at?: string; is_emergency?: boolean }> = [];
+    const eventPageSize = 100;
+    const eventPageLimit = 10;
+    let offset = 0;
+    let emergencyHistoryIsPartial = false;
+
+    for (let page = 0; page < eventPageLimit; page += 1) {
+      const response = await api.get(`/events?limit=${eventPageSize}&offset=${offset}`);
+      const pageEvents = response.data.data ?? [];
+      events.push(...pageEvents);
+      if (pageEvents.length < eventPageSize) break;
+      offset += eventPageSize;
+      if (page === eventPageLimit - 1) emergencyHistoryIsPartial = true;
+    }
+
+    const emergencyEvents = events
+      .filter((event) => event.is_emergency && event.created_at)
+      .reduce<Record<string, number>>((counts, event) => {
+        const key = new Date(event.created_at as string).toISOString().slice(0, 10);
+        counts[key] = (counts[key] ?? 0) + 1;
+        return counts;
+      }, {});
+
+    return {
+      totals: totalsResult,
+      registrations,
+      emergencyEvents: Object.entries(emergencyEvents)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([d, sos]) => ({ d, sos })),
+      emergencyHistoryIsPartial,
+    };
+  },
   getOverallRevenueStats: async () => {
     const totalCases = settlementRows.reduce((a, s) => a + s.cases, 0);
     const totalRevenue = totalCases * SOS_SERVICE_FEE;
@@ -350,6 +422,50 @@ export const platformService = {
     const totalOutstanding = totalRevenue - totalSettled;
     
     return { totalRevenue, totalOutstanding, totalSettled };
+  },
+  getCompletedSosRevenue: async (): Promise<CompletedSosRevenue> => {
+    const eventPageSize = 100;
+    const eventPageLimit = 10;
+    const completedEvents: Array<{ id: string }> = [];
+    let offset = 0;
+    let historyIsPartial = false;
+
+    for (let page = 0; page < eventPageLimit; page += 1) {
+      const response = await api.get(`/events?limit=${eventPageSize}&offset=${offset}`);
+      const pageEvents = response.data.data ?? [];
+      completedEvents.push(
+        ...pageEvents.filter(
+          (event: { id: string; event_status?: string; is_emergency?: boolean }) =>
+            event.is_emergency && event.event_status === "COMPLETED",
+        ),
+      );
+
+      if (pageEvents.length < eventPageSize) break;
+      offset += eventPageSize;
+      if (page === eventPageLimit - 1) historyIsPartial = true;
+    }
+
+    const details = await Promise.all(
+      completedEvents.map(({ id }) => api.get(`/events/${id}`).then((response) => response.data.data)),
+    );
+    const hospitals = new Map<string, { hospitalId: string; hospital: string; cases: number }>();
+
+    details.forEach((event) => {
+      (event.hospitals ?? []).forEach((hospital: { hospital_id: string; hospital_name?: string }) => {
+        const current = hospitals.get(hospital.hospital_id);
+        hospitals.set(hospital.hospital_id, {
+          hospitalId: hospital.hospital_id,
+          hospital: hospital.hospital_name || "Unknown hospital",
+          cases: (current?.cases ?? 0) + 1,
+        });
+      });
+    });
+
+    return {
+      totalCompleted: completedEvents.length,
+      hospitalCounts: [...hospitals.values()].sort((left, right) => right.cases - left.cases),
+      historyIsPartial,
+    };
   },
   getSosDaily: async () => sosDaily,
   getRevenueByHospital: async (): Promise<RevenueByHospital[]> => {

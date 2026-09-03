@@ -2,7 +2,7 @@ const express = require("express");
 const authenticate = require("../../shared/middlewares/auth.middleware");
 const authorize = require("../../shared/middlewares/authorize.middleware");
 const validate = require("../../shared/middlewares/validate.middleware");
-const { updateBedStatusSchema } = require("./hospital-admin.validation");
+const { assignBedSchema, updateBedStatusSchema } = require("./hospital-admin.validation");
 const controller = require("./hospital-admin.controller");
 
 const router = express.Router();
@@ -14,6 +14,8 @@ router.get("/dashboard", ...adminOnly, controller.getDashboard);
 router.get("/dashboard/analytics", ...adminOnly, controller.getDashboardAnalytics);
 router.get("/dashboard/active-cases", ...adminOnly, controller.getActiveCases);
 router.put("/dashboard/active-cases/:eventId/approve", ...adminOnly, controller.approveEmergencyCase);
+router.put("/dashboard/active-cases/:eventId/assign-bed", ...adminOnly, validate(assignBedSchema), controller.assignBedToEvent);
+router.put("/dashboard/active-cases/:eventId/complete", ...adminOnly, controller.completeEmergencyCase);
 router.get("/reservations", ...adminOnly, controller.getReservations);
 router.get("/reservations/:reservationId", ...adminOnly, controller.getReservationById);
 router.put("/reservations/:reservationId/approve", ...adminOnly, controller.approveReservation);

@@ -184,10 +184,15 @@ const updateHospitalSchema = z
         }
     );
 
+const userIdParamSchema = z.object({
+    userId: z.string().uuid("Invalid user ID"),
+});
+
 module.exports = {
     updateUserRoleSchema,
     updateUserStatusSchema,
     createHospitalSchema,
     updateHospitalSchema,
+    userIdParamSchema,
 };
 

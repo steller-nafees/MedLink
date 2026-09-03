@@ -31,5 +31,6 @@ export function HospitalReservationsPage() {
 
 function mapReservation(record: Record<string, unknown>) {
 	const mode = String(record.reservation_mode ?? "BED").toLowerCase();
-	return { id: String(record.reservation_id), kind: mode.includes("icu") ? "icu" as const : "bed" as const, title: mode.includes("icu") ? "ICU Reservation" : "Bed Reservation", department: String(record.ward_name ?? "Hospital ward"), patient: `Patient ${String(record.user_id ?? "") .slice(0, 8)}`, date: String(record.requested_at ?? "").slice(0, 10), time: "", status: String(record.reservation_status ?? "PENDING").toLowerCase().replace("approved", "confirmed") as ReservationStatus, charge: 0, serviceFee: 0, payment: "pending" as const };
+	const patientName = [record.patient_first_name, record.patient_last_name].filter(Boolean).join(" ") || "Unnamed patient";
+	return { id: String(record.reservation_id), kind: mode.includes("icu") ? "icu" as const : "bed" as const, title: mode.includes("icu") ? "ICU Reservation" : "Bed Reservation", department: String(record.ward_name ?? "Hospital ward"), patient: patientName, date: String(record.requested_at ?? "").slice(0, 10), time: "", status: String(record.reservation_status ?? "PENDING").toLowerCase().replace("approved", "confirmed") as ReservationStatus, charge: 0, serviceFee: 0, payment: "pending" as const };
 }

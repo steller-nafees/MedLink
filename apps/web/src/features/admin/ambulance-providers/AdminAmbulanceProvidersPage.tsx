@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { Ambulance, MapPin, Plus, X, Pencil, FileText } from "lucide-react";
-import { PageHeader } from "@/shared/components/ui/PageHeader";
+import { PageHead } from "@/shared/components/ui/ReservationPrimitives";
 import { SearchInput } from "@/shared/components/ui/SearchInput";
 import { platformService } from "@/services/platform.service";
 import type { AmbulanceProviderAccount } from "@/types/platform";
@@ -188,19 +188,11 @@ export function AdminAmbulanceProvidersPage() {
 
   return (
     <main className="hospital-requests admin-provider-page">
-      <div className="admin-provider-header flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <PageHeader
-          eyebrow="Providers"
-          title="Ambulance Providers"
-          subtitle={`${providers.length} registered providers · ${providers.filter((p) => !p.isActive).length} suspended`}
+      <div className="admin-provider-heading">
+        <PageHead
+          title="Ambulance provider management"
+          subtitle={`${providers.length} registered providers · ${providers.filter((p) => !p.isActive).length} awaiting verification`}
         />
-        <button
-          onClick={handleOpenCreate}
-          className="admin-provider-add flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition"
-        >
-          <Plus className="size-4" />
-          Add Provider
-        </button>
       </div>
 
       <div className="admin-provider-toolbar">
@@ -211,6 +203,10 @@ export function AdminAmbulanceProvidersPage() {
             </button>
           ))}
         </div>
+        <button onClick={handleOpenCreate} className="admin-provider-add"><Plus className="size-4" />Add Provider</button>
+      </div>
+
+      <div className="admin-provider-search">
         <SearchInput value={q} onChange={setQ} placeholder="Search provider, address or phone…" />
       </div>
 
@@ -350,6 +346,7 @@ export function AdminAmbulanceProvidersPage() {
       )}
       <style>{`
         .admin-provider-page { max-width: 1400px; margin: 0 auto; }
+        .admin-provider-heading { margin-bottom: 20px; }
         .admin-provider-toolbar {
           display: flex;
           align-items: center;
@@ -358,7 +355,9 @@ export function AdminAmbulanceProvidersPage() {
           margin-bottom: 16px;
         }
         .admin-provider-toolbar .request-tabs { margin-bottom: 0; }
-        .admin-provider-toolbar > :last-child { min-width: 240px; }
+        .admin-provider-add { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #14b8a6; border-radius: 999px; background: #14b8a6; color: #fff; cursor: pointer; padding: 10px 18px; font: inherit; font-size: 13px; font-weight: 600; line-height: 1; box-shadow: 0 8px 20px rgba(20, 184, 166, .2); white-space: nowrap; }
+        .admin-provider-add:hover { background: #0f9f91; border-color: #0f9f91; }
+        .admin-provider-search { margin-bottom: 16px; }
         .admin-provider-col-header { opacity: .7; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding-bottom: 8px; }
         .admin-provider-col-header .request-kind { visibility: hidden; }
         .admin-provider-col-header .request-row-actions { justify-content: flex-end; }

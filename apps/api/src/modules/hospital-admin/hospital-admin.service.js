@@ -44,6 +44,20 @@ const approveEmergencyCase = async (userId, eventId) => {
     return event;
 };
 
+const assignBedToEvent = async (userId, eventId, bedNumber) => {
+    const hospital = await getAssignedHospital(userId);
+    const reservation = await repository.assignBedToEvent(eventId, hospital.hospital_id, bedNumber);
+    if (!reservation) { const error = new Error("Reservation not found for this emergency case"); error.statusCode = 404; throw error; }
+    return reservation;
+};
+
+const completeEmergencyCase = async (userId, eventId) => {
+    const hospital = await getAssignedHospital(userId);
+    const event = await repository.completeEmergencyCase(eventId, hospital.hospital_id);
+    if (!event) { const error = new Error("Emergency case not found or already completed"); error.statusCode = 404; throw error; }
+    return event;
+};
+
 const getDashboardAnalytics = async (userId) => {
     const hospital = await repository.getHospitalIdByAdminId(userId);
     if (!hospital) throw noAssignment("No hospital assignment found");
@@ -118,4 +132,4 @@ const updateHospitalPayment = async (userId, paymentId, { totalAmount, paymentMe
     return repository.updatePayment(paymentId, hospital.hospital_id, { totalAmount, paymentMethod, paymentStatus, paidAt });
 };
 
-module.exports = { getMyHospital, getMyAssignments, getDashboard, getActiveCases, approveEmergencyCase, getDashboardAnalytics, getHospitalReservations, getHospitalReservationById, approveHospitalReservation, getHospitalBeds, updateHospitalBedStatus, getHospitalPayments, getHospitalPaymentById, createHospitalPayment, getPatientPayments, updateHospitalPayment };
+module.exports = { getMyHospital, getMyAssignments, getDashboard, getActiveCases, approveEmergencyCase, assignBedToEvent, completeEmergencyCase, getDashboardAnalytics, getHospitalReservations, getHospitalReservationById, approveHospitalReservation, getHospitalBeds, updateHospitalBedStatus, getHospitalPayments, getHospitalPaymentById, createHospitalPayment, getPatientPayments, updateHospitalPayment };

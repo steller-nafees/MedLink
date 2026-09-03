@@ -82,6 +82,16 @@ export type Settlement = {
   outstanding?: number;
 };
 
+export type CompletedSosRevenue = {
+  totalCompleted: number;
+  hospitalCounts: Array<{
+    hospitalId: string;
+    hospital: string;
+    cases: number;
+  }>;
+  historyIsPartial: boolean;
+};
+
 export type AdminNotification = {
   id: string;
   kind: "registration" | "suspension" | "settlement" | "system";
@@ -171,4 +181,23 @@ export type UptimeData = {
 export type DauData = {
   d: number;
   dau: number;
+};
+
+export type RegistrationTrend = {
+  m: string;
+  users: number;
+  providers: number;
+  hospitals: number;
+};
+
+export type EmergencyTrend = {
+  d: string;
+  sos: number;
+};
+
+export type AnalyticsSnapshot = {
+  totals: Totals;
+  registrations: RegistrationTrend[];
+  emergencyEvents: EmergencyTrend[];
+  emergencyHistoryIsPartial: boolean;
 };

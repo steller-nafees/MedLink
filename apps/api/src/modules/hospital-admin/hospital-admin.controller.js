@@ -17,6 +17,8 @@ const getMyAssignments = respond((req) => service.getMyAssignments(req.user.user
 const getDashboard = respond((req) => service.getDashboard(req.user.userId), "Hospital dashboard fetched successfully");
 const getActiveCases = respond((req) => service.getActiveCases(req.user.userId), "Active cases fetched successfully");
 const approveEmergencyCase = respond((req) => service.approveEmergencyCase(req.user.userId, req.params.eventId), "Emergency case approved successfully");
+const assignBedToEvent = respond((req) => service.assignBedToEvent(req.user.userId, req.params.eventId, req.body.bedNumber), "Bed assigned successfully");
+const completeEmergencyCase = respond((req) => service.completeEmergencyCase(req.user.userId, req.params.eventId), "Emergency case completed successfully");
 const getDashboardAnalytics = respond((req) => service.getDashboardAnalytics(req.user.userId), "Hospital dashboard analytics fetched successfully");
 const getReservations = respond((req) => service.getHospitalReservations(req.user.userId), "Hospital reservations fetched successfully", 200, true);
 const getReservationById = respond((req) => service.getHospitalReservationById(req.user.userId, req.params.reservationId), "Reservation details fetched successfully");
@@ -29,4 +31,4 @@ const createPayment = respond((req) => service.createHospitalPayment(req.user.us
 const getPatientPayments = respond((req) => service.getPatientPayments(req.user.userId, req.params.patientId), "Patient payment records fetched successfully", 200, true);
 const updatePayment = respond((req) => service.updateHospitalPayment(req.user.userId, req.params.paymentId, req.body), "Payment updated successfully");
 
-module.exports = { getMyHospital, getMyAssignments, getDashboard, getActiveCases, approveEmergencyCase, getDashboardAnalytics, getReservations, getReservationById, approveReservation, getBeds, updateBedStatus, getPayments, getPaymentById, createPayment, getPatientPayments, updatePayment };
+module.exports = { getMyHospital, getMyAssignments, getDashboard, getActiveCases, approveEmergencyCase, assignBedToEvent, completeEmergencyCase, getDashboardAnalytics, getReservations, getReservationById, approveReservation, getBeds, updateBedStatus, getPayments, getPaymentById, createPayment, getPatientPayments, updatePayment };

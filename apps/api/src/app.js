@@ -12,6 +12,7 @@ const eventRoutes = require("./modules/event/event.routes");
 const paymentRoutes = require("./modules/payment/payment.routes");
 const aiMedicalRoutes = require("./modules/ai-medical/ai-medical.routes");
 const adminRoutes = require("./modules/admin/admin.routes");
+const bloodRoutes = require("./modules/blood/blood.routes");
 
 const app = express();
 
@@ -36,5 +37,6 @@ app.use("/api/v1/events", eventRoutes);
 app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/ai-medical", aiMedicalRoutes);
 app.use("/api/v1/admin", adminRoutes);
+app.use("/api/v1/blood", bloodRoutes);
 
 module.exports = app;

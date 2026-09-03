@@ -130,6 +130,48 @@ const getUserById = async (userId) => {
     return result.rows[0];
 };
 
+const getUserDetailsById = async (userId) => {
+    const query = `
+        SELECT
+            u.id,
+            u.role_type,
+            u.email,
+            u.phone,
+            u.is_verified,
+            u.is_active,
+            u.last_login,
+            u.created_at,
+            u.updated_at,
+
+            up.first_name,
+            up.last_name,
+            up.gender,
+            up.date_of_birth,
+            up.national_id,
+            up.address,
+            up.emergency_contact_name,
+            up.emergency_contact_phone,
+
+            ul.latitude,
+            ul.longitude,
+            ul.updated_at AS location_updated_at
+
+        FROM users u
+
+        LEFT JOIN user_profiles up
+            ON up.user_id = u.id
+
+        LEFT JOIN user_locations ul
+            ON ul.user_id = u.id
+
+        WHERE u.id = $1
+    `;
+
+    const result = await pool.query(query, [userId]);
+
+    return result.rows[0] || null;
+};
+
 // ============================================================
 // UPDATE USER ROLE
 // ============================================================
@@ -912,6 +954,7 @@ module.exports = {
     getAllUsers,
     countUsers,
     getUserById,
+    getUserDetailsById,
     updateUserRole,
     updateUserStatus,
     getAllHospitals,

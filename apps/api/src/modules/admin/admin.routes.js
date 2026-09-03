@@ -14,6 +14,7 @@ const validate = require(
 
 const {
     getAllUsers,
+    getUserDetailsController,
     updateUserRole,
     updateUserStatus,
 
@@ -36,7 +37,8 @@ const {
     updateUserRoleSchema,
     updateUserStatusSchema,
     createHospitalSchema,
-    updateHospitalSchema
+    updateHospitalSchema,
+    userIdParamSchema
 } = require("./admin.validation");
 
 const router = express.Router();
@@ -64,6 +66,14 @@ router.get(
     authenticate,
     authorize("SUPER_ADMIN"),
     getAllUsers
+);
+
+router.get(
+    "/users/:userId",
+    authenticate,
+    authorize("SUPER_ADMIN"),
+    validate(userIdParamSchema, "params"),
+    getUserDetailsController
 );
 
 
