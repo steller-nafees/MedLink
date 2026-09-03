@@ -12,12 +12,13 @@ export type HospitalDashboard = {
   occupied_beds: number;
   maintenance_beds: number;
   total_icu_beds: number;
+  available_icu_beds: number;
   pending_reservations: number;
   active_cases: number;
 };
 
 export type HospitalDashboardAnalytics = {
-  weekly: { day: string; cases: number }[];
+  weekly: { day: string; incoming: number; completed: number; rejected: number }[];
   bySeverity: { name: "Critical" | "High" | "Moderate" | "Low"; value: number }[];
 };
 
@@ -55,9 +56,12 @@ export type HospitalReservationRecord = {
   reservation_status: string;
   requested_at: string;
   approved_at: string | null;
+  event_updated_at?: string | null;
   created_at: string;
   updated_at: string;
   user_description?: string | null;
+  patient_first_name?: string | null;
+  patient_last_name?: string | null;
   severity?: string | null;
   event_status?: string | null;
   is_emergency?: boolean;
@@ -79,6 +83,8 @@ export type HospitalPayment = {
   patient_last_name?: string;
   reservation_mode: string;
   reservation_status: string;
+  ward_name?: string | null;
+  bed_number?: string | number | null;
 };
 
 export async function getHospitalDashboard() {
@@ -106,6 +112,11 @@ export async function approveEmergencyCase(eventId: string) {
   return response.data.data;
 }
 
+export async function completeEmergencyCase(eventId: string) {
+  const response = await api.put<ApiResponse<HospitalActiveCase>>(`/hospital/dashboard/active-cases/${eventId}/complete`);
+  return response.data.data;
+}
+
 export async function getHospitalBedsFromApi() {
   const response = await api.get<ApiResponse<HospitalBed[]>>("/hospital/beds");
   return response.data.data;
@@ -123,6 +134,11 @@ export async function getHospitalReservationsFromApi() {
 
 export async function approveReservation(reservationId: string) {
   const response = await api.put<ApiResponse<Record<string, unknown>>>(`/hospital/reservations/${reservationId}/approve`);
+  return response.data.data;
+}
+
+export async function assignBedToEvent(eventId: string, bedNumber: string | number) {
+  const response = await api.put<ApiResponse<Record<string, unknown>>>(`/hospital/dashboard/active-cases/${eventId}/assign-bed`, { bedNumber });
   return response.data.data;
 }
 
@@ -173,7 +189,7 @@ function mapReservationToRequest(
   const mode = reservation.reservation_mode?.toLowerCase() ?? "";
   const kind = mode.includes("icu") ? "icu" : "bed";
   const wardName = reservation.ward_name ?? "Hospital ward";
-  const patientId = reservation.user_id ? reservation.user_id.slice(0, 8) : "unknown";
+  const patientName = [reservation.patient_first_name, reservation.patient_last_name].filter(Boolean).join(" ") || "Unnamed patient";
   const bedLabel = reservation.bed_number ? ` · Bed ${reservation.bed_number}` : "";
 
   return {
@@ -182,7 +198,7 @@ function mapReservationToRequest(
     title: kind === "icu" ? "ICU Reservation" : "Bed Reservation",
     hospital: hospitalName,
     department: wardName,
-    patient: `Patient ${patientId}`,
+    patient: patientName,
     date: requestedAt.date,
     time: requestedAt.time,
     status: mapReservationStatus(reservation.reservation_status),

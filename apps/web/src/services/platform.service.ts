@@ -11,6 +11,7 @@ import type {
   UserGrowth,
   ActivityTrend,
   Totals,
+  CompletedSosRevenue,
   SosDaily,
   RevenueByHospital,
   SettlementRate,
@@ -65,21 +66,21 @@ const settlementRows = [
 const adminNotifications: AdminNotification[] = [
   { id: "N1", kind: "registration", title: "New hospital registration", body: "Rangpur Community Hospital submitted an application for verification.", time: "12 min ago", unread: true },
   { id: "N2", kind: "registration", title: "New ambulance driver registration", body: "Alamgir Hossain · Dhaka Metro Cha 17-2255 · Critical Care", time: "1 hr ago", unread: true },
-  { id: "N3", kind: "settlement", title: "Settlement overdue", body: "Popular Medical Centre has ৳34,000 outstanding for over 30 days.", time: "4 hrs ago", unread: true },
+  { id: "N3", kind: "settlement", title: "Settlement overdue", body: "Popular Medical Centre has BDT 34,000 outstanding for over 30 days.", time: "4 hrs ago", unread: true },
   { id: "N4", kind: "suspension", title: "Hospital suspended", body: "City Care Clinic was suspended after repeated verification failures.", time: "Yesterday" },
   { id: "N5", kind: "suspension", title: "Driver suspended", body: "Habibur Rahman was suspended pending licence re-verification.", time: "2 days ago" },
   { id: "N6", kind: "system", title: "System alert resolved", body: "Elevated API latency in the Dhaka region returned to normal.", time: "3 days ago" },
 ];
 
 const auditLog: AuditEvent[] = [
-  { id: "L-9001", event: "Settlement recorded", actor: "Alex Nguyen", target: "Evercare Hospital · ৳198,000", time: "2026-07-31 09:12" },
+  { id: "L-9001", event: "Settlement recorded", actor: "Alex Nguyen", target: "Evercare Hospital · BDT 198,000", time: "2026-07-31 09:12" },
   { id: "L-9002", event: "Driver approved", actor: "Alex Nguyen", target: "Mizanur Rahman · D-3004", time: "2026-07-30 17:48" },
   { id: "L-9003", event: "Account suspended", actor: "System", target: "Arif Mahmud · U-10249", time: "2026-07-30 11:05" },
   { id: "L-9004", event: "Hospital registered", actor: "Self-service", target: "Rangpur Community Hospital", time: "2026-07-29 15:22" },
   { id: "L-9005", event: "Hospital approved", actor: "Farzana Rahim", target: "National Heart Foundation · H-2004", time: "2026-07-28 10:39" },
   { id: "L-9006", event: "User registered", actor: "Self-service", target: "Lamia Sultana · U-10250", time: "2026-07-27 08:14" },
   { id: "L-9007", event: "Driver approved", actor: "Farzana Rahim", target: "Nazmul Hoque · D-3006", time: "2026-07-26 19:02" },
-  { id: "L-9008", event: "Settlement recorded", actor: "Alex Nguyen", target: "Square Hospital · ৳200,000", time: "2026-07-25 13:41" },
+  { id: "L-9008", event: "Settlement recorded", actor: "Alex Nguyen", target: "Square Hospital · BDT 200,000", time: "2026-07-25 13:41" },
 ];
 
 const recentLogins: RecentLoginUser[] = [
@@ -421,6 +422,50 @@ export const platformService = {
     const totalOutstanding = totalRevenue - totalSettled;
     
     return { totalRevenue, totalOutstanding, totalSettled };
+  },
+  getCompletedSosRevenue: async (): Promise<CompletedSosRevenue> => {
+    const eventPageSize = 100;
+    const eventPageLimit = 10;
+    const completedEvents: Array<{ id: string }> = [];
+    let offset = 0;
+    let historyIsPartial = false;
+
+    for (let page = 0; page < eventPageLimit; page += 1) {
+      const response = await api.get(`/events?limit=${eventPageSize}&offset=${offset}`);
+      const pageEvents = response.data.data ?? [];
+      completedEvents.push(
+        ...pageEvents.filter(
+          (event: { id: string; event_status?: string; is_emergency?: boolean }) =>
+            event.is_emergency && event.event_status === "COMPLETED",
+        ),
+      );
+
+      if (pageEvents.length < eventPageSize) break;
+      offset += eventPageSize;
+      if (page === eventPageLimit - 1) historyIsPartial = true;
+    }
+
+    const details = await Promise.all(
+      completedEvents.map(({ id }) => api.get(`/events/${id}`).then((response) => response.data.data)),
+    );
+    const hospitals = new Map<string, { hospitalId: string; hospital: string; cases: number }>();
+
+    details.forEach((event) => {
+      (event.hospitals ?? []).forEach((hospital: { hospital_id: string; hospital_name?: string }) => {
+        const current = hospitals.get(hospital.hospital_id);
+        hospitals.set(hospital.hospital_id, {
+          hospitalId: hospital.hospital_id,
+          hospital: hospital.hospital_name || "Unknown hospital",
+          cases: (current?.cases ?? 0) + 1,
+        });
+      });
+    });
+
+    return {
+      totalCompleted: completedEvents.length,
+      hospitalCounts: [...hospitals.values()].sort((left, right) => right.cases - left.cases),
+      historyIsPartial,
+    };
   },
   getSosDaily: async () => sosDaily,
   getRevenueByHospital: async (): Promise<RevenueByHospital[]> => {

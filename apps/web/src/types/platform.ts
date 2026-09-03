@@ -82,6 +82,16 @@ export type Settlement = {
   outstanding?: number;
 };
 
+export type CompletedSosRevenue = {
+  totalCompleted: number;
+  hospitalCounts: Array<{
+    hospitalId: string;
+    hospital: string;
+    cases: number;
+  }>;
+  historyIsPartial: boolean;
+};
+
 export type AdminNotification = {
   id: string;
   kind: "registration" | "suspension" | "settlement" | "system";

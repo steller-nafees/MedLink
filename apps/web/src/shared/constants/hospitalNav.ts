@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import type { NavItem } from "@/shared/components/ui/DashboardShell";
 import type { HospitalUser } from "@/types/hospital";
-import { getOpenEmergencyCount } from "@/services/hospital.service";
 
 export const hospitalNav: NavItem[] = [
   { to: "/hospital", label: "Overview", icon: LayoutDashboard },
@@ -16,7 +15,6 @@ export const hospitalNav: NavItem[] = [
     to: "/hospital/emergencies",
     label: "Emergencies",
     icon: Siren,
-    badge: getOpenEmergencyCount(),
   },
   { to: "/hospital/beds", label: "Beds & ICU", icon: BedDouble },
   { to: "/hospital/reservations", label: "Reservations", icon: Inbox },

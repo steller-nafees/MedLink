@@ -48,6 +48,7 @@ const getDashboardByAdminId = async (userId) => {
             COUNT(DISTINCT b.id) FILTER (WHERE b.bed_status = 'OCCUPIED')::integer AS occupied_beds,
             COUNT(DISTINCT b.id) FILTER (WHERE b.bed_status = 'MAINTENANCE')::integer AS maintenance_beds,
             COUNT(DISTINCT b.id) FILTER (WHERE w.ward_name ILIKE '%ICU%')::integer AS total_icu_beds,
+            COUNT(DISTINCT b.id) FILTER (WHERE w.ward_name ILIKE '%ICU%' AND b.bed_status = 'AVAILABLE')::integer AS available_icu_beds,
             COUNT(DISTINCT r.id) FILTER (WHERE r.reservation_status = 'PENDING')::integer AS pending_reservations,
             COUNT(DISTINCT CASE WHEN me.event_status NOT IN ('COMPLETED', 'CANCELLED') THEN me.id END)::integer AS active_cases
         FROM hospital_admins ha
@@ -125,7 +126,7 @@ const approveEmergencyCase = async (eventId, hospitalId) => {
                 INNER JOIN hospital_beds b ON b.ward_id = w.id AND b.hospital_id = $2
                 WHERE me.id = $1 AND b.bed_status = 'AVAILABLE'
                 ORDER BY CASE
-                    WHEN LOWER(me.severity) = 'critical' AND w.ward_name ILIKE '%icu%' THEN 0
+                    WHEN LOWER(me.severity::text) = 'critical' AND w.ward_name ILIKE '%icu%' THEN 0
                     WHEN w.ward_name ILIKE '%emergency%' THEN 1
                     WHEN w.ward_name ILIKE '%icu%' THEN 2
                     ELSE 3
@@ -161,6 +162,116 @@ const approveEmergencyCase = async (eventId, hospitalId) => {
     }
 };
 
+const assignBedToEvent = async (eventId, hospitalId, bedNumber) => {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+        const reservationResult = await client.query(`
+            SELECT id, bed_id
+            FROM reservations
+            WHERE medical_event_id = $1 AND hospital_id = $2
+                AND reservation_status <> 'CANCELLED'
+            ORDER BY requested_at DESC
+            FOR UPDATE;
+        `, [eventId, hospitalId]);
+        if (reservationResult.rows.length === 0) {
+            await client.query("ROLLBACK");
+            return null;
+        }
+
+        const bedResult = await client.query(`
+            SELECT b.id, b.ward_id, b.bed_status
+            FROM hospital_beds b
+            WHERE b.hospital_id = $1 AND b.bed_number = $2
+            FOR UPDATE;
+        `, [hospitalId, String(bedNumber)]);
+        if (bedResult.rows.length === 0) {
+            const error = new Error("Bed not found in your hospital"); error.statusCode = 404; throw error;
+        }
+        const bed = bedResult.rows[0];
+        if (bed.bed_status !== "AVAILABLE" && bed.bed_status !== "RESERVED") {
+            const error = new Error("Selected bed is not available"); error.statusCode = 409; throw error;
+        }
+
+        const reservation = reservationResult.rows[0];
+        if (reservation.bed_id && reservation.bed_id !== bed.id) {
+            await client.query(`
+                UPDATE hospital_beds SET bed_status = 'AVAILABLE', updated_at = CURRENT_TIMESTAMP
+                WHERE id = $1 AND bed_status = 'RESERVED';
+            `, [reservation.bed_id]);
+        }
+        await client.query(`
+            UPDATE hospital_beds SET bed_status = 'RESERVED', updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1;
+        `, [bed.id]);
+        const updatedReservation = await client.query(`
+            UPDATE reservations
+            SET ward_id = $2, bed_id = $3, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+            RETURNING id AS reservation_id, medical_event_id, user_id, hospital_id,
+                ward_id, bed_id, reservation_mode, reservation_status, requested_at,
+                approved_at, created_at, updated_at;
+        `, [reservation.id, bed.ward_id, bed.id]);
+        await client.query("COMMIT");
+        return updatedReservation.rows[0];
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+const completeEmergencyCase = async (eventId, hospitalId) => {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+        const reservationResult = await client.query(`
+            SELECT id, bed_id
+            FROM reservations
+            WHERE medical_event_id = $1 AND hospital_id = $2
+                AND reservation_status IN ('PENDING', 'APPROVED')
+            ORDER BY requested_at DESC
+            LIMIT 1
+            FOR UPDATE;
+        `, [eventId, hospitalId]);
+        const result = await client.query(`
+            UPDATE medical_events me
+            SET event_status = 'COMPLETED', updated_at = CURRENT_TIMESTAMP
+            FROM event_hospitals eh
+            WHERE me.id = $1 AND eh.medical_event_id = me.id AND eh.hospital_id = $2
+                AND me.event_status NOT IN ('COMPLETED', 'CANCELLED')
+            RETURNING me.id AS event_id, me.event_status, me.updated_at;
+        `, [eventId, hospitalId]);
+        if (result.rows.length === 0) {
+            await client.query("ROLLBACK");
+            return null;
+        }
+
+        for (const reservation of reservationResult.rows) {
+            if (!reservation.bed_id) continue;
+            await client.query(`
+                UPDATE hospital_beds
+                SET bed_status = 'AVAILABLE', updated_at = CURRENT_TIMESTAMP
+                WHERE id = $1 AND hospital_id = $2 AND bed_status IN ('RESERVED', 'OCCUPIED');
+            `, [reservation.bed_id, hospitalId]);
+            await client.query(`
+                UPDATE reservations
+                SET reservation_status = 'COMPLETED', updated_at = CURRENT_TIMESTAMP
+                WHERE id = $1;
+            `, [reservation.id]);
+        }
+
+        await client.query("COMMIT");
+        return result.rows[0];
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
 const getDashboardAnalyticsByHospitalId = async (hospitalId) => {
     const weeklyResult = await pool.query(`
         WITH days AS (
@@ -171,7 +282,9 @@ const getDashboardAnalyticsByHospitalId = async (hospitalId) => {
             )::date AS day
         )
         SELECT to_char(days.day, 'Dy') AS day,
-            COALESCE(COUNT(DISTINCT me.id), 0)::integer AS cases
+            COUNT(DISTINCT me.id)::integer AS incoming,
+            COUNT(DISTINCT me.id) FILTER (WHERE me.event_status = 'COMPLETED')::integer AS completed,
+            COUNT(DISTINCT me.id) FILTER (WHERE me.event_status = 'CANCELLED')::integer AS rejected
         FROM days
         LEFT JOIN event_hospitals eh
             ON eh.hospital_id = $1
@@ -187,12 +300,12 @@ const getDashboardAnalyticsByHospitalId = async (hospitalId) => {
             VALUES ('critical', 1), ('high', 2), ('moderate', 3), ('low', 4)
         ),
         counts AS (
-            SELECT LOWER(me.severity) AS severity, COUNT(DISTINCT me.id)::integer AS count
+            SELECT LOWER(me.severity::text) AS severity, COUNT(DISTINCT me.id)::integer AS count
             FROM event_hospitals eh
             INNER JOIN medical_events me ON me.id = eh.medical_event_id
             WHERE eh.hospital_id = $1
                 AND me.created_at >= CURRENT_DATE - INTERVAL '30 days'
-            GROUP BY LOWER(me.severity)
+            GROUP BY LOWER(me.severity::text)
         ),
         total AS (
             SELECT COALESCE(SUM(count), 0)::integer AS count FROM counts
@@ -218,11 +331,14 @@ const getReservationsByHospital = async (hospitalId) => {
         SELECT r.id AS reservation_id, r.medical_event_id, r.user_id, r.hospital_id,
             r.ward_id, r.bed_id, r.reservation_mode, r.reservation_status,
             r.requested_at, r.approved_at, r.created_at, r.updated_at,
+            CASE WHEN LOWER(me.event_status::text) = 'completed' THEN me.updated_at END AS event_updated_at,
             me.user_description, me.severity, me.event_status, me.is_emergency,
+            up.first_name AS patient_first_name, up.last_name AS patient_last_name,
             me.event_location_latitude, me.event_location_longitude, hw.ward_name,
             hb.bed_number, hb.bed_status
         FROM reservations r
         INNER JOIN medical_events me ON r.medical_event_id = me.id
+        LEFT JOIN user_profiles up ON r.user_id = up.user_id
         INNER JOIN hospital_wards hw ON r.ward_id = hw.id
         LEFT JOIN hospital_beds hb ON r.bed_id = hb.id
         WHERE r.hospital_id = $1
@@ -236,11 +352,14 @@ const getReservationById = async (reservationId, hospitalId) => {
         SELECT r.id AS reservation_id, r.medical_event_id, r.user_id, r.hospital_id,
             r.ward_id, r.bed_id, r.reservation_mode, r.reservation_status,
             r.requested_at, r.approved_at, r.created_at, r.updated_at,
+            CASE WHEN LOWER(me.event_status::text) = 'completed' THEN me.updated_at END AS event_updated_at,
             me.user_description, me.severity, me.event_status, me.is_emergency,
+            up.first_name AS patient_first_name, up.last_name AS patient_last_name,
             me.event_location_latitude, me.event_location_longitude, hw.ward_name,
             hw.description AS ward_description, hb.bed_number, hb.bed_status
         FROM reservations r
         INNER JOIN medical_events me ON r.medical_event_id = me.id
+        LEFT JOIN user_profiles up ON r.user_id = up.user_id
         INNER JOIN hospital_wards hw ON r.ward_id = hw.id
         LEFT JOIN hospital_beds hb ON r.bed_id = hb.id
         WHERE r.id = $1 AND r.hospital_id = $2
@@ -317,10 +436,13 @@ const getPaymentsByHospitalId = async (hospitalId) => {
             p.payment_status, p.paid_at, p.created_at, r.medical_event_id,
             r.user_id AS patient_id, r.reservation_mode, r.reservation_status,
             r.requested_at, r.approved_at, u.phone AS patient_phone,
-            up.first_name AS patient_first_name, up.last_name AS patient_last_name
+            up.first_name AS patient_first_name, up.last_name AS patient_last_name,
+            hw.ward_name, hb.bed_number
         FROM payments p INNER JOIN reservations r ON p.reservation_id = r.id
         INNER JOIN users u ON r.user_id = u.id
         LEFT JOIN user_profiles up ON r.user_id = up.user_id
+        LEFT JOIN hospital_wards hw ON r.ward_id = hw.id
+        LEFT JOIN hospital_beds hb ON r.bed_id = hb.id
         WHERE r.hospital_id = $1 ORDER BY p.created_at DESC
     `, [hospitalId]);
     return result.rows;
@@ -386,7 +508,7 @@ const updatePayment = async (paymentId, hospitalId, { totalAmount, paymentMethod
 
 module.exports = {
     getHospitalIdByAdminId, getHospitalByAdminId, getAssignmentsByAdminId,
-    getDashboardByAdminId, getActiveCasesByHospitalId, approveEmergencyCase, getDashboardAnalyticsByHospitalId, getReservationsByHospital,
+    getDashboardByAdminId, getActiveCasesByHospitalId, approveEmergencyCase, assignBedToEvent, completeEmergencyCase, getDashboardAnalyticsByHospitalId, getReservationsByHospital,
     getReservationById, approveReservation, getBedsByHospital, updateBedStatus,
     getPaymentsByHospitalId, getPaymentById, createPayment, getPaymentsByPatientId,
     updatePayment,

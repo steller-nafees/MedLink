@@ -12,6 +12,7 @@ declare module "lucide-react" {
   export const Activity: ComponentType<IconProps>;
   export const Ambulance: ComponentType<IconProps>;
   export const AlertCircle: ComponentType<IconProps>;
+  export const TriangleAlert: ComponentType<IconProps>;
   export const ArrowUpRight: ComponentType<IconProps>;
   export const BedDouble: ComponentType<IconProps>;
   export const Bell: ComponentType<IconProps>;
@@ -47,6 +48,7 @@ declare module "lucide-react" {
   export const PhoneCall: ComponentType<IconProps>;
   export const Phone: ComponentType<IconProps>;
   export const Plus: ComponentType<IconProps>;
+  export const RefreshCw: ComponentType<IconProps>;
   export const Search: ComponentType<IconProps>;
   export const Send: ComponentType<IconProps>;
   export const ServerCog: ComponentType<IconProps>;

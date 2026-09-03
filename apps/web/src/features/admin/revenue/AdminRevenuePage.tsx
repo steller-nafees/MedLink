@@ -1,128 +1,99 @@
 import { useState, useEffect } from "react";
-import { Wallet, TrendingUp, Siren, CheckCircle2, Hourglass, Download } from "lucide-react";
+import { Building2, CreditCard, RefreshCw, Siren, Wallet } from "lucide-react";
 import { PageHeader } from "@/shared/components/ui/PageHeader";
 import { StatCard } from "@/shared/components/ui/StatCard";
 import { Card } from "@/shared/components/ui/Card";
-import { Table, Tr, Td } from "@/shared/components/ui/Table";
-import { GhostButton } from "@/shared/components/ui/Button";
-import { AreaChart } from "@/shared/components/charts/AreaChart";
-import { BarChart } from "@/shared/components/charts/BarChart";
+import { EmptyRow, Table, Tr, Td } from "@/shared/components/ui/Table";
 import { platformService, SOS_SERVICE_FEE } from "@/services/platform.service";
 import { bdt } from "@/shared/utils/format";
-import type { MonthlyRevenue, Settlement, Totals } from "@/types/platform";
+import type { CompletedSosRevenue } from "@/types/platform";
 
 export function AdminRevenuePage() {
-  const [data, setData] = useState<{
-    revenueStats: { totalRevenue: number; totalOutstanding: number; totalSettled: number };
-    monthlyRevenue: MonthlyRevenue[];
-    settlements: Settlement[];
-    totals: Totals;
-  } | null>(null);
+  const [data, setData] = useState<CompletedSosRevenue | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  async function loadData() {
+    setIsRefreshing(true);
+    setError(null);
+    try {
+      setData(await platformService.getCompletedSosRevenue());
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : "Unable to load completed SOS events.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
 
   useEffect(() => {
-    async function loadData() {
-      const [revenueStats, monthlyRevenue, settlements, totals] = await Promise.all([
-        platformService.getOverallRevenueStats(),
-        platformService.getMonthlyRevenue(),
-        platformService.getSettlements(),
-        platformService.getTotals()
-      ]);
-      setData({ revenueStats, monthlyRevenue, settlements, totals });
-    }
-    loadData();
+    void loadData();
   }, []);
 
-  if (!data) return null;
+  if (!data && !error) {
+    return <div className="mx-auto max-w-[1400px] py-16 text-center text-sm text-muted-foreground">Loading revenue data...</div>;
+  }
 
-  const thisMonth = data.monthlyRevenue[data.monthlyRevenue.length - 1];
-  const rate = Math.round((data.revenueStats.totalSettled / data.revenueStats.totalRevenue) * 100) || 0;
+  const totalCompleted = data?.totalCompleted ?? 0;
+  const totalRevenue = totalCompleted * SOS_SERVICE_FEE;
+  const linkedCases = data?.hospitalCounts.reduce((total, hospital) => total + hospital.cases, 0) ?? 0;
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-6">
       <PageHeader
         eyebrow="Finance"
-        title="Revenue & billing"
-        subtitle={`${bdt(SOS_SERVICE_FEE)} MedLink service fee per Emergency SOS case, collected by hospitals and settled with MedLink`}
+        title="SOS revenue"
+        subtitle={`Revenue is calculated from completed emergency SOS events at ${bdt(SOS_SERVICE_FEE)} per event.`}
         action={
-          <button className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-[12.5px] font-semibold transition hover:bg-surface-variant">
-            <Download className="size-4" /> Export report
+          <button
+            onClick={() => void loadData()}
+            disabled={isRefreshing}
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2.5 text-[12.5px] font-semibold transition hover:bg-surface-variant disabled:opacity-60"
+          >
+            <RefreshCw className={`size-4 ${isRefreshing ? "animate-spin" : ""}`} /> Refresh data
           </button>
         }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Total revenue" value={bdt(data.revenueStats.totalRevenue)} sub="Lifetime service fees" icon={Wallet} tone="primary" />
-        <StatCard label="Revenue this month" value={bdt(thisMonth?.revenue || 0)} sub="+15.8% vs last month" icon={TrendingUp} tone="success" />
-        <StatCard label="Total SOS cases" value={data.totals.sos.toLocaleString()} sub="Billable emergency cases" icon={Siren} tone="warning" />
-        <StatCard label="Settled revenue" value={bdt(data.revenueStats.totalSettled)} sub={`${rate}% settlement rate`} icon={CheckCircle2} tone="success" />
-        <StatCard label="Pending settlement" value={bdt(data.revenueStats.totalOutstanding)} sub="Outstanding from hospitals" icon={Hourglass} tone="warning" />
+      {error && (
+        <Card className="border-destructive/30 bg-destructive/5">
+          <p className="text-sm text-destructive">{error}</p>
+        </Card>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Total revenue" value={bdt(totalRevenue)} sub={`${totalCompleted.toLocaleString()} completed SOS × ${bdt(SOS_SERVICE_FEE)}`} icon={Wallet} tone="primary" />
+        <StatCard label="Completed SOS events" value={totalCompleted.toLocaleString()} sub="Billable emergency events" icon={Siren} tone="warning" />
+        <StatCard label="Service fee per event" value={bdt(SOS_SERVICE_FEE)} sub="Fixed MedLink fee" icon={CreditCard} tone="success" />
+        <StatCard label="Hospital partners" value={(data?.hospitalCounts.length ?? 0).toLocaleString()} sub={`${linkedCases.toLocaleString()} hospital links`} icon={Building2} tone="info" />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card title="Monthly revenue trend" subtitle="Last 6 months">
-          <div className="h-64">
-            <AreaChart 
-              data={data.monthlyRevenue} 
-              dataKey="revenue" 
-              name="Revenue"
-              xAxisKey="m"
-              color="var(--color-primary)"
-              yAxisWidth={64}
-              yAxisFormatter={(v) => `${v / 1000}k`}
-              formatter={(v: number) => bdt(v)}
-              gradientId="rv3"
-            />
-          </div>
-        </Card>
-
-        <Card title="Monthly SOS cases" subtitle="Billable emergency cases">
-          <div className="h-64">
-            <BarChart 
-              data={data.monthlyRevenue}
-              xAxisKey="m"
-              yAxisWidth={40}
-              series={[
-                { key: "cases", name: "SOS cases", color: "var(--color-secondary)", radius: [10, 10, 4, 4] }
-              ]}
-            />
-          </div>
-        </Card>
-      </div>
-
-      <Card title="Hospital settlements" subtitle="Revenue generated, settled and outstanding per hospital" bodyClassName="p-0">
-        <Table head={["Hospital", "SOS cases", "Revenue generated", "Amount settled", "Outstanding", "Completion", ""]}>
-          {data.settlements.map((s) => {
-            const revenue = s.revenue ?? 0;
-            const outstanding = s.outstanding ?? 0;
-            const pct = revenue > 0 ? Math.round((s.settled / revenue) * 100) : 0;
+      <Card title="Completed SOS by hospital" subtitle="Hospital associations returned by completed event details" bodyClassName="p-0">
+        <Table head={["Hospital", "Completed SOS", "Calculated revenue", "Share of hospital links"]}>
+          {data?.hospitalCounts.length ? data.hospitalCounts.map((hospital) => {
+            const share = linkedCases > 0 ? Math.round((hospital.cases / linkedCases) * 100) : 0;
             return (
-              <Tr key={s.hospital}>
-                <Td className="font-semibold">{s.hospital}</Td>
-                <Td className="tabular-nums text-muted-foreground">{s.cases}</Td>
-                <Td className="tabular-nums font-semibold">{bdt(revenue)}</Td>
-                <Td className="tabular-nums text-success">{bdt(s.settled)}</Td>
-                <Td className={`tabular-nums font-semibold ${outstanding > 0 ? "text-warning" : "text-muted-foreground"}`}>
-                  {bdt(outstanding)}
-                </Td>
+              <Tr key={hospital.hospitalId}>
+                <Td className="font-semibold">{hospital.hospital}</Td>
+                <Td className="tabular-nums text-muted-foreground">{hospital.cases.toLocaleString()}</Td>
+                <Td className="tabular-nums font-semibold">{bdt(hospital.cases * SOS_SERVICE_FEE)}</Td>
                 <Td>
                   <div className="flex items-center gap-2">
                     <div className="h-1.5 w-24 overflow-hidden rounded-full bg-surface-variant">
-                      <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+                      <div className="h-full bg-primary" style={{ width: `${share}%` }} />
                     </div>
-                    <span className="text-[11.5px] tabular-nums text-muted-foreground">{pct}%</span>
-                  </div>
-                </Td>
-                <Td>
-                  <div className="flex justify-end gap-2">
-                    <GhostButton>View statement</GhostButton>
-                    <GhostButton>Export</GhostButton>
+                    <span className="text-[11.5px] tabular-nums text-muted-foreground">{share}%</span>
                   </div>
                 </Td>
               </Tr>
             );
-          })}
+          }) : <EmptyRow colSpan={4} label="No completed SOS events with hospital associations were found." />}
         </Table>
       </Card>
+
+      <p className="text-xs text-muted-foreground">
+        Hospital revenue is an allocation view. An SOS event linked to more than one hospital appears once for each hospital association, while total revenue is always based on completed SOS events only.
+        {data?.historyIsPartial && " The event history is limited to the first 1,000 records by the current API."}
+      </p>
     </div>
   );
 }
