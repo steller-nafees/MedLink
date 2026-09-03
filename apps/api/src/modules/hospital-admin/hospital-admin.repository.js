@@ -272,6 +272,53 @@ const completeEmergencyCase = async (eventId, hospitalId) => {
     }
 };
 
+const redirectEmergencyCase = async (eventId, hospitalId) => {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+        const reservationResult = await client.query(`
+            SELECT id, bed_id FROM reservations
+            WHERE medical_event_id = $1 AND hospital_id = $2
+                AND reservation_status IN ('PENDING', 'APPROVED')
+            ORDER BY requested_at DESC
+            LIMIT 1
+            FOR UPDATE;
+        `, [eventId, hospitalId]);
+
+        if (reservationResult.rows.length === 0) {
+            await client.query("ROLLBACK");
+            return null;
+        }
+
+        const { bed_id: bedId } = reservationResult.rows[0];
+        await client.query(`
+            UPDATE reservations
+            SET reservation_status = 'CANCELLED', updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1;
+        `, [reservationResult.rows[0].id]);
+        if (bedId) {
+            await client.query(`
+                UPDATE hospital_beds
+                SET bed_status = 'AVAILABLE', updated_at = CURRENT_TIMESTAMP
+                WHERE id = $1 AND hospital_id = $2 AND bed_status IN ('RESERVED', 'OCCUPIED');
+            `, [bedId, hospitalId]);
+        }
+
+        await client.query(`
+            DELETE FROM event_hospitals
+            WHERE medical_event_id = $1 AND hospital_id = $2;
+        `, [eventId, hospitalId]);
+
+        await client.query("COMMIT");
+        return { event_id: eventId, reservation_status: 'CANCELLED' };
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
 const getDashboardAnalyticsByHospitalId = async (hospitalId) => {
     const weeklyResult = await pool.query(`
         WITH days AS (
@@ -508,7 +555,7 @@ const updatePayment = async (paymentId, hospitalId, { totalAmount, paymentMethod
 
 module.exports = {
     getHospitalIdByAdminId, getHospitalByAdminId, getAssignmentsByAdminId,
-    getDashboardByAdminId, getActiveCasesByHospitalId, approveEmergencyCase, assignBedToEvent, completeEmergencyCase, getDashboardAnalyticsByHospitalId, getReservationsByHospital,
+    getDashboardByAdminId, getActiveCasesByHospitalId, approveEmergencyCase, assignBedToEvent, completeEmergencyCase, redirectEmergencyCase, getDashboardAnalyticsByHospitalId, getReservationsByHospital,
     getReservationById, approveReservation, getBedsByHospital, updateBedStatus,
     getPaymentsByHospitalId, getPaymentById, createPayment, getPaymentsByPatientId,
     updatePayment,

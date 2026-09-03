@@ -61,8 +61,30 @@ const getAmbulanceDetails = async (req, res) => {
     }
 };
 
+const getMyAmbulance = async (req, res) => {
+    try {
+        const ambulance = await ambulanceService.getAmbulanceProviderForUser(
+            req.user.userId
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "Your ambulance provider fetched successfully",
+            statusCode: 200,
+            data: ambulance,
+        });
+    } catch (error) {
+        return res.status(error.statusCode || 500).json({
+            success: false,
+            message: error.message,
+            statusCode: error.statusCode || 500,
+        });
+    }
+};
+
 module.exports = {
     getAmbulances,
     getNearbyAmbulances,
     getAmbulanceDetails,
+    getMyAmbulance,
 };

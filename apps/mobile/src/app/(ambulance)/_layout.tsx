@@ -1,9 +1,9 @@
 import { Stack } from "expo-router";
 import { View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { DriverLangProvider } from "../../lib/driver-i18n";
+import { DriverLangProvider } from "../../features/ambulance/context/DriverLangContext";
 import { DriverTabBar } from "../../components/shared/DriverTabBar";
-import { LanguageToggle } from "../../components/shared/LanguageToggle";
+import { LanguageToggle } from "../../features/ambulance/components/DriverUI";
 import { theme } from "../../theme";
 
 function AmbulanceContent() {

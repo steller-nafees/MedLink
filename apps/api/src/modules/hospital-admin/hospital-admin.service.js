@@ -58,6 +58,13 @@ const completeEmergencyCase = async (userId, eventId) => {
     return event;
 };
 
+const redirectEmergencyCase = async (userId, eventId) => {
+    const hospital = await getAssignedHospital(userId);
+    const result = await repository.redirectEmergencyCase(eventId, hospital.hospital_id);
+    if (!result) { const error = new Error("Active reservation not found for this emergency case"); error.statusCode = 404; throw error; }
+    return result;
+};
+
 const getDashboardAnalytics = async (userId) => {
     const hospital = await repository.getHospitalIdByAdminId(userId);
     if (!hospital) throw noAssignment("No hospital assignment found");
@@ -132,4 +139,4 @@ const updateHospitalPayment = async (userId, paymentId, { totalAmount, paymentMe
     return repository.updatePayment(paymentId, hospital.hospital_id, { totalAmount, paymentMethod, paymentStatus, paidAt });
 };
 
-module.exports = { getMyHospital, getMyAssignments, getDashboard, getActiveCases, approveEmergencyCase, assignBedToEvent, completeEmergencyCase, getDashboardAnalytics, getHospitalReservations, getHospitalReservationById, approveHospitalReservation, getHospitalBeds, updateHospitalBedStatus, getHospitalPayments, getHospitalPaymentById, createHospitalPayment, getPatientPayments, updateHospitalPayment };
+module.exports = { getMyHospital, getMyAssignments, getDashboard, getActiveCases, approveEmergencyCase, assignBedToEvent, completeEmergencyCase, redirectEmergencyCase, getDashboardAnalytics, getHospitalReservations, getHospitalReservationById, approveHospitalReservation, getHospitalBeds, updateHospitalBedStatus, getHospitalPayments, getHospitalPaymentById, createHospitalPayment, getPatientPayments, updateHospitalPayment };

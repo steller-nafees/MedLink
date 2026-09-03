@@ -2,16 +2,13 @@ import { ReactNode } from "react";
 import { StyleSheet, View, Text, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { usePathname, useRouter } from "expo-router";
-import { Home, Truck, Bell, Clock, User } from "lucide-react-native";
+import { Home, User } from "lucide-react-native";
 import { LanguageToggle } from "./DriverUI";
 import { useLang } from "../context/DriverLangContext";
 import { theme } from "../../../theme";
 
 const tabs = [
   { to: "/(ambulance)", key: "home", icon: Home, match: (p: string) => p === "/(ambulance)", center: false },
-  { to: "/(ambulance)/notifications", key: "alerts", icon: Bell, match: (p: string) => p.startsWith("/(ambulance)/notifications"), center: false },
-  { to: "/(ambulance)/trip", key: "trip", icon: Truck, match: (p: string) => p.startsWith("/(ambulance)/trip") || p.startsWith("/(ambulance)/navigate"), center: true },
-  { to: "/(ambulance)/history", key: "history", icon: Clock, match: (p: string) => p.startsWith("/(ambulance)/history"), center: false },
   { to: "/(ambulance)/profile", key: "profile", icon: User, match: (p: string) => p.startsWith("/(ambulance)/profile"), center: false },
 ] as const;
 
@@ -45,29 +42,6 @@ export function DriverShell({
             {tabs.map((tab) => {
               const active = tab.match(path);
               const Icon = tab.icon;
-
-              if (tab.center) {
-                return (
-                  <Pressable
-                    key={tab.to}
-                    style={styles.navItemCenter}
-                    onPress={() => router.push(tab.to as any)}
-                  >
-                    <View
-                      style={[
-                        styles.centerIconWrapper,
-                        active ? styles.centerIconActive : styles.centerIconInactive,
-                      ]}
-                    >
-                      <Icon
-                        size={22}
-                        strokeWidth={2.3}
-                        color={active ? theme.colors.primary : theme.colors.white}
-                      />
-                    </View>
-                  </Pressable>
-                );
-              }
 
               return (
                 <Pressable

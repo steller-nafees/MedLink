@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Activity, BedDouble, Check, Filter, HeartPulse, RefreshCw, Siren, Sparkles, TriangleAlert, X } from "lucide-react";
-import { approveEmergencyCase, assignBedToEvent, completeEmergencyCase, getActiveCases, getHospitalBedsFromApi, severityStyle, type HospitalActiveCase, type HospitalBed } from "@/services/hospital.service";
+import { approveEmergencyCase, assignBedToEvent, completeEmergencyCase, getActiveCases, getHospitalBedsFromApi, redirectEmergencyCase, severityStyle, type HospitalActiveCase, type HospitalBed } from "@/services/hospital.service";
 import type { EmergencyCase, Severity } from "@/types/hospital";
 
 export function HospitalEmergenciesPage() {
@@ -25,8 +25,15 @@ export function HospitalEmergenciesPage() {
 				const mapped = activeCases.map(mapCase);
 				setCases(mapped);
 				setSelectedId(mapped[0]?.id ?? null);
+				const initialBeds: Record<string, string> = {};
 				const initialICUs: Record<string, string> = {};
-				mapped.forEach((emergencyCase) => { initialICUs[emergencyCase.id] = emergencyCase.severity === "critical" ? "ICU-4" : "—"; });
+				activeCases.forEach((activeCase) => {
+					const isIcu = activeCase.reservation_mode?.toUpperCase() === "ICU" || activeCase.ward_name?.toUpperCase().includes("ICU");
+					if (activeCase.bed_number != null) {
+						(isIcu ? initialICUs : initialBeds)[activeCase.event_id] = String(activeCase.bed_number);
+					}
+				});
+				setAssignedBeds(initialBeds);
 				setAssignedICUs(initialICUs);
 			})
 			.catch((requestError: unknown) => setError(requestError instanceof Error ? requestError.message : "Unable to load emergency cases"))
@@ -57,6 +64,13 @@ export function HospitalEmergenciesPage() {
 		try {
 			if (status === "accepted") await approveEmergencyCase(selected.id);
 			if (status === "completed") await completeEmergencyCase(selected.id);
+			if (status === "pending") await redirectEmergencyCase(selected.id);
+			if (status === "pending") {
+				setCases((current) => current.filter((emergencyCase) => emergencyCase.id !== selected.id));
+				setSelectedId(null);
+				setBedModalOpen(false);
+				setICUModalOpen(false);
+			}
 			setCaseStates((current) => ({ ...current, [selected.id]: status }));
 		} catch (requestError) {
 			setError(requestError instanceof Error ? requestError.message : "Unable to update this emergency case");
@@ -96,9 +110,9 @@ export function HospitalEmergenciesPage() {
 			<aside className="hospital-emergency-detail">
 				<div className="hospital-detail-header"><div><p className="hospital-eyebrow">Case detail</p><h2>{selected.patient}</h2><p>#{selected.id} · reported {selected.createdAt}</p></div><span className="hospital-live">{caseStates[selected.id] ?? selected.status}</span></div>
 				<div className="hospital-ai-summary"><div><Sparkles className="hospital-icon" /> <strong>AI summary</strong></div><p>{selected.summary}</p><div className="hospital-symptoms">{selected.symptoms.map((symptom) => <span key={symptom}>{symptom}</span>)}</div><p><strong>Patient contact:</strong> {selected.patientPhone ?? "Phone unavailable"}</p></div>
-				<div className="hospital-mini-stats"><MiniStat label="ETA" value={selected.eta} icon={Activity} /><BedCard currentBed={assignedBeds[selected.id] ?? "Unassigned"} onOpenModal={() => setBedModalOpen(true)} /><ICUCard currentICU={assignedICUs[selected.id] ?? "—"} onOpenModal={() => setICUModalOpen(true)} /></div>
+				<div className="hospital-mini-stats"><MiniStat label="ETA" value={selected.eta} icon={Activity} /><BedCard currentBed={assignedBeds[selected.id] ?? "Unassigned"} onOpenModal={() => setBedModalOpen(true)} /><ICUCard currentICU={assignedICUs[selected.id] ?? "Unassigned"} onOpenModal={() => setICUModalOpen(true)} /></div>
 				<div className="hospital-detail-actions"><button type="button" className="accept-button" disabled={isUpdating} onClick={() => void updateStatus("accepted")}><Check className="hospital-icon" /> {isUpdating ? "Accepting..." : "Accept case"}</button><button type="button" className="hospital-redirect" disabled={isUpdating} onClick={() => void updateStatus("pending")}><X className="hospital-icon" /> Redirect</button></div>
-				<div className="hospital-detail-actions"><button type="button" className="hospital-outline-primary" onClick={() => updateStatus("dispatched")}>Assign ambulance</button><button type="button" className="hospital-outline-emergency" onClick={() => updateStatus("completed")}>Complete case</button></div>
+				<div className="hospital-detail-actions"><button type="button" className="hospital-outline-emergency" onClick={() => updateStatus("completed")}>Complete case</button></div>
 				<div className="hospital-prepare"><p className="hospital-eyebrow">Prepare</p><ul><li><Check className="hospital-icon" /> Cardiology team paged</li><li><Check className="hospital-icon" /> Cath lab on standby</li><li><Check className="hospital-icon" /> Blood O- confirmed available</li></ul></div>
 			</aside>
 
@@ -357,7 +371,8 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 function mapCase(activeCase: HospitalActiveCase): EmergencyCase {
 	const severity = ["critical", "high", "moderate", "low"].includes(activeCase.severity.toLowerCase()) ? activeCase.severity.toLowerCase() as Severity : "moderate";
 	const patient = [activeCase.first_name, activeCase.last_name].filter(Boolean).join(" ") || "Unnamed patient";
-	return { id: activeCase.event_id, patient, patientPhone: activeCase.phone ?? undefined, age: 0, severity, summary: activeCase.user_description || "Active medical event", symptoms: [], eta: "—", hospital: "Assigned hospital", ambulance: "—", status: activeCase.event_status.toLowerCase().replace("_", "_") as EmergencyCase["status"], createdAt: new Date(activeCase.created_at).toLocaleString() };
+	const requestDate = activeCase.request_created_at ?? activeCase.created_at;
+	return { id: activeCase.event_id, patient, patientPhone: activeCase.phone ?? undefined, age: 0, severity, summary: activeCase.user_description || "Active medical event", symptoms: [], eta: "—", hospital: "Assigned hospital", ambulance: "—", status: activeCase.event_status.toLowerCase().replace("_", "_") as EmergencyCase["status"], createdAt: new Date(requestDate).toLocaleString() };
 }
 
 function BedCard({ currentBed, onOpenModal }: { currentBed: string; onOpenModal: () => void }) {

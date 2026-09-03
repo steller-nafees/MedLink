@@ -9,12 +9,9 @@ import { BlurView } from "expo-blur";
 import { useRouter, usePathname } from "expo-router";
 import {
   Home,
-  Bell,
-  Truck,
-  Clock,
   User,
 } from "lucide-react-native";
-import { useLang, type Key } from "../../lib/driver-i18n";
+import { useLang, type Key } from "../../features/ambulance/context/DriverLangContext";
 import { theme } from "../../theme";
 
 /* ─── Tab definitions ─── */
@@ -33,27 +30,6 @@ const tabs: TabDef[] = [
     key: "home",
     icon: Home,
     match: (p) => p === "/(ambulance)" || p === "/(ambulance)/index",
-    center: false,
-  },
-  {
-    route: "/(ambulance)/notifications",
-    key: "alerts",
-    icon: Bell,
-    match: (p) => p.includes("/notifications"),
-    center: false,
-  },
-  {
-    route: "/(ambulance)/trip",
-    key: "trip",
-    icon: Truck,
-    match: (p) => p.includes("/trip") || p.includes("/navigate"),
-    center: true,
-  },
-  {
-    route: "/(ambulance)/history",
-    key: "history",
-    icon: Clock,
-    match: (p) => p.includes("/history"),
     center: false,
   },
   {
@@ -108,42 +84,6 @@ function TabItem({
   );
 }
 
-/* ─── Center Trip Button ─── */
-function CenterTripButton({
-  active,
-  onPress,
-}: {
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <View style={styles.centerSlot}>
-      <Pressable
-        onPress={onPress}
-        accessibilityRole="tab"
-        accessibilityState={{ selected: active }}
-        accessibilityLabel="Trip"
-      >
-        <View
-          style={[
-            styles.centerButton,
-            {
-              backgroundColor: active ? "#FFFFFF" : "#16A89C",
-              borderColor: active ? "#16A89C" : "#FFFFFF",
-            },
-          ]}
-        >
-          <Truck
-            size={22}
-            strokeWidth={2.3}
-            color={active ? "#16A89C" : "#FFFFFF"}
-          />
-        </View>
-      </Pressable>
-    </View>
-  );
-}
-
 /* ─── Driver Tab Bar ─── */
 export function DriverTabBar({ hideNav = false }: { hideNav?: boolean }) {
   const router = useRouter();
@@ -166,16 +106,6 @@ export function DriverTabBar({ hideNav = false }: { hideNav?: boolean }) {
           <View style={styles.barInner}>
             {tabs.map((tab) => {
               const active = tab.match(pathname);
-
-              if (tab.center) {
-                return (
-                  <CenterTripButton
-                    key={tab.route}
-                    active={active}
-                    onPress={() => navigateTo(tab.route)}
-                  />
-                );
-              }
 
               return (
                 <TabItem

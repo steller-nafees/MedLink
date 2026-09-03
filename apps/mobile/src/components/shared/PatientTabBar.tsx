@@ -169,33 +169,30 @@ export function PatientTabBar({ hideNav = false }: { hideNav?: boolean }) {
     backgroundColor: isOpen.value > 0.5 ? "#FFFFFF" : "#16A89C",
     borderColor: isOpen.value > 0.5 ? "#16A89C" : "#FFFFFF",
   }));
-
-  // AI fan button (left, stagger 40ms)
-  const aiFanStyle = useAnimatedStyle(() => {
-    const progress = isOpen.value;
-    return {
-      opacity: progress,
-      transform: [
-        { translateX: interpolate(progress, [0, 1], [0, -92]) },
-        { translateY: interpolate(progress, [0, 1], [-30, -104]) },
-        { scale: interpolate(progress, [0, 1], [0.3, 1]) },
-      ],
-    };
-  });
-
-  // SOS fan button (right, stagger 90ms)
-  const sosFanStyle = useAnimatedStyle(() => {
-    const progress = isOpen.value;
-    return {
-      opacity: progress,
-      transform: [
-        { translateX: interpolate(progress, [0, 1], [0, 92]) },
-        { translateY: interpolate(progress, [0, 1], [-30, -104]) },
-        { scale: interpolate(progress, [0, 1], [0.3, 1]) },
-      ],
-    };
-  });
-
+  // AI fan button
+const aiFanStyle = useAnimatedStyle(() => {
+  const progress = isOpen.value;
+  return {
+    opacity: progress,
+    transform: [
+      { translateX: interpolate(progress, [0, 1], [0, -70]) },
+      { translateY: interpolate(progress, [0, 1], [0, -104]) },
+      { scale: interpolate(progress, [0, 1], [0.3, 1]) },
+    ],
+  };
+});
+//SOS
+const sosFanStyle = useAnimatedStyle(() => {
+  const progress = isOpen.value;
+  return {
+    opacity: progress,
+    transform: [
+      { translateX: interpolate(progress, [0, 1], [0, 70]) },
+      { translateY: interpolate(progress, [0, 1], [0, -104]) },
+      { scale: interpolate(progress, [0, 1], [0.3, 1]) },
+    ],
+  };
+});
   if (hideNav) return null;
 
   return (
@@ -336,6 +333,7 @@ const styles = StyleSheet.create({
     zIndex: 35,
     width: 140, // fixed width so the box is symmetric before translateX runs
     left: -70,  // -width / 2, pre-centers the box on the anchor point
+    top: -50,
   },
 
   fanPressable: {
@@ -443,6 +441,7 @@ const styles = StyleSheet.create({
   },
 
   centerButton: {
+    bottom:10,
     width: 52,
     height: 52,
     borderRadius: 26,

@@ -107,8 +107,31 @@ const getAmbulanceById = async (ambulanceId) => {
     return result.rows[0];
 };
 
+const getAmbulanceForUser = async (userId) => {
+    const query = `
+        SELECT
+            ap.id,
+            ap.provider_name,
+            ap.phone,
+            ap.address,
+            ap.latitude::double precision AS latitude,
+            ap.longitude::double precision AS longitude,
+            ap.is_active,
+            ap.created_at,
+            ap.updated_at
+        FROM ambulance_providers ap
+        INNER JOIN ambulance_admins aa
+            ON aa.ambulance_provider_id = ap.id
+        WHERE aa.user_id = $1;
+    `;
+
+    const result = await pool.query(query, [userId]);
+    return result.rows[0];
+};
+
 module.exports = {
     getAllAmbulances,
     getNearbyAmbulances,
     getAmbulanceById,
+    getAmbulanceForUser,
 };

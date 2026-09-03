@@ -43,6 +43,11 @@ export type HospitalActiveCase = {
   event_status: string;
   is_emergency: boolean;
   created_at: string;
+  reservation_mode?: string | null;
+  reservation_status?: string | null;
+  bed_number?: string | number | null;
+  ward_name?: string | null;
+  request_created_at?: string | null;
 };
 
 export type HospitalReservationRecord = {
@@ -103,8 +108,25 @@ export async function getMyHospital() {
 }
 
 export async function getActiveCases() {
-  const response = await api.get<ApiResponse<HospitalActiveCase[]>>("/hospital/dashboard/active-cases");
-  return response.data.data;
+  const [casesResponse, reservationsResponse] = await Promise.all([
+    api.get<ApiResponse<HospitalActiveCase[]>>("/hospital/dashboard/active-cases"),
+    api.get<ApiResponse<HospitalReservationRecord[]>>("/hospital/reservations"),
+  ]);
+  const reservationsByEvent = new Map(
+    reservationsResponse.data.data.map((reservation) => [reservation.medical_event_id, reservation]),
+  );
+
+  return casesResponse.data.data.map((activeCase) => {
+    const reservation = reservationsByEvent.get(activeCase.event_id);
+    return {
+      ...activeCase,
+      reservation_mode: reservation?.reservation_mode ?? null,
+      reservation_status: reservation?.reservation_status ?? null,
+      bed_number: reservation?.bed_number ?? null,
+      ward_name: reservation?.ward_name ?? null,
+      request_created_at: reservation?.requested_at ?? reservation?.created_at ?? null,
+    };
+  });
 }
 
 export async function approveEmergencyCase(eventId: string) {
@@ -114,6 +136,11 @@ export async function approveEmergencyCase(eventId: string) {
 
 export async function completeEmergencyCase(eventId: string) {
   const response = await api.put<ApiResponse<HospitalActiveCase>>(`/hospital/dashboard/active-cases/${eventId}/complete`);
+  return response.data.data;
+}
+
+export async function redirectEmergencyCase(eventId: string) {
+  const response = await api.put<ApiResponse<{ event_id: string; reservation_status: string }>>(`/hospital/dashboard/active-cases/${eventId}/redirect`);
   return response.data.data;
 }
 

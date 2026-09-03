@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Pressable, ScrollView, StyleSheet, Switch, Text, useColorScheme, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, useColorScheme, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Bell, ChevronLeft, ChevronRight, Globe, HelpCircle, LogOut, Palette, ShieldCheck, Wifi, type LucideIcon } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Globe, HelpCircle, LogOut, Palette, ShieldCheck, Wifi, type LucideIcon } from "lucide-react-native";
 import { theme } from "../../../theme";
 import { clearAuthSession } from "../../../services/auth";
 import { getNetworkOverride, setNetworkOverride, type NetworkOverride } from "../../sos/utils/offline-sync";
@@ -22,7 +22,6 @@ export default function PatientSettingsScreen() {
   const [language, setLanguage] = useState<SettingsLanguage>("en");
   const [appearance, setAppearance] = useState<SettingsAppearance>("light");
   const [network, setNetwork] = useState<NetworkOverride>("auto");
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   useEffect(() => { void Promise.all([AsyncStorage.getItem(LANGUAGE_KEY), AsyncStorage.getItem(APPEARANCE_KEY), getNetworkOverride()]).then(([storedLanguage, storedAppearance, storedNetwork]) => { if (storedLanguage === "en" || storedLanguage === "bn") setLanguage(storedLanguage); if (storedAppearance === "light" || storedAppearance === "dark" || storedAppearance === "system") setAppearance(storedAppearance); setNetwork(storedNetwork); }); }, []);
 
@@ -40,7 +39,6 @@ export default function PatientSettingsScreen() {
       <PreferenceBlock icon={Globe} title={copy.language} hint={copy.languageHint} palette={palette} styles={styles}><SegmentedControl value={language} onChange={selectLanguage} options={languageOptions} palette={palette} styles={styles} /></PreferenceBlock>
       <PreferenceBlock icon={Palette} title={copy.appearance} palette={palette} styles={styles} bordered><SegmentedControl value={appearance} onChange={selectAppearance} options={[{ value: "light", label: copy.light }, { value: "dark", label: copy.dark }, { value: "system", label: copy.system }]} palette={palette} styles={styles} /></PreferenceBlock>
       <PreferenceBlock icon={Wifi} title={emergencyConnectivityCopy.title} hint={emergencyConnectivityCopy.hint} palette={palette} styles={styles} bordered><SegmentedControl value={network} onChange={selectNetwork} options={connectivityOptions} palette={palette} styles={styles} /></PreferenceBlock>
-      <SettingsRow icon={Bell} label={copy.notifications} palette={palette} styles={styles} right={<Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} trackColor={{ false: palette.border, true: palette.primary }} thumbColor={palette.surface} />} />
       <SettingsRow icon={ShieldCheck} label={copy.privacyPolicy} palette={palette} styles={styles} /><SettingsRow icon={HelpCircle} label={copy.helpSupport} palette={palette} styles={styles} /><SettingsRow icon={LogOut} label={copy.logout} palette={palette} styles={styles} emergency onPress={async () => { await clearAuthSession(); router.replace("/(auth)/login"); }} />
     </View><Text style={styles.version}>{settingsVersion}</Text></View>
   </ScrollView></View>;

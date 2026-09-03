@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,9 +11,10 @@ import {
   View,
 } from "react-native";
 import { BedDouble, Download, RefreshCw, Siren, CalendarX, AlertTriangle } from "lucide-react-native";
-import * as FileSystem from "expo-file-system/legacy";
+import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { StatusBar } from "expo-status-bar";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "../../../theme";
@@ -26,8 +27,10 @@ import {
   type Reservation,
 } from "../../../services/patient-records";
 
+
 const filters = ["Emergency", "Bookings"] as const;
 type ActivityFilter = (typeof filters)[number];
+const HIDDEN_ACTIVITY_IDS_KEY = "medlink.patient.hiddenActivityIds";
 
 export default function PatientActivityScreen() {
   const router = useRouter();
@@ -38,11 +41,24 @@ export default function PatientActivityScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hiddenActivityIds, setHiddenActivityIds] = useState<string[]>([]);
   const insets = useSafeAreaInsets();
   const isDark = useColorScheme() === "dark";
   const palette = useMemo(() => getPalette(isDark), [isDark]);
   const styles = useMemo(() => createStyles(palette), [palette]);
   const emergencyEvents = useMemo(() => events.filter((event) => event.is_emergency), [events]);
+
+  useEffect(() => {
+    AsyncStorage.getItem(HIDDEN_ACTIVITY_IDS_KEY).then((stored) => {
+      if (!stored) return;
+      try {
+        const ids = JSON.parse(stored);
+        if (Array.isArray(ids)) setHiddenActivityIds(ids.filter((id): id is string => typeof id === "string"));
+      } catch {
+        // Ignore invalid local activity state and use the server records.
+      }
+    });
+  }, []);
 
   const handleCompleteEvent = useCallback((eventId: string) => {
     setEvents((currentEvents) =>
@@ -54,6 +70,11 @@ export default function PatientActivityScreen() {
 
   const handleDeleteEvent = useCallback((eventId: string) => {
     setEvents((currentEvents) => currentEvents.filter((event) => event.id !== eventId));
+    setHiddenActivityIds((currentIds) => {
+      const nextIds = currentIds.includes(eventId) ? currentIds : [...currentIds, eventId];
+      void AsyncStorage.setItem(HIDDEN_ACTIVITY_IDS_KEY, JSON.stringify(nextIds));
+      return nextIds;
+    });
   }, []);
 
   const loadActivity = useCallback(async (isRefresh = false) => {
@@ -72,8 +93,8 @@ export default function PatientActivityScreen() {
         getPayments(),
       ]);
 
-      setEvents(eventRecords);
-      setReservations(reservationRecords);
+      setEvents(eventRecords.filter((event) => !hiddenActivityIds.includes(event.id)));
+      setReservations(reservationRecords.filter((reservation) => !hiddenActivityIds.includes(reservation.id)));
       setPayments(paymentRecords);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Could not load activity.");
@@ -81,7 +102,7 @@ export default function PatientActivityScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [hiddenActivityIds]);
 
   useFocusEffect(
     useCallback(() => {
@@ -286,8 +307,8 @@ function EventCard({
       {canShowPendingActions ? (
         <View style={styles.actionRow}>
           <Pressable
-            onPress={(eventPress) => {
-              eventPress.stopPropagation?.();
+            onStartShouldSetResponder={() => true}
+            onPress={() => {
               onComplete(event.id);
             }}
             style={({ pressed }) => [styles.actionButton, styles.completeButton, pressed && styles.actionButtonPressed]}
@@ -295,8 +316,8 @@ function EventCard({
             <Text style={styles.completeButtonText}>Complete</Text>
           </Pressable>
           <Pressable
-            onPress={(eventPress) => {
-              eventPress.stopPropagation?.();
+            onStartShouldSetResponder={() => true}
+            onPress={() => {
               onDelete(event.id);
             }}
             style={({ pressed }) => [styles.actionButton, styles.deleteButton, pressed && styles.actionButtonPressed]}
@@ -308,8 +329,8 @@ function EventCard({
         <View style={styles.actionRow}>
           {canDownloadReceipt ? (
             <Pressable
-              onPress={(eventPress) => {
-                eventPress.stopPropagation?.();
+              onStartShouldSetResponder={() => true}
+              onPress={() => {
                 setIsDownloading(true);
                 downloadSosReceipt(event, reservation, payment)
                   .catch((requestError: unknown) => {
@@ -325,8 +346,8 @@ function EventCard({
             </Pressable>
           ) : null}
           <Pressable
-            onPress={(eventPress) => {
-              eventPress.stopPropagation?.();
+            onStartShouldSetResponder={() => true}
+            onPress={() => {
               onDelete(event.id);
             }}
             style={({ pressed }) => [styles.actionButton, styles.deleteButton, pressed && styles.actionButtonPressed]}
@@ -468,46 +489,83 @@ function formatDate(value: string) {
 }
 
 async function downloadSosReceipt(event: MedicalEvent, reservation: Reservation, payment: PatientPayment) {
-  if (!FileSystem.cacheDirectory) {
-    throw new Error("Receipt storage is unavailable on this device.");
-  }
-
   const amount = Number(payment.total_amount);
-  const receipt = [
-    "MEDLINK SOS PAYMENT RECEIPT",
-    "================================",
-    `Receipt ID: ${payment.payment_id}`,
-    `SOS event ID: ${event.id}`,
-    "",
-    `Hospital: ${reservation.hospital_name}`,
-    `Service: ${displayEnum(reservation.reservation_mode)} reservation`,
-    `Ward: ${reservation.ward_name ?? "Not assigned"}`,
-    `Bed: ${reservation.bed_number ?? "Not assigned"}`,
-    "",
-    `SOS date: ${formatDate(event.created_at)}`,
-    `Payment date: ${formatDate(payment.paid_at ?? payment.created_at)}`,
-    `Payment method: ${displayEnum(payment.payment_method ?? "Not specified")}`,
-    `Payment status: ${displayEnum(payment.payment_status)}`,
-    "",
-    `Total paid: BDT ${Number.isFinite(amount) ? amount.toFixed(2) : "0.00"}`,
-    "",
-    "This receipt was generated from your MedLink activity records.",
-  ].join("\n");
-  const fileUri = `${FileSystem.cacheDirectory}medlink-sos-receipt-${event.id}.txt`;
+  const safeAmount = Number.isFinite(amount) ? amount.toFixed(2) : "0.00";
+  const html = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 44px; color: #172a32; font-family: Arial, sans-serif; }
+  .sheet { max-width: 680px; margin: 0 auto; }
+  .header { display: flex; justify-content: space-between; border-bottom: 3px solid #0f766e; padding-bottom: 22px; }
+  .brand { color: #0f766e; font-size: 22px; font-weight: 700; }
+  .brand span { display: block; color: #64748b; font-size: 11px; font-weight: 400; margin-top: 5px; }
+  .invoice { color: #0f172a; font-size: 25px; font-weight: 700; text-align: right; }
+  .invoice small { display: block; color: #64748b; font-size: 11px; font-weight: 400; margin-top: 5px; }
+  .status { display: inline-block; background: #dcfce7; color: #15803d; border-radius: 12px; font-size: 10px; margin-top: 9px; padding: 5px 10px; }
+  .meta { display: flex; justify-content: space-between; gap: 30px; margin: 32px 0; }
+  .label { color: #94a3b8; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+  .value { color: #0f172a; font-size: 14px; margin: 4px 0; }
+  table { border-collapse: collapse; margin-top: 12px; width: 100%; }
+  th { border-bottom: 2px solid #e2e8f0; color: #94a3b8; font-size: 10px; padding: 9px 5px; text-align: left; text-transform: uppercase; }
+  td { border-bottom: 1px solid #eef2f4; color: #334155; font-size: 13px; padding: 14px 5px; }
+  th:last-child, td:last-child { text-align: right; }
+  .total { display: flex; justify-content: space-between; border-top: 2px solid #0f172a; color: #0f172a; font-size: 18px; font-weight: 700; margin-top: 28px; padding-top: 14px; }
+  .note { border-top: 1px solid #e2e8f0; color: #64748b; font-size: 11px; margin-top: 48px; padding-top: 18px; }
+</style>
+</head>
+<body>
+  <main class="sheet">
+    <header class="header">
+    <div><img src=</div>
+      <div class="brand">MedLink<span>Connecting Care, Saving Lives</span></div>
+      <div class="invoice">INVOICE<small>${escapeHtml(payment.payment_id)}</small><span class="status">PAID</span></div>
+    </header>
+    <section class="meta">
+      <div><div class="label">Billed to</div><div class="value">Patient SOS account</div><div class="value">${escapeHtml(reservation.hospital_name)}</div></div>
+      <div><div class="label">Invoice details</div><div class="value">SOS date: ${escapeHtml(formatDate(event.created_at))}</div><div class="value">Paid: ${escapeHtml(formatDate(payment.paid_at ?? payment.created_at))}</div></div>
+    </section>
+    <table><thead><tr><th>Description</th><th>Reference</th><th>Amount</th></tr></thead>
+      <tbody><tr><td>${escapeHtml(displayEnum(reservation.reservation_mode))} reservation and hospital services</td><td>SOS ${escapeHtml(event.id.slice(0, 8))}</td><td>BDT ${safeAmount}</td></tr></tbody>
+    </table>
+    <div class="total"><span>Total paid</span><span>BDT ${safeAmount}</span></div>
+    <p class="note">Payment method: ${escapeHtml(displayEnum(payment.payment_method ?? "Not specified"))}. This PDF was generated from your MedLink activity and payment records.</p>
+  </main>
+</body>
+</html>`;
 
-  await FileSystem.writeAsStringAsync(fileUri, receipt, {
-    encoding: FileSystem.EncodingType.UTF8,
-  });
+  const { uri } = await Print.printToFileAsync({ html, width: 595, height: 842 });
 
   if (!(await Sharing.isAvailableAsync())) {
-    throw new Error("Sharing is unavailable on this device.");
+    await Print.printAsync({ uri });
+    return;
   }
 
-  await Sharing.shareAsync(fileUri, {
-    dialogTitle: "Save or share SOS receipt",
-    mimeType: "text/plain",
-    UTI: "public.plain-text",
-  });
+  try {
+    await Sharing.shareAsync(uri, {
+      dialogTitle: "Save or share SOS invoice",
+      mimeType: "application/pdf",
+      UTI: "com.adobe.pdf",
+    });
+  } catch {
+    try {
+      await Sharing.shareAsync(uri);
+    } catch {
+      await Print.printAsync({ uri });
+    }
+  }
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>'"]/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;",
+  })[character] ?? character);
 }
 
 function getPalette(isDark: boolean) {

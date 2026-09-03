@@ -1,5 +1,5 @@
 import { useEffect, useState, type ComponentType, type ReactNode } from "react";
-import { Bell, ChevronDown, HelpCircle, LogOut, Search, Send, Settings, User, X } from "lucide-react";
+import { ChevronDown, HelpCircle, LogOut, Search, Send, X } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import dashboardLogo from "@/assets/images/Logos/medlink_dashboard_white.png";
 import compactLogo from "@/assets/images/Logos/medlink_compact_white.png";
@@ -182,14 +182,6 @@ export function DashboardShell({
             <input type="search" placeholder={searchPlaceholder} />
           </div>
           <div className="dashboard-header-actions">
-            <button
-              type="button"
-              aria-label="Open notifications"
-              onClick={() => navigate("/hospital/notifications")}
-              className="dashboard-notification-button"
-            >
-              <Bell aria-hidden="true" />
-            </button>
             <div className="dashboard-profile-menu">
               <button
                 type="button"
@@ -207,14 +199,6 @@ export function DashboardShell({
               </button>
               {profileOpen && (
                 <div className="dashboard-profile-dropdown" role="menu">
-                  <button type="button" role="menuitem" onClick={() => navigate("/hospital/profile")}>
-                    <User aria-hidden="true" />
-                    Profile
-                  </button>
-                  <button type="button" role="menuitem" onClick={() => navigate("/hospital/settings")}>
-                    <Settings aria-hidden="true" />
-                    Settings
-                  </button>
                   <button
                     type="button"
                     role="menuitem"
