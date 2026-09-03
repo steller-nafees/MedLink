@@ -134,6 +134,12 @@ export type Totals = {
   sos: number;
   blood: number;
   reservations: number;
+  usersThisMonth?: number;
+  usersLastMonth?: number;
+  driversThisMonth?: number;
+  pendingHospitals?: number;
+  reservationsThisMonth?: number;
+  reservationsLastMonth?: number;
 };
 
 export type SosDaily = {

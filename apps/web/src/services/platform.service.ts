@@ -331,6 +331,12 @@ export const platformService = {
         reservations: data.totalReservations,
         sos: totals.sos,
         blood: totals.blood,
+        usersThisMonth: data.usersThisMonth,
+        usersLastMonth: data.usersLastMonth,
+        driversThisMonth: data.driversThisMonth,
+        pendingHospitals: data.pendingHospitals,
+        reservationsThisMonth: data.reservationsThisMonth,
+        reservationsLastMonth: data.reservationsLastMonth,
       };
     } catch (error) {
       console.error("Failed to fetch dashboard totals", error);
