@@ -25,6 +25,10 @@ const donorListQuerySchema = z.object({
     .positive("Radius must be greater than 0")
     .max(100, "Radius cannot exceed 100 km")
     .optional(),
+
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+
+  longitude: z.coerce.number().min(-180).max(180).optional(),
 });
 
 const donorIdParamSchema = z.object({

@@ -1,4 +1,4 @@
-import { Stack } from "expo-router";
+import { Stack, useSegments } from "expo-router";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,8 +8,10 @@ import { theme } from "../../theme";
 import { isEmergencySession } from "../../services/auth";
 
 export default function PatientLayout() {
+  const segments = useSegments();
   const insets = useSafeAreaInsets();
   const [emergencySession, setEmergencySession] = useState<boolean | null>(null);
+  const hidePatientNav = segments[1] === "ai";
 
   useEffect(() => {
     void isEmergencySession().then(setEmergencySession);
@@ -20,7 +22,7 @@ export default function PatientLayout() {
       style={{
         flex: 1,
         backgroundColor: theme.colors.background,
-        paddingBottom: emergencySession ? 0 : PATIENT_NAV_CLEARANCE + insets.bottom,
+        paddingBottom: emergencySession || hidePatientNav ? 0 : PATIENT_NAV_CLEARANCE + insets.bottom,
       }}
     >
       <Stack
@@ -29,7 +31,7 @@ export default function PatientLayout() {
           contentStyle: { backgroundColor: theme.colors.background },
         }}
       />
-      {emergencySession === false && <PatientTabBar />}
+      {emergencySession === false && !hidePatientNav && <PatientTabBar />}
     </View>
   );
 }

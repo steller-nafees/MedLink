@@ -9,8 +9,7 @@ interface AccountTypeCardsProps {
 }
 
 export function AccountTypeCards({ onSelect, selected }: AccountTypeCardsProps) {
-  // Mobile only shows patient and driver (not hospital)
-  const mobileTypes = accountTypes.filter((t) => !t.webOnly);
+  const mobileTypes = accountTypes.filter((t) => !t.webOnly && t.id !== "driver");
 
   return (
     <View style={styles.container}>
