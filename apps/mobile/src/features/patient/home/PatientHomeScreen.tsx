@@ -11,7 +11,6 @@ import {
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-  Bell,
   Bot,
   Siren,
   Building2,
@@ -23,6 +22,7 @@ import {
   CalendarCheck,
   ChevronRight,
   ArrowUpRight,
+  Droplet,
 } from "lucide-react-native";
 import { theme } from "../../../theme";
 import { formatDate } from "../../../lib/blood";
@@ -119,20 +119,8 @@ export default function PatientHomeScreen() {
               </View>
             </Pressable>
 
-            {/* Right: Bell + Settings */}
+            {/* Right: Settings */}
             <View style={styles.headerActions}>
-              <Pressable
-                style={[styles.iconButton, theme.shadows.sm]}
-                onPress={() => router.push("/notifications")}
-                android_ripple={{ color: "rgba(22, 168, 156, 0.15)", borderless: true, radius: 22 }}
-                accessibilityRole="button"
-                accessibilityLabel="Notifications"
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Bell size={18} color={theme.colors.foreground} strokeWidth={2} />
-                <View style={styles.notificationDot} />
-              </Pressable>
-
               <Pressable
                 style={[styles.iconButton, theme.shadows.sm]}
                 onPress={() => router.push("/settings")}
@@ -279,6 +267,32 @@ export default function PatientHomeScreen() {
                     </View>
                   </View>
                 </View>
+              </View>
+            </Pressable>
+          </View>
+          <View style={[styles.cardWrapper, theme.shadows.shadowCard, { marginTop: theme.spacing.md }]}>
+            <Pressable
+              style={styles.futureCard}
+              onPress={() => router.push("/blood")}
+              android_ripple={{ color: "rgba(22, 168, 156, 0.08)", borderless: false }}
+              accessibilityRole="button"
+              accessibilityLabel="Find blood donors"
+            >
+              <View style={styles.futureHeader}>
+                <View style={styles.futureIconWrap}>
+                  <Droplet size={22} color={theme.colors.emergency} strokeWidth={2} />
+                </View>
+                <View style={styles.findDonorsBadge}>
+                  <Text style={styles.findDonorsBadgeText}>Available now</Text>
+                </View>
+              </View>
+              <Text style={styles.futureTitle}>Find Donors</Text>
+              <Text style={styles.futureDesc}>
+                Search eligible blood donors by blood group and distance when you or someone close needs support.
+              </Text>
+              <View style={styles.findDonorsAction}>
+                <Text style={styles.findDonorsActionText}>Browse donors</Text>
+                <ArrowUpRight size={16} color={theme.colors.emergency} strokeWidth={2.5} />
               </View>
             </Pressable>
           </View>
@@ -528,17 +542,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     justifyContent: "center",
     alignItems: "center",
-  },
-  notificationDot: {
-    position: "absolute",
-    top: 11,
-    right: 11,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.colors.emergency,
-    borderWidth: 1.5,
-    borderColor: theme.colors.surface,
   },
   heroSection: {
     gap: theme.spacing.md,
@@ -833,6 +836,32 @@ const styles = StyleSheet.create({
     ...theme.typography.caption,
     fontWeight: "600",
     color: theme.colors.textMuted,
+  },
+  findDonorsBadge: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 4,
+    borderRadius: theme.radii.pill,
+    backgroundColor: theme.colors.emergencyLight,
+  },
+  findDonorsBadgeText: {
+    ...theme.typography.label,
+    color: theme.colors.emergency,
+    fontSize: 10,
+  },
+  findDonorsAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: theme.spacing.xs,
+    alignSelf: "flex-start",
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radii.pill,
+    backgroundColor: theme.colors.emergencyLight,
+  },
+  findDonorsActionText: {
+    ...theme.typography.button,
+    color: theme.colors.emergency,
+    fontSize: 13,
   },
   activityItem: {
     paddingVertical: theme.spacing.lg,

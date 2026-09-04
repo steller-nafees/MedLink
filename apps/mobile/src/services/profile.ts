@@ -17,6 +17,8 @@ export type PatientProfileResponse = {
   is_available_for_donation: boolean | null;
 };
 
+export type BloodGroup = "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-";
+
 export type CompleteProfileRequest = {
   firstName: string;
   lastName: string;
@@ -26,7 +28,7 @@ export type CompleteProfileRequest = {
   address: string;
   emergencyContactName: string;
   emergencyContactPhone: string;
-  bloodGroup: "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-";
+  bloodGroup: BloodGroup;
 };
 
 class ProfileRequestError extends Error {}

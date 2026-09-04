@@ -83,7 +83,7 @@ router.put(
 router.delete(
     "/:userId",
     authenticate,
-    authorize("CUSTOMER", "SUPER_ADMIN"),
+    authorize("CUSTOMER", "AMBULANCE_ADMIN", "SUPER_ADMIN"),
     deleteUserAccount
 );
 

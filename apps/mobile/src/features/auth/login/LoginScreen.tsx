@@ -45,6 +45,19 @@ function normalizeLoginPhone(value: string) {
   return phone;
 }
 
+function getLoginRoute(userType: string, profileComplete: boolean) {
+  const normalizedUserType = userType.trim().toUpperCase();
+  const ambulanceRole = ["AMBULANCE_ADMIN", "AMBULANCE_DRIVER", "DRIVER"].includes(
+    normalizedUserType
+  );
+
+  if (ambulanceRole) {
+    return "/(ambulance)" as const;
+  }
+
+  return profileComplete ? "/(patient)" : "/(auth)/complete-profile";
+}
+
 export default function LoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -75,7 +88,7 @@ export default function LoginScreen() {
       });
 
       await saveAuthToken(response.token.accessToken, response.data.userId);
-      router.replace(response.data.profileComplete ? "/(patient)" : "/(auth)/complete-profile");
+      router.replace(getLoginRoute(response.data.userType, response.data.profileComplete));
     } catch (error) {
       const message =
         error instanceof AuthRequestError

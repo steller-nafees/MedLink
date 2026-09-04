@@ -11,6 +11,7 @@ import {
   Linking,
   Animated,
   Easing,
+  Modal,
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +20,7 @@ import * as Location from 'expo-location';
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Heart,
   Sparkles,
@@ -35,6 +37,7 @@ import {
   CheckCircle2,
   Copy,
   Download,
+  X,
 } from 'lucide-react-native';
 import { theme } from '../../theme';
 import {
@@ -53,7 +56,8 @@ import {
   type Ambulance,
 } from './utils/data';
 import {
-  matchDonors,
+  canDonateTo,
+  eligibilityFrom,
   type BloodGroup,
   type RankedDonor,
 } from './utils/blood';
@@ -67,9 +71,10 @@ import {
 } from '../../services/ai-medical';
 import { getHospitalById, getNearbyHospitals, type NearbyHospital } from '../../services/hospitals';
 import { createReservation } from '../../services/reservations';
-import { getReservations } from '../../services/patient-records';
+import { getPayments, getReservations } from '../../services/patient-records';
+import { getBloodDonors, type BloodDonor } from '../../services/blood';
 
-type Phase = 'input' | 'analyzing' | 'ambulance' | 'hospitals' | 'followup' | 'summary';
+type Phase = 'input' | 'analyzing' | 'ambulance' | 'hospitals' | 'followup' | 'active' | 'summary';
 
 type SosSummary = {
   hospitalName: string;
@@ -101,6 +106,30 @@ function toSosHospital(hospital: NearbyHospital): Hospital {
     bloodBank: [],
     coord: { x: 50, y: 50 },
   };
+}
+
+function toRankedDonor(donor: BloodDonor): RankedDonor {
+  return {
+    id: donor.donor_id,
+    name: [donor.first_name, donor.last_name].filter(Boolean).join(' ') || 'MedLink donor',
+    group: donor.blood_group,
+    lastDonation: donor.last_donation_date,
+    available: true,
+    phone: donor.phone ?? '',
+    distanceFromHospitalKm: {},
+    donations: 0,
+    distanceKm: donor.distance_km == null ? 99 : Number(donor.distance_km),
+    eligibility: eligibilityFrom(donor.last_donation_date),
+    status: 'online',
+  };
+}
+
+async function findApiDonors(recipient: BloodGroup, limit = 5): Promise<RankedDonor[]> {
+  const result = await getBloodDonors({ limit: 100 });
+  return result.donors
+    .filter((donor) => canDonateTo(donor.blood_group, recipient))
+    .map(toRankedDonor)
+    .slice(0, limit);
 }
 
 /* ────────────────────────────────────────────────────────────────── */
@@ -214,6 +243,61 @@ export const SOSScreen: React.FC = () => {
   const { online, cache, justSynced } = useEmergencySync();
   const insets = useSafeAreaInsets();
 
+  useEffect(() => {
+    if (!medicalEventId || phase === 'summary') return;
+    try {
+      const checkpoint = {
+        phase,
+        text,
+        reserved: {
+          bed: Boolean(reserved.bed),
+          icu: Boolean(reserved.icu),
+          ambulance: typeof reserved.ambulance === 'string' ? reserved.ambulance : undefined,
+        },
+        pendingDonor: pendingDonor ? {
+          id: pendingDonor.id,
+          name: pendingDonor.name,
+          group: pendingDonor.group,
+          phone: pendingDonor.phone,
+          distanceKm: pendingDonor.distanceKm,
+          status: pendingDonor.status,
+        } : null,
+        sentTo: sentTo.filter((id): id is string => typeof id === 'string'),
+        selectedHospitalId,
+        bloodRequired,
+        severity,
+        aiResponse: aiResponse ? {
+          id: aiResponse.id,
+          medical_event_id: aiResponse.medical_event_id,
+          summary: aiResponse.summary,
+          possible_conditions: aiResponse.possible_conditions,
+          tags: aiResponse.tags,
+          first_aid: aiResponse.first_aid,
+          created_at: aiResponse.created_at,
+        } : null,
+        hospitals: nearbyHospitals.map((hospital) => ({
+          id: hospital.id,
+          name: hospital.name,
+          tier: hospital.tier,
+          distanceKm: hospital.distanceKm,
+          etaMin: hospital.etaMin,
+          address: hospital.address,
+          rating: hospital.rating,
+          phone: hospital.phone,
+          departments: [...hospital.departments],
+          beds: { ...hospital.beds },
+          icu: { ...hospital.icu },
+          emergency: hospital.emergency,
+          bloodBank: [...hospital.bloodBank],
+          coord: { ...hospital.coord },
+        })),
+      };
+      void AsyncStorage.setItem(`${SOS_CHECKPOINT_PREFIX}${medicalEventId}`, JSON.stringify(checkpoint)).catch(() => undefined);
+    } catch {
+      // Local checkpointing must never interrupt the emergency workflow.
+    }
+  }, [medicalEventId, phase, text, reserved, pendingDonor, sentTo, selectedHospitalId, bloodRequired, severity, aiResponse, nearbyHospitals]);
+
   const submit = async (val: string) => {
     setText(val);
     setRequestError('');
@@ -274,10 +358,33 @@ export const SOSScreen: React.FC = () => {
     const eventFromParams = Array.isArray(eventIdParam) ? eventIdParam[0] : eventIdParam;
 
     if (shouldResume === '1' && textFromParams) {
-      setText(textFromParams);
-      setSeverity(severityFromParams || 'LOW');
-      setMedicalEventId(eventFromParams ?? null);
-      setPhase('input');
+      const restore = async () => {
+        const stored = eventFromParams ? await AsyncStorage.getItem(`${SOS_CHECKPOINT_PREFIX}${eventFromParams}`) : null;
+        if (stored) {
+          try {
+            const saved = JSON.parse(stored) as Partial<{ phase: Phase; text: string; reserved: { bed?: boolean; icu?: boolean; ambulance?: string }; pendingDonor: RankedDonor | null; sentTo: string[]; selectedHospitalId: string | null; bloodRequired: boolean | null; severity: string; aiResponse: AiMedicalResponse | null; hospitals: Hospital[] }>;
+            setText(saved.text ?? textFromParams);
+            setSeverity(saved.severity ?? severityFromParams ?? 'LOW');
+            setMedicalEventId(eventFromParams ?? null);
+            setReserved(saved.reserved ?? {});
+            setPendingDonor(saved.pendingDonor ?? null);
+            setSentTo(saved.sentTo ?? []);
+            setSelectedHospitalId(saved.selectedHospitalId ?? null);
+            setBloodRequired(saved.bloodRequired ?? null);
+            setAiResponse(saved.aiResponse ?? null);
+            setNearbyHospitals(saved.hospitals ?? []);
+            setPhase(saved.phase && saved.phase !== 'summary' ? saved.phase : 'input');
+            return;
+          } catch {
+            // Fall through to the basic event resume state.
+          }
+        }
+        setText(textFromParams);
+        setSeverity(severityFromParams || 'LOW');
+        setMedicalEventId(eventFromParams ?? null);
+        setPhase('input');
+      };
+      void restore();
     }
   }, [resumeParam, eventTextParam, eventSeverityParam, eventIdParam]);
 
@@ -287,6 +394,7 @@ export const SOSScreen: React.FC = () => {
   };
 
   const resetAndExit = () => {
+    if (medicalEventId) void AsyncStorage.removeItem(`${SOS_CHECKPOINT_PREFIX}${medicalEventId}`);
     setPhase('input');
     setText('');
     setReserved({});
@@ -382,7 +490,20 @@ export const SOSScreen: React.FC = () => {
               hospitalName={nearbyHospitals.find((hospital) => hospital.id === selectedHospitalId)?.name ?? 'your hospital'}
               bloodRequired={bloodRequired}
               setBloodRequired={setBloodRequired}
-              onDone={() => endSOS({ hospitalName: nearbyHospitals.find((hospital) => hospital.id === selectedHospitalId)?.name ?? 'Hospital', bedReserved: !!reserved.bed, icuReserved: !!reserved.icu, ambulance: undefined, donorsContacted: sentTo.length, severity, aiResponse, temporaryPassword })}
+              onContinue={(donor) => { setPendingDonor(donor ?? null); if (donor) setSentTo((current) => current.includes(donor.id) ? current : [...current, donor.id]); setPhase('active'); }}
+              onRedirect={() => { setSelectedHospitalId(null); setReserved({}); setBloodRequired(null); setPendingDonor(null); setSentTo([]); setPhase('hospitals'); }}
+            />
+          </FadeSlideIn>
+        )}
+        {phase === 'active' && aiResponse && (
+          <FadeSlideIn>
+            <ActiveResponsePhase
+              hospital={nearbyHospitals.find((hospital) => hospital.id === selectedHospitalId)}
+              reserved={reserved}
+              eventId={medicalEventId}
+              selectedDonor={pendingDonor}
+              bloodRequired={bloodRequired}
+              onComplete={() => endSOS({ hospitalName: nearbyHospitals.find((hospital) => hospital.id === selectedHospitalId)?.name ?? 'Hospital', bedReserved: !!reserved.bed, icuReserved: !!reserved.icu, ambulance: reserved.ambulance ? { callSign: ambulances.find((ambulance) => ambulance.id === reserved.ambulance)?.callSign ?? reserved.ambulance } : undefined, donorsContacted: sentTo.length, severity, aiResponse, temporaryPassword })}
             />
           </FadeSlideIn>
         )}
@@ -1163,21 +1284,125 @@ const HospitalSelectionPhase: React.FC<HospitalSelectionPhaseProps> = ({ hospita
   );
 };
 
-interface ApprovalFollowupPhaseProps { eventId: string | null; hospitalId: string | null; hospitalName: string; bloodRequired: boolean | null; setBloodRequired: (value: boolean | null) => void; onDone: () => void; }
+interface ApprovalFollowupPhaseProps { eventId: string | null; hospitalId: string | null; hospitalName: string; bloodRequired: boolean | null; setBloodRequired: (value: boolean | null) => void; onContinue: (donor?: RankedDonor) => void; onRedirect: () => void; }
 
-const ApprovalFollowupPhase: React.FC<ApprovalFollowupPhaseProps> = ({ eventId, hospitalId, hospitalName, bloodRequired, setBloodRequired, onDone }) => {
+const ApprovalFollowupPhase: React.FC<ApprovalFollowupPhaseProps> = ({ eventId, hospitalId, hospitalName, bloodRequired, setBloodRequired, onContinue, onRedirect }) => {
   const [approved, setApproved] = useState(false);
+  const [selectedDonor, setSelectedDonor] = useState<RankedDonor | null>(null);
+  const [donors, setDonors] = useState<RankedDonor[]>([]);
+  const [statusNotice, setStatusNotice] = useState<'accepted' | 'redirected' | null>(null);
+  const noticeShown = useRef(false);
   useEffect(() => {
     let active = true;
-    const check = async () => { if (!eventId) return; try { const reservations = await getReservations(); const match = reservations.find((reservation) => reservation.medical_event_id === eventId); if (active && match?.reservation_status.toUpperCase() === 'APPROVED') { setApproved((wasApproved) => { if (!wasApproved) Alert.alert('Hospital accepted', `${hospitalName} approved your emergency request and reserved ${match.ward_name ?? 'a hospital bed'}.`); return true; }); } } catch { /* polling retries on the next interval */ } };
+    const check = async () => { if (!eventId || noticeShown.current) return; try { const reservations = await getReservations(); const match = reservations.find((reservation) => reservation.medical_event_id === eventId); if (!active) return; const status = match?.reservation_status.toUpperCase(); if (status === 'CANCELLED' || status === 'REJECTED') { noticeShown.current = true; setStatusNotice('redirected'); return; } if (status === 'APPROVED') { setApproved((wasApproved) => { if (!wasApproved) { noticeShown.current = true; setStatusNotice('accepted'); } return true; }); } } catch { /* polling retries on the next interval */ } };
     void check(); const timer = setInterval(() => void check(), 5000); return () => { active = false; clearInterval(timer); };
-  }, [eventId]);
-  const donors = approved && bloodRequired ? matchDonors('O+', hospitalId ?? '', { limit: 5 }) : [];
+  }, [eventId, hospitalName, onRedirect]);
+  useEffect(() => {
+    if (!approved || !bloodRequired) { setDonors([]); return; }
+    void findApiDonors('O+').then(setDonors).catch(() => setDonors([]));
+  }, [approved, bloodRequired]);
   return <View style={{ gap: 14 }}>
     <StepHeader step="3 of 3" title={approved ? 'Hospital accepted' : 'Waiting for hospital'} subtitle={approved ? `${hospitalName} has approved your request.` : `Your request is pending with ${hospitalName}. This screen checks for approval automatically.`} />
     {!approved && <View style={{ alignItems: 'center', paddingVertical: 28, gap: 10 }}><ActivityIndicator size="large" color={theme.colors.primary} /><Text style={{ fontSize: 13, color: theme.colors.mutedForeground }}>Waiting for a response...</Text></View>}
-    {approved && <>{bloodRequired === true && <><SectionTitle title="Blood donors" hint="Call the nearest eligible donors" />{donors.map((donor) => <View key={donor.id} style={{ borderRadius: theme.radii.xxl, backgroundColor: theme.colors.card, padding: 14, gap: 8, ...theme.shadows.shadowCard }}><Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.foreground }}>{donor.name} · {donor.group}</Text><Text style={{ fontSize: 12, color: theme.colors.mutedForeground }}>{donor.distanceKm} km from hospital · {donor.status}</Text><CallButton label="Call donor" phone={donor.phone} /></View>)}</>}{bloodRequired === null && <Text style={{ fontSize: 13, color: theme.colors.foreground }}>Does the hospital need blood donors for this admission?</Text>}{bloodRequired === null && <View style={{ flexDirection: 'row', gap: 10 }}><PrimaryStepButton label="Yes, show donors" onPress={() => setBloodRequired(true)} /><TouchableOpacity onPress={() => setBloodRequired(false)} style={{ flex: 1, borderRadius: 999, borderWidth: 1, borderColor: theme.colors.border, paddingVertical: 15, alignItems: 'center' }}><Text style={{ fontSize: 13, fontWeight: 'bold', color: theme.colors.foreground }}>No</Text></TouchableOpacity></View>}<PrimaryStepButton label="Finish SOS" onPress={onDone} /></>}
+    {bloodRequired === null && (
+  <>
+    <Text
+      style={{
+        fontSize: 13,
+        color: theme.colors.foreground,
+        textAlign: "center",
+      }}
+    >
+      Does the hospital need blood donors for this admission?
+    </Text>
+
+    <View
+      style={{
+        flexDirection: "row",
+        gap: 10,
+        justifyContent: "center",
+      }}
+    >
+      <View style={{ flex: 1 }}>
+        <PrimaryStepButton
+          label="Yes"
+          onPress={() => setBloodRequired(true)}
+        />
+      </View>
+
+      <TouchableOpacity
+        onPress={() => setBloodRequired(false)}
+        style={{
+          flex: 1,
+          borderRadius: 999,
+          borderWidth: 1,
+          borderColor: theme.colors.border,
+          paddingVertical: 15,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 13,
+            fontWeight: "bold",
+            color: theme.colors.foreground,
+          }}
+        >
+          No
+        </Text>
+      </TouchableOpacity>
+    </View>
+  </>
+)}
+
+<PrimaryStepButton
+  label={
+    bloodRequired === true
+      ? "Continue with selected donor"
+      : "Continue"
+  }
+  disabled={bloodRequired === true && !selectedDonor}
+  onPress={onContinue}
+/>
+    <SosStatusModal
+      visible={statusNotice !== null}
+      type={statusNotice ?? 'accepted'}
+      hospitalName={hospitalName}
+      onClose={() => {
+        const notice = statusNotice;
+        setStatusNotice(null);
+        if (notice === 'redirected') onRedirect();
+      }}
+    />
   </View>;
+};
+
+const SosStatusModal: React.FC<{
+  visible: boolean;
+  type: 'accepted' | 'redirected';
+  hospitalName: string;
+  onClose: () => void;
+}> = ({ visible, type, hospitalName, onClose }) => {
+  const redirected = type === 'redirected';
+  return <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <View style={{ flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(23, 37, 47, 0.52)' }}>
+      <View style={{ borderRadius: theme.radii.xxxl, backgroundColor: theme.colors.surface, padding: 24, ...theme.shadows.shadowDialog }}>
+        <View style={{ width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', backgroundColor: redirected ? theme.colors.emergencyLight : theme.colors.successLight }}>
+          {redirected ? <X size={28} color={theme.colors.emergency} strokeWidth={2.3} /> : <CheckCircle2 size={29} color={theme.colors.success} strokeWidth={2.1} />}
+        </View>
+        <Text style={{ marginTop: 18, color: theme.colors.foreground, fontSize: 21, lineHeight: 27, fontWeight: 'bold', textAlign: 'center' }}>
+          {redirected ? 'Choose another hospital' : 'Hospital accepted your SOS'}
+        </Text>
+        <Text style={{ marginTop: 9, color: theme.colors.mutedForeground, fontSize: 13.5, lineHeight: 20, textAlign: 'center' }}>
+          {redirected ? `${hospitalName} cannot receive this emergency right now. Your SOS is still active, so please select another hospital to continue care.` : `${hospitalName} accepted your emergency request. Your reservation is confirmed and the next step is to arrange any donor support.`}
+        </Text>
+        <TouchableOpacity onPress={onClose} activeOpacity={0.82} style={{ marginTop: 22, borderRadius: theme.radii.pill, backgroundColor: redirected ? theme.colors.emergency : theme.colors.primary, paddingVertical: 14, alignItems: 'center', ...theme.shadows.shadowFloat }}>
+          <Text style={{ color: theme.colors.primaryForeground, fontSize: 14, fontWeight: 'bold' }}>{redirected ? 'View hospital list' : 'Continue SOS'}</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </Modal>;
 };
 
 /* ────────────────────────────────────────────────────────────────── */
@@ -1238,10 +1463,15 @@ const CommandPhase: React.FC<CommandPhaseProps> = ({
   const primary = sortedHospitals.find((h) => h.id === selectedHospitalId) ?? sortedHospitals[0];
   const hospitalSelected = selectedHospitalId !== null;
   const requiredGroup: BloodGroup = 'O+';
-  const matchedDonors = hospitalSelected && bloodRequired ? matchDonors(requiredGroup, primary.id, { limit: 5 }) : [];
+  const [matchedDonors, setMatchedDonors] = useState<RankedDonor[]>([]);
   const bookedAmbulance = ambulances.find((a) => a.id === reserved.ambulance);
   const [reservationError, setReservationError] = useState('');
   const [reserving, setReserving] = useState<'bed' | 'icu' | null>(null);
+
+  useEffect(() => {
+    if (!hospitalSelected || !bloodRequired) { setMatchedDonors([]); return; }
+    void findApiDonors(requiredGroup).then(setMatchedDonors).catch(() => setMatchedDonors([]));
+  }, [hospitalSelected, bloodRequired, requiredGroup]);
 
   const reserveBed = async (mode: 'bed' | 'icu') => {
     if (!medicalEventId || !primary?.id || reserving || reserved[mode]) return;
@@ -2076,16 +2306,24 @@ interface SummaryPhaseProps {
   temporaryPassword?: string;
 }
 
+const SEVERITY_STYLES: Record<string, { bg: string; fg: string }> = {
+  CRITICAL: { bg: theme.colors.emergencyLight, fg: theme.colors.emergency },
+  HIGH: { bg: theme.colors.emergencyLight, fg: theme.colors.emergency },
+  MODERATE: { bg: `${theme.colors.warning ?? theme.colors.emergency}1A`, fg: theme.colors.warning ?? theme.colors.emergency },
+  LOW: { bg: theme.colors.successLight, fg: theme.colors.success },
+};
+
 const SummaryPhase: React.FC<SummaryPhaseProps> = ({ summary, onDone, guestPhone, temporaryPassword }) => {
-  // Checkmark springs in with a slight overshoot — the classic
-  // "success" micro-interaction — instead of appearing instantly.
   const checkScale = useRef(new Animated.Value(0)).current;
   useEffect(() => {
+    // Run once on mount only — do NOT re-trigger from a parent re-render,
+    // that's what was causing the transient white paint artifact.
     Animated.spring(checkScale, { toValue: 1, friction: 5, tension: 120, useNativeDriver: true }).start();
-  }, [checkScale]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasTemporaryCredentials = Boolean(guestPhone && temporaryPassword);
   const credentialText = `Emergency phone number: ${guestPhone}\nTemporary password: ${temporaryPassword}`;
+  const severityStyle = SEVERITY_STYLES[summary.severity?.toUpperCase()] ?? SEVERITY_STYLES.LOW;
 
   const copyCredentials = async () => {
     await Clipboard.setStringAsync(credentialText);
@@ -2097,18 +2335,13 @@ const SummaryPhase: React.FC<SummaryPhaseProps> = ({ summary, onDone, guestPhone
       Alert.alert('Unable to download', 'A local file location is not available on this device.');
       return;
     }
-
     try {
       const fileUri = `${FileSystem.cacheDirectory}medlink-emergency-credentials.txt`;
-      await FileSystem.writeAsStringAsync(fileUri, credentialText, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-
+      await FileSystem.writeAsStringAsync(fileUri, credentialText, { encoding: FileSystem.EncodingType.UTF8 });
       if (!(await Sharing.isAvailableAsync())) {
         Alert.alert('File ready', 'The credentials file was created, but sharing is not available on this device.');
         return;
       }
-
       await Sharing.shareAsync(fileUri, {
         mimeType: 'text/plain',
         dialogTitle: 'Save emergency credentials',
@@ -2120,140 +2353,201 @@ const SummaryPhase: React.FC<SummaryPhaseProps> = ({ summary, onDone, guestPhone
   };
 
   return (
-    <View style={{ flex: 1, alignItems: 'center', paddingVertical: 40 }}>
-      {/* Success checkmark */}
-      <View
-        style={{
-          width: 80,
-          height: 80,
-          borderRadius: 40,
-          backgroundColor: `${theme.colors.success}1A`,
-          justifyContent: 'center',
-          alignItems: 'center',
-          marginBottom: 20,
-          ...theme.shadows.shadowCard,
-        }}
-      >
-        <Animated.View style={{ transform: [{ scale: checkScale }] }}>
-          <CheckCircle2 size={40} color={theme.colors.success} strokeWidth={1.5} />
-        </Animated.View>
+    <View style={{ paddingBottom: 8 }}>
+      {/* Success header */}
+      <View style={{ alignItems: 'center', marginBottom: 28 }}>
+        <View
+          style={{
+            width: 88,
+            height: 88,
+            borderRadius: 44,
+            backgroundColor: theme.colors.successLight,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: 18,
+          }}
+        >
+          <Animated.View style={{ transform: [{ scale: checkScale }] }}>
+            <View
+              style={{
+                width: 60,
+                height: 60,
+                borderRadius: 30,
+                backgroundColor: theme.colors.success,
+                justifyContent: 'center',
+                alignItems: 'center',
+                ...theme.shadows.shadowFloat,
+              }}
+            >
+              <CheckCircle2 size={32} color={theme.colors.white} strokeWidth={2} />
+            </View>
+          </Animated.View>
+        </View>
+
+        <Text style={{ fontSize: 24, fontWeight: 'bold', color: theme.colors.foreground, marginBottom: 6, textAlign: 'center' }}>
+          SOS completed
+        </Text>
+        <Text
+          style={{
+            fontSize: 13.5,
+            color: theme.colors.mutedForeground,
+            textAlign: 'center',
+            paddingHorizontal: 28,
+            lineHeight: 19,
+          }}
+        >
+          Emergency coordination has ended. Here's everything that was arranged.
+        </Text>
       </View>
 
-      <Text
-        style={{
-          fontSize: 24,
-          fontWeight: 'bold',
-          color: theme.colors.foreground,
-          marginBottom: 8,
-          textAlign: 'center',
-        }}
-      >
-        SOS completed
-      </Text>
-
-      <Text
-        style={{
-          fontSize: 13.5,
-          color: theme.colors.mutedForeground,
-          textAlign: 'center',
-          marginBottom: 24,
-          paddingHorizontal: 20,
-          lineHeight: 18,
-        }}
-      >
-        Emergency coordination has ended. Here's a summary of what was arranged for you.
-      </Text>
-
+      {/* Guest credentials — surfaced first since it's time-sensitive */}
       {summary.temporaryPassword && (
         <View
           style={{
-            width: '100%',
             borderRadius: theme.radii.xxxl,
             borderWidth: 1,
-            borderColor: `${theme.colors.emergency}66`,
+            borderColor: `${theme.colors.emergency}4D`,
             backgroundColor: `${theme.colors.emergency}0D`,
             padding: 16,
-            marginBottom: 16,
+            marginBottom: 14,
+            gap: 8,
           }}
         >
-          <Text style={{ fontSize: 13, fontWeight: 'bold', color: theme.colors.foreground, marginBottom: 6 }}>
-            Save your emergency login
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Info size={14} color={theme.colors.emergency} />
+            <Text style={{ fontSize: 12.5, fontWeight: 'bold', color: theme.colors.foreground }}>
+              Save your emergency login
+            </Text>
+          </View>
+          <Text style={{ fontSize: 11.5, color: theme.colors.mutedForeground, lineHeight: 16 }}>
+            This guest session won't be remembered on this device. Use your phone number and this password to log back in.
           </Text>
-          <Text style={{ fontSize: 12, color: theme.colors.mutedForeground, lineHeight: 17 }}>
-            Use your phone number and this password to log in later. This guest session will not be remembered on this device.
-          </Text>
-          <Text style={{ fontSize: 20, fontWeight: 'bold', color: theme.colors.emergency, marginTop: 10 }}>
+          <Text style={{ fontSize: 22, fontWeight: 'bold', color: theme.colors.emergency, letterSpacing: 1 }}>
             {summary.temporaryPassword}
           </Text>
         </View>
       )}
 
-      {/* Summary card */}
+      {/* Section label */}
+      <SectionTitle title="What was arranged" hint={summary.hospitalName} />
+
+      {/* Arrangement summary card */}
       <View
         style={{
-          width: '100%',
+          borderRadius: theme.radii.xxxl,
+          borderWidth: 1,
+          borderColor: `${theme.colors.border}B3`,
+          backgroundColor: theme.colors.card,
+          paddingHorizontal: 16,
+          marginBottom: 14,
+          ...theme.shadows.shadowCard,
+        }}
+      >
+        <SummaryRow label="Hospital" value={summary.hospitalName} icon={MapPin} />
+        <SummaryRow
+          label="Emergency bed"
+          value={summary.bedReserved ? 'Reserved' : 'Not reserved'}
+          icon={BedDouble}
+          positive={summary.bedReserved}
+        />
+        <SummaryRow
+          label="ICU bed"
+          value={summary.icuReserved ? 'Reserved' : 'Not reserved'}
+          icon={Activity}
+          positive={summary.icuReserved}
+        />
+        <SummaryRow
+          label="Ambulance"
+          value={summary.ambulance ? `Dispatched · ${summary.ambulance.callSign}` : 'Not requested'}
+          icon={Truck}
+          positive={!!summary.ambulance}
+        />
+        <SummaryRow
+          label="Blood donors contacted"
+          value={String(summary.donorsContacted)}
+          icon={Droplet}
+          positive={summary.donorsContacted > 0}
+          last
+        />
+      </View>
+
+      {/* AI triage assessment */}
+      <View
+        style={{
           borderRadius: theme.radii.xxxl,
           borderWidth: 1,
           borderColor: `${theme.colors.border}B3`,
           backgroundColor: theme.colors.card,
           padding: 16,
-          marginBottom: 16,
+          marginBottom: 14,
+          gap: 10,
           ...theme.shadows.shadowCard,
         }}
       >
-        <SummaryRow label="Hospital" value={summary.hospitalName} icon={MapPin} />
-        <SummaryRow label="Emergency bed" value={summary.bedReserved ? 'Reserved' : 'Not reserved'} icon={BedDouble} />
-        <SummaryRow label="ICU bed" value={summary.icuReserved ? 'Reserved' : 'Not reserved'} icon={Activity} />
-        <SummaryRow
-          label="Ambulance"
-          value={summary.ambulance ? `Dispatched · ${summary.ambulance.callSign}` : 'Not requested'}
-          icon={Truck}
-        />
-        <SummaryRow label="Blood donors contacted" value={String(summary.donorsContacted)} icon={Droplet} last />
-      </View>
-
-      <View
-        style={{
-          width: '100%',
-          borderRadius: theme.radii.xxxl,
-          borderWidth: 1,
-          borderColor: `${theme.colors.primary}33`,
-          backgroundColor: `${theme.colors.primary}0D`,
-          padding: 16,
-          marginBottom: 16,
-          gap: 10,
-        }}
-      >
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ fontSize: 13, fontWeight: 'bold', color: theme.colors.foreground }}>AI triage assessment</Text>
-          <Text style={{ fontSize: 12, fontWeight: 'bold', color: theme.colors.emergency }}>{summary.severity}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Sparkles size={14} color={theme.colors.primary} />
+            <Text style={{ fontSize: 12.5, fontWeight: 'bold', color: theme.colors.foreground }}>
+              AI triage assessment
+            </Text>
+          </View>
+          <View
+            style={{
+              borderRadius: 999,
+              backgroundColor: severityStyle.bg,
+              paddingHorizontal: 10,
+              paddingVertical: 3,
+            }}
+          >
+            <Text style={{ fontSize: 10.5, fontWeight: 'bold', color: severityStyle.fg, letterSpacing: 0.5 }}>
+              {summary.severity}
+            </Text>
+          </View>
         </View>
-        <Text style={{ fontSize: 12.5, color: theme.colors.foreground, lineHeight: 18 }}>{summary.aiResponse.summary}</Text>
-        <Text style={{ fontSize: 11.5, color: theme.colors.mutedForeground, lineHeight: 16 }}>
-          First aid: {summary.aiResponse.first_aid}
+
+        <Text style={{ fontSize: 13, color: theme.colors.foreground, lineHeight: 19 }}>
+          {summary.aiResponse.summary}
         </Text>
+
+        <View
+          style={{
+            borderTopWidth: 1,
+            borderTopColor: `${theme.colors.border}66`,
+            paddingTop: 10,
+          }}
+        >
+          <Text style={{ fontSize: 11, fontWeight: 'bold', color: theme.colors.mutedForeground, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+            First aid given
+          </Text>
+          <Text style={{ fontSize: 12, color: theme.colors.mutedForeground, lineHeight: 17 }}>
+            {summary.aiResponse.first_aid}
+          </Text>
+        </View>
       </View>
 
+      {/* Credentials actions */}
       {hasTemporaryCredentials && (
         <View
           style={{
-            width: '100%',
             borderRadius: theme.radii.xxxl,
             borderWidth: 1,
-            borderColor: `${theme.colors.primary}33`,
+            borderColor: `${theme.colors.border}B3`,
             backgroundColor: theme.colors.card,
             padding: 16,
-            marginBottom: 16,
+            marginBottom: 14,
             gap: 12,
+            ...theme.shadows.shadowCard,
           }}
         >
           <Text style={{ fontSize: 13, fontWeight: 'bold', color: theme.colors.foreground }}>
             Emergency login details
           </Text>
-          <View style={{ gap: 6 }}>
+          <View style={{ gap: 2 }}>
             <Text style={{ fontSize: 11.5, color: theme.colors.mutedForeground }}>Phone number</Text>
             <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.foreground }}>{guestPhone}</Text>
-            <Text style={{ fontSize: 11.5, color: theme.colors.mutedForeground, marginTop: 4 }}>Temporary password</Text>
+          </View>
+          <View style={{ gap: 2 }}>
+            <Text style={{ fontSize: 11.5, color: theme.colors.mutedForeground }}>Temporary password</Text>
             <Text selectable style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.foreground }}>
               {temporaryPassword}
             </Text>
@@ -2261,14 +2555,33 @@ const SummaryPhase: React.FC<SummaryPhaseProps> = ({ summary, onDone, guestPhone
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <Pressable
               onPress={copyCredentials}
-              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 999, borderWidth: 1, borderColor: theme.colors.border, paddingVertical: 11 }}
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: theme.colors.border,
+                paddingVertical: 11,
+              }}
             >
               <Copy size={15} color={theme.colors.primary} />
               <Text style={{ fontSize: 12, fontWeight: 'bold', color: theme.colors.primary }}>Copy</Text>
             </Pressable>
             <Pressable
               onPress={downloadCredentials}
-              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 999, backgroundColor: theme.colors.primary, paddingVertical: 11 }}
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                borderRadius: 999,
+                backgroundColor: theme.colors.primary,
+                paddingVertical: 11,
+              }}
             >
               <Download size={15} color={theme.colors.primaryForeground} />
               <Text style={{ fontSize: 12, fontWeight: 'bold', color: theme.colors.primaryForeground }}>Download</Text>
@@ -2277,62 +2590,32 @@ const SummaryPhase: React.FC<SummaryPhaseProps> = ({ summary, onDone, guestPhone
         </View>
       )}
 
-      {/* Coordination fee */}
+      {/* Coordination fee — flat row layout, no nested animated wrappers */}
       <View
         style={{
-          width: '100%',
           borderRadius: theme.radii.xxxl,
           borderWidth: 1,
           borderColor: `${theme.colors.emergency}33`,
           backgroundColor: `${theme.colors.emergency}0D`,
           padding: 16,
-          marginBottom: 20,
-          ...theme.shadows.shadowCard,
+          marginBottom: 24,
         }}
       >
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 10,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 13,
-              fontWeight: 'bold',
-              color: theme.colors.foreground,
-            }}
-          >
-            Coordination fee
-          </Text>
-          <Text
-            style={{
-              fontSize: 19,
-              fontWeight: 'bold',
-              color: theme.colors.emergency,
-            }}
-          >
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <Text style={{ fontSize: 13, fontWeight: 'bold', color: theme.colors.foreground }}>Coordination fee</Text>
+          <Text style={{ fontSize: 19, fontWeight: 'bold', color: theme.colors.emergency }}>
             BDT {SOS_COORDINATION_FEE_BDT.toLocaleString()}
           </Text>
         </View>
-        <Text
-          style={{
-            fontSize: 11.5,
-            color: theme.colors.mutedForeground,
-            lineHeight: 16,
-          }}
-        >
+        <Text style={{ fontSize: 11.5, color: theme.colors.mutedForeground, lineHeight: 16 }}>
           This fee will be added to your bill at {summary.hospitalName}. No separate payment is needed right now.
         </Text>
       </View>
 
-      {/* Done button */}
+      {/* Done */}
       <TouchableOpacity
         onPress={onDone}
         style={{
-          width: '100%',
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
@@ -2344,13 +2627,7 @@ const SummaryPhase: React.FC<SummaryPhaseProps> = ({ summary, onDone, guestPhone
         }}
         activeOpacity={0.8}
       >
-        <Text
-          style={{
-            fontSize: 15,
-            fontWeight: 'bold',
-            color: theme.colors.primaryForeground,
-          }}
-        >
+        <Text style={{ fontSize: 15, fontWeight: 'bold', color: theme.colors.primaryForeground }}>
           Back to home
         </Text>
       </TouchableOpacity>
@@ -2362,38 +2639,43 @@ interface SummaryRowProps {
   label: string;
   value: string;
   icon: any;
+  positive?: boolean;
   last?: boolean;
 }
 
-const SummaryRow: React.FC<SummaryRowProps> = ({ label, value, icon: Icon, last }) => {
+const SummaryRow: React.FC<SummaryRowProps> = ({ label, value, icon: Icon, positive, last }) => {
   return (
     <View
       style={{
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: 10,
+        paddingVertical: 12,
         borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: `${theme.colors.border}99`,
+        borderBottomColor: `${theme.colors.border}80`,
         gap: 12,
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <Icon size={14} color={theme.colors.mutedForeground} strokeWidth={2} />
-        <Text
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+        <View
           style={{
-            fontSize: 12.5,
-            color: theme.colors.mutedForeground,
+            width: 26,
+            height: 26,
+            borderRadius: 13,
+            backgroundColor: theme.colors.surfaceVariant,
+            justifyContent: 'center',
+            alignItems: 'center',
           }}
         >
-          {label}
-        </Text>
+          <Icon size={13} color={theme.colors.mutedForeground} strokeWidth={2} />
+        </View>
+        <Text style={{ fontSize: 12.5, color: theme.colors.mutedForeground }}>{label}</Text>
       </View>
       <Text
         style={{
           fontSize: 12.5,
           fontWeight: 'bold',
-          color: theme.colors.foreground,
+          color: positive ? theme.colors.success : theme.colors.foreground,
           textAlign: 'right',
         }}
       >
@@ -2402,3 +2684,70 @@ const SummaryRow: React.FC<SummaryRowProps> = ({ label, value, icon: Icon, last 
     </View>
   );
 };
+
+const ActiveResponsePhase: React.FC<{
+  hospital?: Hospital;
+  reserved: { bed?: boolean; icu?: boolean; ambulance?: string };
+  eventId: string | null;
+  selectedDonor: RankedDonor | null;
+  bloodRequired: boolean | null;
+  onComplete: () => void;
+}> = ({ hospital, reserved, eventId, selectedDonor, bloodRequired, onComplete }) => {
+  const [reservation, setReservation] = useState<Awaited<ReturnType<typeof getReservations>>[number] | undefined>();
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const loadReservation = async () => {
+      if (!eventId) return;
+      try {
+        const [records, payments] = await Promise.all([getReservations(), getPayments()]);
+        const nextReservation = records.find((record) => record.medical_event_id === eventId);
+        if (active) {
+          setReservation(nextReservation);
+          setPaymentStatus(nextReservation ? payments.find((payment) => payment.reservation_id === nextReservation.id)?.payment_status ?? null : null);
+        }
+      } catch {
+        // The response view still shows the locally confirmed arrangement.
+      }
+    };
+    void loadReservation();
+    const timer = setInterval(() => void loadReservation(), 5000);
+    return () => { active = false; clearInterval(timer); };
+  }, [eventId]);
+
+  const ambulance = ambulances.find((item) => item.id === reserved.ambulance) ?? ambulances[0];
+  const isPaid = paymentStatus?.toUpperCase() === 'PAID';
+  const openDirections = () => {
+    if (!hospital?.address) return;
+    void Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(hospital.address)}`);
+  };
+
+  return <View style={{ gap: 14 }}>
+    <StepHeader step="Active SOS" title="Help is on the way" subtitle="Keep this screen open for the latest ambulance, hospital, and admission details." />
+    <View style={{ borderRadius: theme.radii.xxxl, backgroundColor: `${theme.colors.emergency}12`, borderWidth: 1, borderColor: `${theme.colors.emergency}44`, padding: 16, gap: 9 }}>
+      <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.foreground }}>{ambulance.callSign} · {ambulance.driver}</Text>
+      <Text style={{ fontSize: 12.5, color: theme.colors.mutedForeground }}>{ambulance.phone} · {ambulance.etaMin} min ETA · {ambulance.reg}</Text>
+      <CallButton label={`Call driver · ${ambulance.phone}`} phone={ambulance.phone} tone="emergency" />
+    </View>
+    <View style={{ borderRadius: theme.radii.xxxl, backgroundColor: theme.colors.card, padding: 16, gap: 9, ...theme.shadows.shadowCard }}>
+      <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.foreground }}>{hospital?.name ?? 'Confirmed hospital'}</Text>
+      <Text style={{ fontSize: 12.5, lineHeight: 18, color: theme.colors.mutedForeground }}>{hospital?.address ?? 'Hospital location unavailable'}</Text>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        <CallButton label={`Call hospital · ${hospital?.phone ?? 'Unavailable'}`} phone={hospital?.phone ?? ''} />
+        <TouchableOpacity onPress={openDirections} disabled={!hospital?.address} style={{ flex: 1, borderRadius: 999, borderWidth: 1, borderColor: theme.colors.primary, paddingVertical: 12, alignItems: 'center', opacity: hospital?.address ? 1 : 0.45 }}>
+          <Text style={{ fontSize: 12, fontWeight: 'bold', color: theme.colors.primary }}>Google Maps</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={{ borderTopWidth: 1, borderTopColor: `${theme.colors.border}99`, paddingTop: 10, gap: 4 }}>
+        <Text style={{ fontSize: 12.5, color: theme.colors.foreground }}>Reserved {reservation?.reservation_mode === 'ICU' || reserved.icu ? 'ICU' : 'emergency bed'}: <Text style={{ fontWeight: 'bold' }}>{reservation?.bed_number ?? 'Confirmed'}</Text></Text>
+        <Text style={{ fontSize: 11.5, color: theme.colors.mutedForeground }}>{reservation?.ward_name ?? 'Admission reservation confirmed'}</Text>
+      </View>
+    </View>
+    {bloodRequired && selectedDonor && <View style={{ borderRadius: theme.radii.xxxl, backgroundColor: theme.colors.card, padding: 16, gap: 7, ...theme.shadows.shadowCard }}><Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.foreground }}>Selected blood donor</Text><Text style={{ fontSize: 13, color: theme.colors.foreground }}>{selectedDonor.name} · {selectedDonor.group}</Text><Text style={{ fontSize: 12, color: theme.colors.mutedForeground }}>{selectedDonor.phone} · {selectedDonor.distanceKm} km from hospital</Text><CallButton label={`Call donor · ${selectedDonor.phone}`} phone={selectedDonor.phone} /></View>}
+    <View style={{ borderRadius: theme.radii.xxl, backgroundColor: theme.colors.surfaceVariant, padding: 14 }}><Text style={{ fontSize: 12, lineHeight: 17, color: theme.colors.mutedForeground }}>{isPaid ? 'Payment received. You can now complete the SOS after the patient has received care.' : 'The hospital bill must be paid before the SOS can be completed. This screen checks payment status automatically.'}</Text></View>
+    <PrimaryStepButton label={isPaid ? 'Complete SOS' : 'Waiting for payment'} disabled={!isPaid} onPress={onComplete} />
+  </View>;
+};
+
+const SOS_CHECKPOINT_PREFIX = 'medlink.sos.checkpoint.';

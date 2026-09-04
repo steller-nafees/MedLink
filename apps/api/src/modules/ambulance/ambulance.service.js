@@ -2,6 +2,7 @@ const {
     getAllAmbulances,
     getNearbyAmbulances,
     getAmbulanceById,
+    getAmbulanceForUser,
 } = require("./ambulance.repository");
 
 const getAmbulanceProviders = async ({ limit, offset, sortBy }) => {
@@ -33,8 +34,21 @@ const getAmbulanceProviderDetails = async (ambulanceId) => {
     return ambulance;
 };
 
+const getAmbulanceProviderForUser = async (userId) => {
+    const ambulance = await getAmbulanceForUser(userId);
+
+    if (!ambulance) {
+        const error = new Error("No ambulance provider is assigned to this account");
+        error.statusCode = 404;
+        throw error;
+    }
+
+    return ambulance;
+};
+
 module.exports = {
     getAmbulanceProviders,
     getAmbulanceProvidersNearby,
     getAmbulanceProviderDetails,
+    getAmbulanceProviderForUser,
 };

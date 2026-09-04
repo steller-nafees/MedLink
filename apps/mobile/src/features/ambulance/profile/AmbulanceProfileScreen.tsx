@@ -1,26 +1,111 @@
-import React, { useState } from "react";
-import { StyleSheet, View, Text, ScrollView, TextInput, Pressable, Linking } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Alert, StyleSheet, View, Text, ScrollView, Pressable, Linking, TextInput, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ambulance, Phone, Pencil, User, Check, X, ShieldCheck, LogOut } from "lucide-react-native";
+import { Phone, User, ShieldCheck, LogOut, Pencil, Save, Trash2 } from "lucide-react-native";
 import { useRouter } from "expo-router";
 
 import { DriverShell } from "../components/DriverShell";
 import { DriverHeader } from "../components/DriverHeader";
-import { StatusBadge } from "../../../components/ui/StatusBadge";
 import { BigButton } from "../../../components/ui/BigButton";
 import { useLang } from "../context/DriverLangContext";
 import { mockData } from "../data/mockData";
 import { theme } from "../../../theme";
 import { clearAuthSession } from "../../../services/auth";
+import { getCurrentUserId } from "../../../services/auth";
+import {
+  deleteMyAccount,
+  getMyAmbulanceProvider,
+  updateAmbulanceProvider,
+  type AmbulanceProvider,
+} from "../../../services/ambulance";
 
 export function AmbulanceProfileScreen() {
   const { t, lang } = useLang();
-  const en = lang === "en";
   const router = useRouter();
 
-  const [driverName, setDriverName] = useState(mockData.driverName[lang]);
+  const [provider, setProvider] = useState<AmbulanceProvider | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [driverName, setDriverName] = useState("");
   const [driverPhone, setDriverPhone] = useState(mockData.driverPhone);
-  const [editingDriver, setEditingDriver] = useState(false);
+  const [providerName, setProviderName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    getMyAmbulanceProvider()
+      .then((assignedProvider) => {
+        setProvider(assignedProvider);
+        setDriverName(mockData.driverName[lang]);
+        setProviderName(assignedProvider.provider_name ?? "");
+        setPhone(assignedProvider.phone ?? "");
+        setAddress(assignedProvider.address ?? "");
+      })
+      .catch((error: unknown) => {
+        setMessage(error instanceof Error ? error.message : "Unable to load your profile.");
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const saveChanges = async () => {
+    if (!provider) {
+      setMessage("Ambulance provider information is not available yet.");
+      return;
+    }
+
+    if (!providerName.trim() || !phone.trim() || !address.trim()) {
+      setMessage("Enter a provider name, phone number, and address.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+    try {
+      const updatedProvider = await updateAmbulanceProvider(provider.id, {
+        providerName: providerName.trim(),
+        phone: phone.trim(),
+        address: address.trim(),
+        latitude: provider.latitude ?? 0,
+        longitude: provider.longitude ?? 0,
+        isActive: provider.is_active,
+      });
+      setProvider(updatedProvider);
+
+      setEditing(false);
+      setMessage("Provider information updated successfully.");
+    } catch (error: unknown) {
+      setMessage(error instanceof Error ? error.message : "Unable to update your information.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      setMessage("Your account identifier is unavailable.");
+      return;
+    }
+
+    Alert.alert("Delete account", "This permanently deletes your account. Continue?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deleteMyAccount(userId);
+            await clearAuthSession();
+            router.replace("/(auth)/login");
+          } catch (error: unknown) {
+            setMessage(error instanceof Error ? error.message : "Unable to delete your account.");
+          }
+        },
+      },
+    ]);
+  };
 
   const handleCall = () => {
     Linking.openURL(`tel:${driverPhone}`);
@@ -49,108 +134,33 @@ export function AmbulanceProfileScreen() {
             </View>
           </View>
 
-          <Text style={styles.driverName}>{driverName}</Text>
+          <Text style={styles.driverName}>{driverName || mockData.driverName[lang]}</Text>
           <Pressable onPress={handleCall} style={styles.phoneButton}>
             <Phone size={16} color={theme.colors.primary} strokeWidth={2.3} />
             <Text style={styles.phoneText}>{driverPhone}</Text>
           </Pressable>
 
-          <View style={styles.editProfileBtnWrapper}>
-            <Pressable
-              style={styles.editProfileBtn}
-              onPress={() => setEditingDriver(true)}
-            >
-              <Pencil size={16} color={theme.colors.primary} strokeWidth={2.4} />
-              <Text style={styles.editProfileBtnText}>{t("editProfile")}</Text>
-            </Pressable>
-          </View>
         </View>
 
         {/* Driver information */}
+
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>{t("driverInfo")}</Text>
+          <Text style={styles.sectionTitle}>{t("provider")}</Text>
           <View style={styles.card}>
-            {editingDriver ? (
-              <View style={styles.editForm}>
-                <Field
-                  label={t("fullName")}
-                  value={driverName}
-                  onChange={setDriverName}
-                  placeholder={t("fullName")}
-                />
-                <Field
-                  label={t("phone")}
-                  value={driverPhone}
-                  onChange={setDriverPhone}
-                  placeholder={t("phone")}
-                  type="tel"
-                />
-                <View style={styles.editActions}>
-                  <Pressable
-                    style={[styles.actionBtn, styles.actionBtnCancel]}
-                    onPress={() => setEditingDriver(false)}
-                  >
-                    <X size={16} color={theme.colors.foreground} strokeWidth={2.4} />
-                    <Text style={styles.actionBtnCancelText}>{t("cancel")}</Text>
-                  </Pressable>
-                  <Pressable
-                    style={[styles.actionBtn, styles.actionBtnSave]}
-                    onPress={() => setEditingDriver(false)}
-                  >
-                    <LinearGradient
-                      colors={[theme.colors.primary, theme.colors.primary]}
-                      style={styles.actionBtnSaveGradient}
-                    >
-                      <Check size={16} color={theme.colors.white} strokeWidth={2.4} />
-                      <Text style={styles.actionBtnSaveText}>{t("save")}</Text>
-                    </LinearGradient>
-                  </Pressable>
-                </View>
-              </View>
-            ) : (
-              <>
-                <ReadOnlyRow label={t("fullName")} value={driverName} />
-                <View style={styles.divider} />
-                <ReadOnlyRow label={t("phone")} value={driverPhone} />
-                <Pressable
-                  style={styles.editInfoBtn}
-                  onPress={() => setEditingDriver(true)}
-                >
-                  <Pencil size={16} color={theme.colors.foreground} strokeWidth={2.4} />
-                  <Text style={styles.editInfoBtnText}>{t("editInformation")}</Text>
-                </Pressable>
-              </>
-            )}
-          </View>
-        </View>
-
-        {/* Ambulance information */}
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>{t("ambulanceInfo")}</Text>
-          <View style={styles.card}>
-            {/* Registration plate */}
-            <View style={styles.regPlate}>
-              <Ambulance size={24} color={theme.colors.success} strokeWidth={2.2} />
-              <View style={styles.regContent}>
-                <Text style={styles.regLabel}>{t("vehicleRegistration")}</Text>
-                <Text style={styles.regValue}>{mockData.ambulanceReg}</Text>
-              </View>
-            </View>
-
-            <ReadOnlyRow
-              label={t("ambulanceType")}
-              value={`${mockData.ambulanceType[lang]} · ${mockData.ambulanceTypeLabel[lang]}`}
-            />
-            <View style={styles.divider} />
-            <ReadOnlyRow label={t("provider")} value={mockData.ambulanceProvider[lang]} />
-            <View style={styles.divider} />
-
-            <View style={styles.statusRow}>
-              <Text style={styles.statusLabel}>{t("vehicleStatus")}</Text>
-              <StatusBadge tone="success" dot>
-                {t("active")}
-              </StatusBadge>
-            </View>
+            {editing ? <>
+              <TextInput value={providerName} onChangeText={setProviderName} style={styles.input} placeholder="Provider name" />
+              <TextInput value={phone} onChangeText={setPhone} style={styles.input} keyboardType="phone-pad" placeholder="Provider phone number" />
+              <TextInput value={address} onChangeText={setAddress} style={styles.input} placeholder="Address" multiline />
+            </> : <>
+              <ReadOnlyRow label={t("provider")} value={providerName || "Not available"} />
+              <View style={styles.divider} />
+              <ReadOnlyRow label={t("address")} value={address || "Not available"} />
+            </>}
+            <Pressable style={styles.editButton} onPress={editing ? saveChanges : () => setEditing(true)} disabled={saving}>
+              {saving ? <ActivityIndicator color={theme.colors.primary} /> : editing ? <Save size={16} color={theme.colors.primary} /> : <Pencil size={16} color={theme.colors.primary} />}
+              <Text style={styles.editButtonText}>{saving ? "Saving..." : editing ? "Save changes" : "Edit information"}</Text>
+            </Pressable>
+            {message ? <Text style={styles.message}>{message}</Text> : null}
           </View>
         </View>
 
@@ -165,6 +175,9 @@ export function AmbulanceProfileScreen() {
             }}
           >
             {t("logout")}
+          </BigButton>
+          <BigButton icon={Trash2} variant="outline" onClick={handleDeleteAccount} style={styles.deleteButton}>
+            Delete account
           </BigButton>
         </View>
       </ScrollView>
@@ -181,34 +194,6 @@ function ReadOnlyRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-  type?: string;
-}) {
-  return (
-    <View style={styles.fieldContainer}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput
-        style={styles.input}
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor={theme.colors.mutedForeground}
-        keyboardType={type === "tel" ? "phone-pad" : "default"}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -218,6 +203,22 @@ const styles = StyleSheet.create({
   },
   section: {
     marginHorizontal: 20,
+  },
+  sectionTitle: {
+    marginBottom: 10,
+    fontSize: 13,
+    fontWeight: "800",
+    color: theme.colors.mutedForeground,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
+  card: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    padding: 16,
+    ...theme.shadows.shadowCard,
   },
   profileHeader: {
     alignItems: "center",
@@ -277,23 +278,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: theme.colors.primary,
   },
-  editProfileBtnWrapper: {
-    marginTop: 16,
-  },
-  editProfileBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    minHeight: 44,
-    paddingHorizontal: 20,
-    borderRadius: 22,
-    backgroundColor: theme.colors.primary + "1A", // bg-primary-container approx
-  },
-  editProfileBtnText: {
-    fontSize: 13.5,
-    fontWeight: "800",
-    color: theme.colors.primary,
-  },
   sectionContainer: {
     marginHorizontal: 20,
     marginTop: 20,
@@ -301,86 +285,6 @@ const styles = StyleSheet.create({
   logoutContainer: {
     marginTop: 8,
     paddingBottom: 24,
-  },
-  sectionTitle: {
-    marginBottom: 10,
-    fontSize: 12,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 1, // tracking-widest approx
-    color: theme.colors.mutedForeground,
-  },
-  card: {
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: "rgba(202, 212, 224, 0.7)",
-    backgroundColor: theme.colors.surface,
-    padding: 20,
-    ...theme.shadows.shadowCard,
-  },
-  editForm: {
-    gap: 16,
-  },
-  fieldContainer: {
-    gap: 6,
-  },
-  fieldLabel: {
-    fontSize: 12,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    color: theme.colors.mutedForeground,
-  },
-  input: {
-    minHeight: 52,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-    paddingHorizontal: 16,
-    fontSize: 15.5,
-    fontWeight: "800",
-    color: theme.colors.foreground,
-  },
-  editActions: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 4,
-  },
-  actionBtn: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: 16,
-  },
-  actionBtnCancel: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-  },
-  actionBtnCancelText: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: theme.colors.foreground,
-  },
-  actionBtnSave: {
-    overflow: "hidden",
-    ...theme.shadows.shadowFloat,
-  },
-  actionBtnSaveGradient: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  actionBtnSaveText: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: theme.colors.white,
   },
   readOnlyRow: {
     paddingVertical: 4,
@@ -398,70 +302,49 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: theme.colors.foreground,
   },
+  input: {
+    minHeight: 50,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 10,
+    fontSize: 15,
+    color: theme.colors.foreground,
+  },
+  editButton: {
+    minHeight: 44,
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  editButtonText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: theme.colors.primary,
+  },
+  message: {
+    marginTop: 10,
+    fontSize: 12,
+    fontWeight: "600",
+    color: theme.colors.mutedForeground,
+    textAlign: "center",
+  },
+  deleteButton: {
+    marginTop: 12,
+    borderColor: theme.colors.emergency,
+  },
   divider: {
     height: 1,
     backgroundColor: theme.colors.border,
     marginVertical: 12,
     opacity: 0.6,
-  },
-  editInfoBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    minHeight: 48,
-    marginTop: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(202, 212, 224, 0.7)",
-    backgroundColor: theme.colors.surface,
-  },
-  editInfoBtnText: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: theme.colors.foreground,
-  },
-  regPlate: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.success + "59", // ~35% opacity
-    backgroundColor: theme.colors.success + "0D", // ~5% opacity
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  regContent: {
-    flex: 1,
-  },
-  regLabel: {
-    fontSize: 11,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 2,
-    color: theme.colors.success, // success/80 approx
-    opacity: 0.8,
-  },
-  regValue: {
-    fontSize: 17,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    color: theme.colors.foreground,
-  },
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 4,
-  },
-  statusLabel: {
-    fontSize: 12,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    color: theme.colors.mutedForeground,
   },
 });

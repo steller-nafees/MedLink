@@ -1,6 +1,8 @@
 const express = require("express");
 
 const validate = require("../../shared/middlewares/validate.middleware");
+const authenticate = require("../../shared/middlewares/auth.middleware");
+const authorize = require("../../shared/middlewares/authorize.middleware");
 const {
     ambulanceListSchema,
     nearbyAmbulanceSchema,
@@ -10,6 +12,7 @@ const {
     getAmbulances,
     getNearbyAmbulances,
     getAmbulanceDetails,
+    getMyAmbulance,
 } = require("./ambulance.controller");
 
 const router = express.Router();
@@ -24,6 +27,13 @@ router.get(
     "/nearby",
     validate(nearbyAmbulanceSchema, "query"),
     getNearbyAmbulances
+);
+
+router.get(
+    "/me",
+    authenticate,
+    authorize("AMBULANCE_ADMIN"),
+    getMyAmbulance
 );
 
 router.get(

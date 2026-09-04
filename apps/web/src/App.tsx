@@ -13,7 +13,6 @@ import { AdminVerificationPage } from "@/features/admin/verification/AdminVerifi
 import { AdminRevenuePage } from "@/features/admin/revenue/AdminRevenuePage";
 import { AdminAuditPage } from "@/features/admin/audit/AdminAuditPage";
 import { AdminHealthPage } from "@/features/admin/health/AdminHealthPage";
-import { AdminNotificationsPage } from "@/features/admin/notifications/AdminNotificationsPage";
 
 import { HospitalDashboardPage } from "@/features/hospital/dashboard/HospitalDashboardPage";
 import { HospitalEmergenciesPage } from "@/features/hospital/emergencies/HospitalEmergenciesPage";
@@ -61,10 +60,6 @@ function AdminPage() {
         />
         <Route path="revenue" element={<AdminRevenuePage />} />
         <Route path="audit" element={<AdminAuditPage />} />
-        <Route
-          path="notifications"
-          element={<AdminNotificationsPage />}
-        />
         <Route path="health" element={<AdminHealthPage />} />
       </Routes>
     </AdminRoute>

@@ -16,6 +16,7 @@ router.get("/dashboard/active-cases", ...adminOnly, controller.getActiveCases);
 router.put("/dashboard/active-cases/:eventId/approve", ...adminOnly, controller.approveEmergencyCase);
 router.put("/dashboard/active-cases/:eventId/assign-bed", ...adminOnly, validate(assignBedSchema), controller.assignBedToEvent);
 router.put("/dashboard/active-cases/:eventId/complete", ...adminOnly, controller.completeEmergencyCase);
+router.put("/dashboard/active-cases/:eventId/redirect", ...adminOnly, controller.redirectEmergencyCase);
 router.get("/reservations", ...adminOnly, controller.getReservations);
 router.get("/reservations/:reservationId", ...adminOnly, controller.getReservationById);
 router.put("/reservations/:reservationId/approve", ...adminOnly, controller.approveReservation);
