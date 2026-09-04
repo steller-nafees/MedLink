@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { Building2, MapPin, Plus, X, Pencil, Shield, FileText, Globe, MessageSquare, Phone } from "lucide-react";
+import { Building2, Check, MapPin, Plus, X, Pencil, Shield, FileText, Globe, MessageSquare, Phone } from "lucide-react";
 import { PageHead } from "@/shared/components/ui/ReservationPrimitives";
 import { SearchInput } from "@/shared/components/ui/SearchInput";
 import { platformService } from "@/services/platform.service";
@@ -25,6 +25,45 @@ function coordinateValue(value: unknown, fallback: number): number {
   return Number.isFinite(coordinate) ? coordinate : fallback;
 }
 
+function formatBangladeshPhone(value: string): string {
+  const digits = value.replace(/\D/g, "").replace(/^880/, "").replace(/^0/, "").slice(0, 10);
+  return digits ? `+880 ${digits}` : "";
+}
+
+function passwordStrength(password: string): { score: number; label: string } {
+  const checks = [
+    password.length >= 8,
+    /[a-z]/.test(password),
+    /[A-Z]/.test(password),
+    /\d/.test(password),
+    /[^A-Za-z0-9]/.test(password),
+  ];
+  const score = checks.filter(Boolean).length;
+  const label = score <= 2 ? "Weak" : score <= 4 ? "Good" : "Strong";
+  return { score, label };
+}
+
+type HospitalFormField = "hospitalName" | "licenseNumber" | "email" | "phone" | "address" | "adminEmail" | "adminPhone" | "adminPassword";
+
+function hospitalFieldError(field: HospitalFormField, formData: { hospitalName: string; licenseNumber: string; email: string; phone: string; address: string; adminEmail: string; adminPhone: string; adminPassword: string }, isCreate: boolean): string {
+  const value = formData[field].trim();
+  if (["hospitalName", "licenseNumber", "email", "phone", "address"].includes(field) && !value) return "This field is required.";
+  if (field === "licenseNumber" && !/^\d{9}$/.test(value)) return "License number must contain exactly 9 digits.";
+  if ((field === "phone" || field === "adminPhone") && isCreate) {
+    const digits = value.replace(/\D/g, "").replace(/^880/, "").replace(/^0/, "");
+    if (!/^\d{10}$/.test(digits)) return "Enter 10 digits after +880.";
+  }
+  if ((field === "email" || field === "adminEmail") && value && !/^\S+@\S+\.\S+$/.test(value)) return "Enter a valid email address.";
+  if (field === "adminEmail" && isCreate && !value) return "This field is required.";
+  if (field === "adminPhone" && isCreate && !value) return "This field is required.";
+  if (field === "adminPassword" && isCreate && passwordStrength(value).score < 4) return "Use 8+ characters with uppercase, lowercase, number, and symbol.";
+  return "";
+}
+
+function FieldError({ message }: { message: string }) {
+  return message ? <span className="hm-field-error" role="alert">{message}</span> : null;
+}
+
 export function AdminHospitalsPage() {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<(typeof filters)[number]>("all");
@@ -38,6 +77,9 @@ export function AdminHospitalsPage() {
   const [modalMode, setModalMode] = useState<"create" | "edit" | "view">("create");
   const [detailTab, setDetailTab] = useState<"hospital" | "admin">("hospital");
   const [isSaving, setIsSaving] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [touchedFields, setTouchedFields] = useState<Partial<Record<HospitalFormField, boolean>>>({});
+  const [isLocating, setIsLocating] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -97,12 +139,26 @@ export function AdminHospitalsPage() {
     setEditingHospital(null);
     setModalMode("create");
     setDetailTab("hospital");
+    setFormError("");
+    setTouchedFields({});
     setFormData({
       hospitalName: "", licenseNumber: "", email: "", phone: "", website: "", address: "",
       latitude: 23.8103, longitude: 90.4125, hospitalStatus: "OPEN", description: "",
       adminEmail: "", adminPhone: "", adminPassword: ""
     });
     setIsModalOpen(true);
+
+    if (navigator.geolocation) {
+      setIsLocating(true);
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => {
+          setFormData((current) => ({ ...current, latitude: coords.latitude, longitude: coords.longitude }));
+          setIsLocating(false);
+        },
+        () => setIsLocating(false),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+      );
+    }
   };
 
   const handleOpenView = (h: HospitalAccount) => {
@@ -151,6 +207,21 @@ export function AdminHospitalsPage() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError("");
+    if (modalMode === "create") {
+      setTouchedFields({ hospitalName: true, licenseNumber: true, email: true, phone: true, address: true, adminEmail: true, adminPhone: true, adminPassword: true });
+      const fields: HospitalFormField[] = ["hospitalName", "licenseNumber", "email", "phone", "address", "adminEmail", "adminPhone", "adminPassword"];
+      const firstError = fields.map((field) => hospitalFieldError(field, formData, true)).find(Boolean);
+      if (firstError) {
+        setFormError("Please correct the highlighted fields.");
+        return;
+      }
+    }
+
+    if (modalMode === "create") {
+      setFormError("");
+    }
+
     setIsSaving(true);
 
     try {
@@ -218,6 +289,8 @@ export function AdminHospitalsPage() {
 
   const currentStatus = statusMeta[formData.hospitalStatus] ?? { label: formData.hospitalStatus, tone: "warn" };
   const isReadOnly = modalMode === "view";
+  const markFieldTouched = (field: HospitalFormField) => setTouchedFields((current) => ({ ...current, [field]: true }));
+  const fieldError = (field: HospitalFormField) => touchedFields[field] ? hospitalFieldError(field, formData, modalMode === "create") : "";
 
   return (
     <main className="hospital-requests">
@@ -410,7 +483,7 @@ export function AdminHospitalsPage() {
 
             {/* Body */}
             <div className="hm-body">
-              <form id="hospital-form" onSubmit={handleSave}>
+              <form id="hospital-form" autoComplete="off" noValidate={modalMode === "create"} onSubmit={handleSave}>
 
                 {detailTab === "hospital" && (
                   <>
@@ -492,19 +565,23 @@ export function AdminHospitalsPage() {
                         <div className="hm-group">
                           <div className="hm-field">
                             <label htmlFor="hm-name">Hospital name</label>
-                            <input id="hm-name" required type="text" placeholder="Evercare Hospital" value={formData.hospitalName} onChange={e => setFormData({ ...formData, hospitalName: e.target.value })} />
+                            <input id="hm-name" required type="text" placeholder="Evercare Hospital" value={formData.hospitalName} onBlur={() => markFieldTouched("hospitalName")} onChange={e => setFormData({ ...formData, hospitalName: e.target.value })} />
+                            <FieldError message={fieldError("hospitalName")} />
                           </div>
                           <div className="hm-field">
                             <label htmlFor="hm-license">License number</label>
-                            <input id="hm-license" required type="text" placeholder="1111100000" value={formData.licenseNumber} onChange={e => setFormData({ ...formData, licenseNumber: e.target.value })} />
+                            <input id="hm-license" name="hospital-license-number" autoComplete="off" spellCheck={false} required type="text" inputMode="numeric" maxLength={9} pattern="[0-9]{9}" placeholder="123456789" value={formData.licenseNumber} onBlur={() => markFieldTouched("licenseNumber")} onChange={e => setFormData({ ...formData, licenseNumber: e.target.value.replace(/\D/g, "").slice(0, 9) })} />
+                            <FieldError message={fieldError("licenseNumber")} />
                           </div>
                           <div className="hm-field">
                             <label htmlFor="hm-email">Email</label>
-                            <input id="hm-email" required type="email" placeholder="contact@hospital.com" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                            <input id="hm-email" required type="email" placeholder="contact@hospital.com" value={formData.email} onBlur={() => markFieldTouched("email")} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                            <FieldError message={fieldError("email")} />
                           </div>
                           <div className="hm-field">
                             <label htmlFor="hm-phone">Phone</label>
-                            <input id="hm-phone" required type="text" placeholder="+880 1XXX-XXXXXX" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+                            <input id="hm-phone" name="hospital-phone" autoComplete="tel" required type="tel" inputMode="numeric" placeholder="+880 1XXXXXXXXX" value={formData.phone} onBlur={() => markFieldTouched("phone")} onChange={e => setFormData({ ...formData, phone: formatBangladeshPhone(e.target.value) })} />
+                            <FieldError message={fieldError("phone")} />
                           </div>
                           <div className="hm-field">
                             <label htmlFor="hm-website">Website</label>
@@ -515,15 +592,16 @@ export function AdminHospitalsPage() {
                         <div className="hm-group">
                           <div className="hm-field">
                             <label htmlFor="hm-address">Address</label>
-                            <input id="hm-address" required type="text" placeholder="Street, area, city" value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} />
+                            <input id="hm-address" required type="text" placeholder="Street, area, city" value={formData.address} onBlur={() => markFieldTouched("address")} onChange={e => setFormData({ ...formData, address: e.target.value })} />
+                            <FieldError message={fieldError("address")} />
                           </div>
                           <div className="hm-field-split">
                             <div className="hm-field">
-                              <label htmlFor="hm-lat">Latitude</label>
+                              <label htmlFor="hm-lat">Latitude {isLocating && <span className="hm-field-hint">Detecting location…</span>}</label>
                               <input id="hm-lat" required type="number" step="any" min="-90" max="90" value={formData.latitude} onChange={e => setFormData({ ...formData, latitude: Number(e.target.value) })} />
                             </div>
                             <div className="hm-field">
-                              <label htmlFor="hm-lng">Longitude</label>
+                              <label htmlFor="hm-lng">Longitude {isLocating && <span className="hm-field-hint">Detecting location…</span>}</label>
                               <input id="hm-lng" required type="number" step="any" min="-180" max="180" value={formData.longitude} onChange={e => setFormData({ ...formData, longitude: Number(e.target.value) })} />
                             </div>
                           </div>
@@ -582,7 +660,7 @@ export function AdminHospitalsPage() {
                         </div>
                         <div className="hm-field">
                           <label htmlFor="hm-admin-phone">Admin phone</label>
-                          <input id="hm-admin-phone" type="text" placeholder="+880 1XXX-XXXXXX" value={formData.adminPhone} onChange={e => setFormData({ ...formData, adminPhone: e.target.value })} />
+                          <input id="hm-admin-phone" type="tel" inputMode="numeric" placeholder="+880 1XXXXXXXXX" value={formData.adminPhone} onChange={e => setFormData({ ...formData, adminPhone: formatBangladeshPhone(e.target.value) })} />
                         </div>
                         <div className="hm-field">
                           <label htmlFor="hm-admin-pass">Admin password</label>
@@ -605,19 +683,37 @@ export function AdminHospitalsPage() {
                     </div>
                     <div className="hm-field">
                       <label htmlFor="hm-c-admin-email">Admin email</label>
-                      <input id="hm-c-admin-email" required type="email" placeholder="admin@hospital.com" value={formData.adminEmail} onChange={e => setFormData({ ...formData, adminEmail: e.target.value })} />
+                      <input id="hm-c-admin-email" required type="email" placeholder="admin@hospital.com" value={formData.adminEmail} onBlur={() => markFieldTouched("adminEmail")} onChange={e => setFormData({ ...formData, adminEmail: e.target.value })} />
+                      <FieldError message={fieldError("adminEmail")} />
                     </div>
                     <div className="hm-field">
                       <label htmlFor="hm-c-admin-phone">Admin phone</label>
-                      <input id="hm-c-admin-phone" required type="text" placeholder="+880 1XXX-XXXXXX" value={formData.adminPhone} onChange={e => setFormData({ ...formData, adminPhone: e.target.value })} />
+                      <input id="hm-c-admin-phone" required type="tel" inputMode="numeric" placeholder="+880 1XXXXXXXXX" value={formData.adminPhone} onBlur={() => markFieldTouched("adminPhone")} onChange={e => setFormData({ ...formData, adminPhone: formatBangladeshPhone(e.target.value) })} />
+                      <FieldError message={fieldError("adminPhone")} />
                     </div>
                     <div className="hm-field">
                       <label htmlFor="hm-c-admin-pass">Admin password</label>
-                      <input id="hm-c-admin-pass" required minLength={6} type="password" placeholder="At least 6 characters" value={formData.adminPassword} onChange={e => setFormData({ ...formData, adminPassword: e.target.value })} />
+                      <input id="hm-c-admin-pass" name="new-hospital-admin-password" autoComplete="new-password" required minLength={8} type="password" placeholder="Use upper, lower, number and symbol" value={formData.adminPassword} onBlur={() => markFieldTouched("adminPassword")} onChange={e => setFormData({ ...formData, adminPassword: e.target.value })} />
+                      {(() => {
+                        const strength = passwordStrength(formData.adminPassword);
+                        const checks = [
+                          ["At least 8 characters", formData.adminPassword.length >= 8],
+                          ["One lowercase letter", /[a-z]/.test(formData.adminPassword)],
+                          ["One uppercase letter", /[A-Z]/.test(formData.adminPassword)],
+                          ["One number", /\d/.test(formData.adminPassword)],
+                          ["One special character", /[^A-Za-z0-9]/.test(formData.adminPassword)],
+                        ] as const;
+                        return <div className="hm-password-strength" aria-live="polite">
+                          <div className="hm-password-strength-header"><span>Password requirements</span><strong>{formData.adminPassword ? strength.label : ""}</strong></div>
+                          <ul className="hm-password-checklist">{checks.map(([label, valid]) => <li key={label} className={valid ? "is-valid" : ""}><span className="hm-password-check">{valid ? <Check size={11} strokeWidth={3} /> : ""}</span><span>{label}</span></li>)}</ul>
+                        </div>;
+                      })()}
+                      <FieldError message={fieldError("adminPassword")} />
                     </div>
                   </div>
                 )}
               </form>
+              {formError && <p className="hm-form-error" role="alert">{formError}</p>}
             </div>
 
             {/* Footer */}
@@ -868,6 +964,7 @@ export function AdminHospitalsPage() {
           color: #6c8384;
           margin-bottom: 4px;
         }
+        .hm-field-hint { margin-left: 6px; color: #0f8f80; font-size: 10px; font-weight: 500; }
         .hm-field input,
         .hm-field select,
         .hm-field textarea {
@@ -886,6 +983,16 @@ export function AdminHospitalsPage() {
         .hm-field input::placeholder,
         .hm-field textarea::placeholder { color: #b7c5c5; }
         .hm-field input[readonly] { color: #8fa2a3; }
+        .hm-field-error { display: block; margin-top: 5px; color: #b42318; font-size: 11px; line-height: 1.35; }
+        .hm-password-strength { margin-top: 10px; color: #789091; font-size: 11px; }
+        .hm-password-strength-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
+        .hm-password-strength-header strong { color: #0f8f80; font-size: 11px; font-weight: 600; }
+        .hm-password-checklist { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin: 0; padding: 0; list-style: none; }
+        .hm-password-checklist li { display: flex; align-items: center; gap: 6px; color: #8fa2a3; }
+        .hm-password-checklist li.is-valid { color: #0f8f80; }
+        .hm-password-check { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #d5e1e1; border-radius: 50%; color: transparent; flex: 0 0 16px; }
+        .hm-password-checklist li.is-valid .hm-password-check { border-color: #14b8a6; background: #14b8a6; color: #fff; }
+        .hm-form-error { margin: 12px 22px 0; padding: 10px 12px; border: 1px solid rgba(220, 38, 38, 0.2); border-radius: 8px; background: rgba(220, 38, 38, 0.06); color: #b42318; font-size: 12px; line-height: 1.45; }
         .hm-field-split {
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -943,6 +1050,7 @@ export function AdminHospitalsPage() {
           .hm-modal { max-width: 100%; max-height: 92vh; border-radius: 20px 20px 0 0; }
           .hm-field-split { grid-template-columns: 1fr; }
           .hm-field-split .hm-field:first-child { border-right: none; }
+          .hm-password-checklist { grid-template-columns: 1fr; }
         }
 
         @media (prefers-reduced-motion: reduce) {

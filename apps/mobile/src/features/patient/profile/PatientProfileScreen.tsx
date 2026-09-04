@@ -6,7 +6,6 @@ import {
   Switch,
   Text,
   TextInput,
-  useColorScheme,
   View,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
@@ -36,8 +35,7 @@ const emptyPersonal: Personal = {
 
 export default function PatientProfileScreen() {
   const insets = useSafeAreaInsets();
-  const isDark = useColorScheme() === "dark";
-  const palette = getPalette(isDark);
+  const palette = getPalette();
   const styles = createStyles(palette);
   const [personal, setPersonal] = useState<Personal>(emptyPersonal);
   const [email, setEmail] = useState<string>("Not provided");
@@ -157,7 +155,7 @@ export default function PatientProfileScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style={isDark ? "light" : "dark"} />
+      <StatusBar style="dark" />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 128 }]} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={styles.header}><Text style={styles.title}>Profile</Text><Text style={styles.subtitle}>Your personal health information, all in one place</Text></View>
 
@@ -224,7 +222,7 @@ function MedicalCard({ kind, title, items, Icon, tone, palette, styles, adding, 
 }
 
 type Palette = ReturnType<typeof getPalette>;
-function getPalette(dark: boolean) { return dark ? { background: theme.colors.backgroundDark, surface: theme.colors.surfaceDark, variant: theme.colors.container, foreground: theme.colors.primaryForeground, muted: theme.colors.mutedForeground, border: theme.colors.borderDark, primary: theme.colors.secondary, primaryContainer: theme.colors.primaryContainer, primaryForeground: theme.colors.backgroundDark } : { background: theme.colors.background, surface: theme.colors.surface, variant: theme.colors.surfaceVariant, foreground: theme.colors.foreground, muted: theme.colors.mutedForeground, border: theme.colors.border, primary: theme.colors.primary, primaryContainer: theme.colors.primaryContainer, primaryForeground: theme.colors.primaryForeground }; }
+function getPalette() { return { background: theme.colors.background, surface: theme.colors.surface, variant: theme.colors.surfaceVariant, foreground: theme.colors.foreground, muted: theme.colors.mutedForeground, border: theme.colors.border, primary: theme.colors.primary, primaryContainer: theme.colors.primaryContainer, primaryForeground: theme.colors.primaryForeground }; }
 
 const sectionStyles = StyleSheet.create({ wrap: { marginTop: 28, marginBottom: 10, paddingHorizontal: 6 }, compact: { marginTop: 0, marginBottom: 0, paddingHorizontal: 0 }, text: { fontFamily: theme.fonts.extraBold, fontSize: 13, lineHeight: 16, letterSpacing: 1.56, textTransform: "uppercase" } });
 const createStyles = (p: Palette) => StyleSheet.create({

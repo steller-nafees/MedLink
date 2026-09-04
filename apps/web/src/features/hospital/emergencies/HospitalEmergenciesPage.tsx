@@ -101,15 +101,7 @@ export function HospitalEmergenciesPage() {
 						const status = caseStates[emergencyCase.id] ?? emergencyCase.status;
 						return <button type="button" key={emergencyCase.id} className={`hospital-emergency-card${active ? " active" : ""}`} onClick={() => setSelectedId(emergencyCase.id)}>
 							<div className={`emergency-symbol ${style.bg}`}><Siren className="hospital-icon" /></div>
-								<div className="hospital-emergency-copy">
-                  <div className="emergency-name">
-                  <strong>{emergencyCase.patient}</strong>
-                  <span className={`severity-pill ${style.bg} ${style.text}`}>{emergencyCase.severity}</span><span className="hospital-case-id">#{emergencyCase.id}</span>
-                  </div>
-                  <p className="hospital-muted emergency-summary">{emergencyCase.summary}</p>
-                  <div className="hospital-case-chips"><span>ETA {emergencyCase.eta}</span><span>{emergencyCase.ambulance}</span><span className="hospital-chip-primary">{status.replace("_", " ")}</span><span>{emergencyCase.createdAt}</span>
-                  </div>
-              </div>
+								<div className="hospital-emergency-copy"><div className="emergency-name"><strong>{emergencyCase.patient}</strong><span className={`severity-pill ${style.bg} ${style.text}`}>{emergencyCase.severity}</span><span className="hospital-case-id">#{emergencyCase.id}</span></div><p className="hospital-muted emergency-summary">{emergencyCase.summary}</p><div className="hospital-case-chips"><span>ETA {emergencyCase.eta}</span><span>{emergencyCase.ambulance}</span><span className="hospital-chip-primary">{status.replace("_", " ")}</span><span>{emergencyCase.createdAt}</span></div></div>
 						</button>;
 					})}
 				</div>

@@ -5,7 +5,6 @@ import {
   Text,
   ScrollView,
   Pressable,
-  useColorScheme,
   StyleSheet,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -17,9 +16,6 @@ import {
   Truck,
   Contact,
   Settings,
-  Lock,
-  Stethoscope,
-  CalendarCheck,
   ChevronRight,
   ArrowUpRight,
   Droplet,
@@ -41,8 +37,6 @@ const quickAccessItems = [
 ];
 
 export default function PatientHomeScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -221,6 +215,7 @@ export default function PatientHomeScreen() {
         {/* Blood Donation Card */}
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionLabel}>Blood Donation</Text>
+          {/*
           <View style={[styles.cardWrapper, theme.shadows.shadowCard]}>
             <Pressable
               style={styles.bloodCard}
@@ -270,6 +265,7 @@ export default function PatientHomeScreen() {
               </View>
             </Pressable>
           </View>
+          */}
           <View style={[styles.cardWrapper, theme.shadows.shadowCard, { marginTop: theme.spacing.md }]}>
             <Pressable
               style={styles.futureCard}
@@ -299,10 +295,10 @@ export default function PatientHomeScreen() {
         </View>
 
         {/* Future Services Section */}
+        {/*
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionLabel}>Future Services</Text>
           <View style={styles.futureServicesGrid}>
-            {/* Live Medical Support Card */}
             <View style={[styles.cardWrapper, theme.shadows.shadowCard]}>
               <View style={styles.futureCard}>
                 <View style={styles.futureHeader}>
@@ -324,7 +320,6 @@ export default function PatientHomeScreen() {
               </View>
             </View>
 
-            {/* Appointments & Tests Card */}
             <View style={[styles.cardWrapper, theme.shadows.shadowCard]}>
               <View style={styles.futureCard}>
                 <View style={styles.futureHeader}>
@@ -347,6 +342,7 @@ export default function PatientHomeScreen() {
             </View>
           </View>
         </View>
+        */}
 
         {/* Recent Activity Section */}
         {recent.length > 0 && (

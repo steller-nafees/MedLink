@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Linking, Pressable, ScrollView, Share as NativeShare, StyleSheet, Text, useColorScheme, View } from "react-native";
+import { Linking, Pressable, ScrollView, Share as NativeShare, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { BedDouble, ChevronLeft, Heart, Navigation, PhoneCall, Share2 } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,8 +11,7 @@ export default function HospitalDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const isDark = useColorScheme() === "dark";
-  const colors = isDark ? { background: theme.colors.backgroundDark, surface: theme.colors.surfaceDark, foreground: theme.colors.primaryForeground, muted: theme.colors.primaryLight, border: theme.colors.borderDark, variant: theme.colors.container } : { background: theme.colors.background, surface: theme.colors.surface, foreground: theme.colors.foreground, muted: theme.colors.mutedForeground, border: theme.colors.border, variant: theme.colors.surfaceVariant };
+  const colors = { background: theme.colors.background, surface: theme.colors.surface, foreground: theme.colors.foreground, muted: theme.colors.mutedForeground, border: theme.colors.border, variant: theme.colors.surfaceVariant };
   const styles = createStyles(colors);
   const [isFavorite, setIsFavorite] = useState(false);
   const [hospital, setHospital] = useState<HospitalDetail | null>(null);

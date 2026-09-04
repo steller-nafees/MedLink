@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { Ambulance, MapPin, Plus, X, Pencil, FileText } from "lucide-react";
+import { Ambulance, Check, Eye, EyeOff, MapPin, Plus, X, Pencil, FileText } from "lucide-react";
 import { PageHead } from "@/shared/components/ui/ReservationPrimitives";
 import { SearchInput } from "@/shared/components/ui/SearchInput";
 import { platformService } from "@/services/platform.service";
@@ -17,6 +17,21 @@ function coordinateValue(value: unknown, fallback: number): number {
   return Number.isFinite(coordinate) ? coordinate : fallback;
 }
 
+function formatBangladeshPhone(value: string): string {
+  const digits = value.replace(/\D/g, "").replace(/^880/, "").replace(/^0/, "").slice(0, 10);
+  return digits ? `+880 ${digits}` : "";
+}
+
+function passwordChecks(password: string) {
+  return [
+    ["8+ characters", password.length >= 8],
+    ["Lowercase letter", /[a-z]/.test(password)],
+    ["Uppercase letter", /[A-Z]/.test(password)],
+    ["Number", /\d/.test(password)],
+    ["Special character", /[^A-Za-z0-9]/.test(password)],
+  ] as const;
+}
+
 export function AdminAmbulanceProvidersPage() {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<(typeof filters)[number]>("all");
@@ -29,6 +44,8 @@ export function AdminAmbulanceProvidersPage() {
   const [editingProvider, setEditingProvider] = useState<AmbulanceProviderAccount | null>(null);
   const [modalMode, setModalMode] = useState<"create" | "edit" | "view">("create");
   const [isSaving, setIsSaving] = useState(false);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -79,12 +96,24 @@ export function AdminAmbulanceProvidersPage() {
   const handleOpenCreate = () => {
     setEditingProvider(null);
     setModalMode("create");
+    setShowAdminPassword(false);
     setFormData({
       providerName: "", providerPhone: "", address: "",
       latitude: 23.8103, longitude: 90.4125, isActive: true,
       adminEmail: "", adminPhone: "", adminPassword: ""
     });
     setIsModalOpen(true);
+    if (navigator.geolocation) {
+      setIsLocating(true);
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => {
+          setFormData((current) => ({ ...current, latitude: coords.latitude, longitude: coords.longitude }));
+          setIsLocating(false);
+        },
+        () => setIsLocating(false),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+      );
+    }
   };
 
   const handleOpenEdit = (p: AmbulanceProviderAccount) => {
@@ -277,18 +306,18 @@ export function AdminAmbulanceProvidersPage() {
                     </div>
                     <div className="space-y-1">
                       <label className="text-sm font-medium">Provider Phone *</label>
-                      <input required type="text" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.providerPhone} onChange={e => setFormData({...formData, providerPhone: e.target.value})} />
+                      <input required type="tel" inputMode="numeric" autoComplete="tel" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.providerPhone} onChange={e => setFormData({...formData, providerPhone: formatBangladeshPhone(e.target.value)})} />
                     </div>
                     <div className="space-y-1 md:col-span-2">
                       <label className="text-sm font-medium">Address *</label>
                       <input required type="text" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-sm font-medium">Latitude *</label>
+                      <label className="text-sm font-medium">Latitude * {isLocating && <span className="ap-location-hint">Detecting…</span>}</label>
                       <input required type="number" step="any" min="-90" max="90" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.latitude} onChange={e => setFormData({...formData, latitude: parseFloat(e.target.value)})} />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-sm font-medium">Longitude *</label>
+                      <label className="text-sm font-medium">Longitude * {isLocating && <span className="ap-location-hint">Detecting…</span>}</label>
                       <input required type="number" step="any" min="-180" max="180" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.longitude} onChange={e => setFormData({...formData, longitude: parseFloat(e.target.value)})} />
                     </div>
                     <div className="space-y-1">
@@ -315,11 +344,15 @@ export function AdminAmbulanceProvidersPage() {
                       </div>
                       <div className="space-y-1">
                         <label className="text-sm font-medium">Admin Phone *</label>
-                        <input required type="text" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.adminPhone} onChange={e => setFormData({...formData, adminPhone: e.target.value})} />
+                        <input required type="tel" inputMode="numeric" autoComplete="tel" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.adminPhone} onChange={e => setFormData({...formData, adminPhone: formatBangladeshPhone(e.target.value)})} />
                       </div>
                       <div className="space-y-1 md:col-span-2">
                         <label className="text-sm font-medium">Admin Password *</label>
-                        <input required minLength={6} type="password" className="w-full p-2 rounded-md border border-input bg-background text-sm" value={formData.adminPassword} onChange={e => setFormData({...formData, adminPassword: e.target.value})} />
+                        <div className="ap-password-wrap">
+                          <input required minLength={8} name="new-provider-admin-password" autoComplete="new-password" type={showAdminPassword ? "text" : "password"} className="w-full p-2 pr-10 rounded-md border border-input bg-background text-sm" value={formData.adminPassword} onChange={e => setFormData({...formData, adminPassword: e.target.value})} />
+                          <button type="button" className="ap-password-toggle" onClick={() => setShowAdminPassword((current) => !current)} aria-label={showAdminPassword ? "Hide password" : "Show password"} title={showAdminPassword ? "Hide password" : "Show password"}>{showAdminPassword ? <EyeOff size={15} /> : <Eye size={15} />}</button>
+                        </div>
+                        <ul className="ap-password-checklist">{passwordChecks(formData.adminPassword).map(([label, valid]) => <li key={label} className={valid ? "is-valid" : ""}><span>{valid ? <Check size={11} strokeWidth={3} /> : ""}</span>{label}</li>)}</ul>
                       </div>
                     </div>
                   </div>
@@ -346,6 +379,15 @@ export function AdminAmbulanceProvidersPage() {
       )}
       <style>{`
         .admin-provider-page { max-width: 1400px; margin: 0 auto; }
+        .ap-location-hint { color: #0f8f80; font-size: 10px; font-weight: 500; }
+        .ap-password-wrap { position: relative; }
+        .ap-password-toggle { position: absolute; top: 50%; right: 8px; display: inline-flex; padding: 4px; border: 0; background: transparent; color: #6c8384; cursor: pointer; transform: translateY(-50%); }
+        .ap-password-toggle:hover { color: #0f8f80; }
+        .ap-password-checklist { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px; margin: 7px 0 0; padding: 0; color: #8fa2a3; font-size: 11px; list-style: none; }
+        .ap-password-checklist li { display: flex; align-items: center; gap: 6px; }
+        .ap-password-checklist li span { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border: 1px solid #d5e1e1; border-radius: 50%; color: transparent; }
+        .ap-password-checklist li.is-valid { color: #0f8f80; }
+        .ap-password-checklist li.is-valid span { border-color: #14b8a6; background: #14b8a6; color: #fff; }
         .admin-provider-heading { margin-bottom: 20px; }
         .admin-provider-toolbar {
           display: flex;
@@ -401,6 +443,7 @@ export function AdminAmbulanceProvidersPage() {
         @media (max-width: 720px) {
           .admin-provider-toolbar { align-items: stretch; flex-direction: column; }
           .admin-provider-toolbar .request-tabs { overflow-x: auto; flex-wrap: nowrap; }
+          .ap-password-checklist { grid-template-columns: 1fr; }
           .admin-provider-toolbar > :last-child { width: 100%; min-width: 0; }
           .admin-provider-add { width: 100%; justify-content: center; }
           .admin-provider-col-header { display: none; }

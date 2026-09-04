@@ -50,12 +50,14 @@ async function request<T>(path: string): Promise<T> {
   }
 }
 
-export async function getBloodDonors(params: { bloodGroup?: BloodGroup; limit?: number; offset?: number; radius?: number } = {}): Promise<BloodDonorList> {
+export async function getBloodDonors(params: { bloodGroup?: BloodGroup; limit?: number; offset?: number; radius?: number; latitude?: number; longitude?: number } = {}): Promise<BloodDonorList> {
   const query = new URLSearchParams();
   if (params.bloodGroup) query.set('bloodGroup', params.bloodGroup);
   query.set('limit', String(params.limit ?? 20));
   query.set('offset', String(params.offset ?? 0));
   if (params.radius !== undefined) query.set('radius', String(params.radius));
+  if (params.latitude !== undefined) query.set('latitude', String(params.latitude));
+  if (params.longitude !== undefined) query.set('longitude', String(params.longitude));
   return request<BloodDonorList>(`/api/v1/blood/donors?${query.toString()}`);
 }
 

@@ -14,6 +14,17 @@ const getGroqClient = () => {
 
 const PROHIBITED_EMERGENCY_NUMBERS = ["911", "999"];
 
+const normalizeSeverity = (severity) => {
+    const normalizedSeverity = String(severity || "HIGH").trim().toUpperCase();
+    const severityAliases = {
+        MEDIUM: "MODERATE",
+    };
+
+    return severityAliases[normalizedSeverity] || ["LOW", "MODERATE", "HIGH", "CRITICAL"].includes(normalizedSeverity)
+        ? severityAliases[normalizedSeverity] || normalizedSeverity
+        : "HIGH";
+};
+
 const containsProhibitedEmergencyNumber = (text = "") => {
     if (!text) return false;
 
@@ -24,7 +35,7 @@ const containsProhibitedEmergencyNumber = (text = "") => {
 
 const sanitizeAiMedicalResponse = (aiResult = {}) => {
     const sanitized = {
-        severity: aiResult.severity || "HIGH",
+        severity: normalizeSeverity(aiResult.severity),
         summary: aiResult.summary || "The situation may require urgent medical assessment.",
         possibleConditions: aiResult.possibleConditions || "Possible medical issue. Please seek urgent clinical assessment.",
         tags: aiResult.tags || "urgent-care",
@@ -93,7 +104,7 @@ Return a structured response containing:
 Severity must be exactly one of:
 
 LOW
-MEDIUM
+MODERATE
 HIGH
 CRITICAL
 

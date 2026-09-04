@@ -11,12 +11,14 @@ const getDonors = async (userId, queryData) => {
     limit,
     offset,
     radius,
+    latitude,
+    longitude,
   } = queryData;
 
   let requesterLatitude = null;
   let requesterLongitude = null;
 
-  if (radius !== undefined) {
+  if (radius !== undefined && (latitude === undefined || longitude === undefined)) {
     const userLocation = await getUserLocation(userId);
 
     if (!userLocation) {
@@ -30,6 +32,9 @@ const getDonors = async (userId, queryData) => {
 
     requesterLatitude = Number(userLocation.latitude);
     requesterLongitude = Number(userLocation.longitude);
+  } else if (latitude !== undefined && longitude !== undefined) {
+    requesterLatitude = latitude;
+    requesterLongitude = longitude;
   }
 
   const result = await findDonors({
