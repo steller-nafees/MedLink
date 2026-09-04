@@ -4,7 +4,7 @@ import { PageHeader } from "@/shared/components/ui/PageHeader";
 import { Card } from "@/shared/components/ui/Card";
 import { StatCard } from "@/shared/components/ui/StatCard";
 import { AreaChart } from "@/shared/components/charts/AreaChart";
-import { LineChart } from "@/shared/components/charts/LineChart";
+import { BarChart } from "@/shared/components/charts/BarChart";
 import { PieChart } from "@/shared/components/charts/PieChart";
 import { platformService } from "@/services/platform.service";
 import type { AnalyticsSnapshot } from "@/types/platform";
@@ -68,7 +68,7 @@ export function AdminAnalyticsPage() {
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.75fr)]">
         <Card title="Registration activity" subtitle="New accounts and providers grouped by month" action={<span className="text-xs font-semibold text-muted-foreground">{formatNumber(registrationTotal)} records</span>}>
-          <div className="h-72 sm:h-80">{data.registrations.length > 0 ? <LineChart data={data.registrations} xAxisKey="m" yAxisWidth={36} series={[{ key: "users", name: "Users", color: "var(--color-primary)" }, { key: "providers", name: "Providers", color: "var(--color-info)" }, { key: "hospitals", name: "Hospitals", color: "var(--color-success)" }]} /> : <EmptyChart message="No registration records are available." />}</div>
+          <div className="h-72 sm:h-80">{data.registrations.length > 0 ? <BarChart data={data.registrations} xAxisKey="m" yAxisWidth={36} series={[{ key: "users", name: "Users", color: "var(--color-primary)" }, { key: "providers", name: "Providers", color: "var(--color-info)" }, { key: "hospitals", name: "Hospitals", color: "var(--color-success)" }]} /> : <EmptyChart message="No registration records are available." />}</div>
         </Card>
 
         <Card title="Account composition" subtitle="Current platform distribution" action={<ServerCog className="size-4 text-muted-foreground" />}>

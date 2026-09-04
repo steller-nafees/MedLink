@@ -143,7 +143,7 @@ function toRankedDonor(donor: BloodDonor): RankedDonor {
   };
 }
 
-async function findApiDonors(recipient: BloodGroup, limit = 5, latitude?: number | null, longitude?: number | null): Promise<RankedDonor[]> {
+async function findApiDonors(recipient: BloodGroup, limit = 100, latitude?: number | null, longitude?: number | null): Promise<RankedDonor[]> {
   const result = await getBloodDonors({
     limit: 100,
     radius: latitude != null && longitude != null ? 100 : undefined,
@@ -153,6 +153,7 @@ async function findApiDonors(recipient: BloodGroup, limit = 5, latitude?: number
   return result.donors
     .filter((donor) => canDonateTo(donor.blood_group, recipient))
     .map(toRankedDonor)
+    .sort((a, b) => a.distanceKm - b.distanceKm)
     .slice(0, limit);
 }
 
@@ -451,6 +452,11 @@ export const SOSScreen: React.FC = () => {
     resetAndExit();
   };
 
+  const backToHome = () => {
+    resetAndExit();
+    router.replace('/(patient)');
+  };
+
   // Shared top inset so nothing ever sits under the status bar / notch,
   // on iOS and Android alike (edge-to-edge safe).
   const topInset = Math.max(insets.top, 12);
@@ -536,6 +542,7 @@ export const SOSScreen: React.FC = () => {
               eventId={medicalEventId}
               selectedDonor={pendingDonor}
               bloodRequired={bloodRequired}
+              onBackHome={backToHome}
               onComplete={() => endSOS({ hospitalName: nearbyHospitals.find((hospital) => hospital.id === selectedHospitalId)?.name ?? 'Hospital', bedReserved: !!reserved.bed, icuReserved: !!reserved.icu, ambulance: reserved.ambulance ? { callSign: nearbyAmbulances.find((ambulance) => ambulance.id === reserved.ambulance)?.callSign ?? reserved.ambulance } : undefined, donorsContacted: sentTo.length, severity, aiResponse, temporaryPassword })}
             />
           </FadeSlideIn>
@@ -544,7 +551,7 @@ export const SOSScreen: React.FC = () => {
           <FadeSlideIn>
             <SummaryPhase
               summary={summary}
-              onDone={resetAndExit}
+              onDone={() => void finishSOS()}
               guestPhone={guestPhone}
               temporaryPassword={temporaryPassword}
             />
@@ -1223,7 +1230,9 @@ interface AmbulancePhaseProps {
 }
 
 const AmbulancePhase: React.FC<AmbulancePhaseProps> = ({ ambulances, aiResponse, onContinue }) => {
-  const nearest = ambulances[0];
+  const [showMore, setShowMore] = useState(false);
+  const sortedAmbulances = useMemo(() => [...ambulances].sort((a, b) => a.distanceKm - b.distanceKm), [ambulances]);
+  const visibleAmbulances = showMore ? sortedAmbulances : sortedAmbulances.slice(0, 5);
   return (
     <View style={{ gap: 16 }}>
       <StepHeader step="1 of 3" title="Immediate help" subtitle="Stay with the patient while help is arranged." />
@@ -1237,11 +1246,14 @@ const AmbulancePhase: React.FC<AmbulancePhaseProps> = ({ ambulances, aiResponse,
           <Text style={{ fontSize: 11.5, lineHeight: 16, color: theme.colors.mutedForeground }}>{aiResponse.summary}</Text>
         </View>
       )}
-      <SectionTitle title="Nearest ambulance" hint={ambulances.length ? `${ambulances.length} units nearby` : 'No active units found'} />
-      {nearest ? <View style={{ borderRadius: theme.radii.xxxl, backgroundColor: theme.colors.card, padding: 16, gap: 10, ...theme.shadows.shadowCard }}>
-        <Text style={{ fontSize: 17, fontWeight: 'bold', color: theme.colors.foreground }}>{nearest.callSign}</Text>
-        <Text style={{ fontSize: 12.5, color: theme.colors.mutedForeground }}>{nearest.distanceKm} km away · ETA {nearest.etaMin} min</Text>
-        <CallButton label={`Call ${nearest.phone || 'ambulance dispatch'}`} phone={nearest.phone} tone="emergency" />
+      <SectionTitle title="Nearest ambulances" hint={ambulances.length ? `${ambulances.length} units nearby` : 'No active units found'} />
+      {visibleAmbulances.length > 0 ? <View style={{ gap: 10 }}>
+        {visibleAmbulances.map((ambulance) => <View key={ambulance.id} style={{ borderRadius: theme.radii.xxxl, backgroundColor: theme.colors.card, padding: 16, gap: 10, ...theme.shadows.shadowCard }}>
+          <Text style={{ fontSize: 17, fontWeight: 'bold', color: theme.colors.foreground }}>{ambulance.callSign}</Text>
+          <Text style={{ fontSize: 12.5, color: theme.colors.mutedForeground }}>{ambulance.distanceKm} km away · ETA {ambulance.etaMin} min</Text>
+          <CallButton label={`Call ${ambulance.phone || 'ambulance dispatch'}`} phone={ambulance.phone} tone="emergency" />
+        </View>)}
+        {sortedAmbulances.length > 5 && <ShowMoreButton expanded={showMore} onPress={() => setShowMore((current) => !current)} />}
       </View> : <Text style={{ fontSize: 13, color: theme.colors.mutedForeground }}>No active ambulance providers were found within 100 km of your location.</Text>}
       <PrimaryStepButton label="Select a hospital" onPress={onContinue} />
     </View>
@@ -1262,6 +1274,12 @@ const PrimaryStepButton: React.FC<{ label: string; onPress: () => void; disabled
   </TouchableOpacity>
 );
 
+const ShowMoreButton: React.FC<{ expanded: boolean; onPress: () => void }> = ({ expanded, onPress }) => (
+  <TouchableOpacity onPress={onPress} style={{ borderRadius: 999, borderWidth: 1, borderColor: `${theme.colors.primary}4D`, paddingVertical: 12, alignItems: 'center' }} activeOpacity={0.6}>
+    <Text style={{ fontSize: 13, fontWeight: 'bold', color: theme.colors.primary }}>{expanded ? 'Show fewer' : 'Show more'}</Text>
+  </TouchableOpacity>
+);
+
 interface HospitalSelectionPhaseProps {
   hospitals: Hospital[];
   selectedHospitalId: string | null;
@@ -1277,7 +1295,10 @@ const HospitalSelectionPhase: React.FC<HospitalSelectionPhaseProps> = ({ hospita
   const [loading, setLoading] = useState(false);
   const [reserving, setReserving] = useState<'bed' | 'icu' | null>(null);
   const [error, setError] = useState('');
-  const selected = hospitals.find((hospital) => hospital.id === selectedHospitalId);
+  const [showMore, setShowMore] = useState(false);
+  const sortedHospitals = useMemo(() => [...hospitals].sort((a, b) => a.distanceKm - b.distanceKm), [hospitals]);
+  const visibleHospitals = showMore ? sortedHospitals : sortedHospitals.slice(0, 5);
+  const selected = sortedHospitals.find((hospital) => hospital.id === selectedHospitalId);
 
   const selectHospital = async (hospital: Hospital) => {
     setSelectedHospitalId(hospital.id);
@@ -1303,7 +1324,8 @@ const HospitalSelectionPhase: React.FC<HospitalSelectionPhaseProps> = ({ hospita
   return (
     <View style={{ gap: 12 }}>
       <StepHeader step="2 of 3" title="Choose a hospital" subtitle="Compare live capacity, then reserve the right care area." />
-      {hospitals.map((hospital) => <HospitalListItem key={hospital.id} hospital={hospital} selected={hospital.id === selectedHospitalId} onSelect={() => void selectHospital(hospital)} />)}
+      {visibleHospitals.map((hospital) => <HospitalListItem key={hospital.id} hospital={hospital} selected={hospital.id === selectedHospitalId} onSelect={() => void selectHospital(hospital)} />)}
+      {sortedHospitals.length > 5 && <ShowMoreButton expanded={showMore} onPress={() => setShowMore((current) => !current)} />}
       {selected && <View style={{ borderRadius: theme.radii.xxl, backgroundColor: theme.colors.card, padding: 16, gap: 10, ...theme.shadows.shadowCard }}>
         <Text style={{ fontSize: 15, fontWeight: 'bold', color: theme.colors.foreground }}>{selected.name} capacity</Text>
         {loading ? <ActivityIndicator color={theme.colors.primary} /> : detail && <>
@@ -1324,6 +1346,7 @@ const ApprovalFollowupPhase: React.FC<ApprovalFollowupPhaseProps> = ({ eventId, 
   const [approved, setApproved] = useState(false);
   const [selectedDonor, setSelectedDonor] = useState<RankedDonor | null>(null);
   const [donors, setDonors] = useState<RankedDonor[]>([]);
+  const [showMoreDonors, setShowMoreDonors] = useState(false);
   const [statusNotice, setStatusNotice] = useState<'accepted' | 'redirected' | null>(null);
   const noticeShown = useRef(false);
   useEffect(() => {
@@ -1341,7 +1364,7 @@ const ApprovalFollowupPhase: React.FC<ApprovalFollowupPhaseProps> = ({ eventId, 
         if (hospital.latitude == null || hospital.longitude == null) {
           throw new Error('The selected hospital location is unavailable.');
         }
-        return findApiDonors('O+', 5, hospital.latitude, hospital.longitude);
+        return findApiDonors('O+', 100, hospital.latitude, hospital.longitude);
       })
       .then((nextDonors) => { if (active) setDonors(nextDonors); })
       .catch(() => { if (active) setDonors([]); });
@@ -1351,67 +1374,41 @@ const ApprovalFollowupPhase: React.FC<ApprovalFollowupPhaseProps> = ({ eventId, 
   return <View style={{ gap: 14 }}>
     <StepHeader step="3 of 3" title={approved ? 'Hospital accepted' : 'Waiting for hospital'} subtitle={approved ? `${hospitalName} has approved your request.` : `Your request is pending with ${hospitalName}. This screen checks for approval automatically.`} />
     {!approved && <View style={{ alignItems: 'center', paddingVertical: 28, gap: 10 }}><ActivityIndicator size="large" color={theme.colors.primary} /><Text style={{ fontSize: 13, color: theme.colors.mutedForeground }}>Waiting for a response...</Text></View>}
-    {bloodRequired === null && (
-  <>
-    <Text
-      style={{
-        fontSize: 13,
-        color: theme.colors.foreground,
-        textAlign: "center",
-      }}
-    >
-      Does the hospital need blood donors for this admission?
-    </Text>
-
-    <View
-      style={{
-        flexDirection: "row",
-        gap: 10,
-        justifyContent: "center",
-      }}
-    >
-      <View style={{ flex: 1 }}>
-        <PrimaryStepButton
-          label="Yes"
-          onPress={() => setBloodRequired(true)}
-        />
-      </View>
-
-      <TouchableOpacity
-        onPress={() => setBloodRequired(false)}
-        style={{
-          flex: 1,
-          borderRadius: 999,
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-          paddingVertical: 15,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Text
-          style={{
-            fontSize: 13,
-            fontWeight: "bold",
-            color: theme.colors.foreground,
-          }}
-        >
-          No
+    {approved && bloodRequired === null && (
+      <>
+        <Text style={{ fontSize: 13, color: theme.colors.foreground, textAlign: 'center' }}>
+          Does the hospital need blood donors for this admission?
         </Text>
-      </TouchableOpacity>
-    </View>
-  </>
-)}
-
-<PrimaryStepButton
-  label={
-    bloodRequired === true
-      ? "Continue with selected donor"
-      : "Continue"
-  }
-  disabled={bloodRequired === true && !selectedDonor}
-  onPress={onContinue}
-/>
+        <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'center' }}>
+          <View style={{ flex: 1 }}>
+            <PrimaryStepButton label="Yes" onPress={() => setBloodRequired(true)} />
+          </View>
+          <TouchableOpacity onPress={() => setBloodRequired(false)} style={{ flex: 1, borderRadius: 999, borderWidth: 1, borderColor: theme.colors.border, paddingVertical: 15, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontSize: 13, fontWeight: 'bold', color: theme.colors.foreground }}>No</Text>
+          </TouchableOpacity>
+        </View>
+      </>
+    )}
+    {approved && bloodRequired === true && (
+      <>
+        {donors.length > 0 ? (
+          <View style={{ gap: 10 }}>
+            <Text style={{ fontSize: 11.5, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5, color: theme.colors.mutedForeground }}>
+              Nearby eligible donors · {donors.length} found
+            </Text>
+            {(showMoreDonors ? donors : donors.slice(0, 5)).map((donor) => (
+              <DonorCard key={donor.id} donor={donor} requested={selectedDonor?.id === donor.id} onRequest={() => setSelectedDonor(donor)} />
+            ))}
+            {donors.length > 5 && <ShowMoreButton expanded={showMoreDonors} onPress={() => setShowMoreDonors((current) => !current)} />}
+          </View>
+        ) : (
+          <Text style={{ fontSize: 13, color: theme.colors.mutedForeground }}>No eligible donors were found near this hospital.</Text>
+        )}
+      </>
+    )}
+    {approved && bloodRequired !== null && (
+      <PrimaryStepButton label={bloodRequired ? 'Continue with selected donor' : 'Continue'} disabled={bloodRequired === true && !selectedDonor} onPress={onContinue} />
+    )}
     <SosStatusModal
       visible={statusNotice !== null}
       type={statusNotice ?? 'accepted'}
@@ -2739,8 +2736,9 @@ const ActiveResponsePhase: React.FC<{
   eventId: string | null;
   selectedDonor: RankedDonor | null;
   bloodRequired: boolean | null;
+  onBackHome: () => void;
   onComplete: () => void;
-}> = ({ ambulances, hospital, reserved, eventId, selectedDonor, bloodRequired, onComplete }) => {
+}> = ({ ambulances, hospital, reserved, eventId, selectedDonor, bloodRequired, onBackHome, onComplete }) => {
   const [reservation, setReservation] = useState<Awaited<ReturnType<typeof getReservations>>[number] | undefined>();
   const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
 
@@ -2795,6 +2793,9 @@ const ActiveResponsePhase: React.FC<{
     {bloodRequired && selectedDonor && <View style={{ borderRadius: theme.radii.xxxl, backgroundColor: theme.colors.card, padding: 16, gap: 7, ...theme.shadows.shadowCard }}><Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.foreground }}>Selected blood donor</Text><Text style={{ fontSize: 13, color: theme.colors.foreground }}>{selectedDonor.name} · {selectedDonor.group}</Text><Text style={{ fontSize: 12, color: theme.colors.mutedForeground }}>{selectedDonor.phone} · {selectedDonor.distanceKm} km from hospital</Text><CallButton label={`Call donor · ${selectedDonor.phone}`} phone={selectedDonor.phone} /></View>}
     <View style={{ borderRadius: theme.radii.xxl, backgroundColor: theme.colors.surfaceVariant, padding: 14 }}><Text style={{ fontSize: 12, lineHeight: 17, color: theme.colors.mutedForeground }}>{isPaid ? 'Payment received. You can now complete the SOS after the patient has received care.' : 'The hospital bill must be paid before the SOS can be completed. This screen checks payment status automatically.'}</Text></View>
     <PrimaryStepButton label={isPaid ? 'Complete SOS' : 'Waiting for payment'} disabled={!isPaid} onPress={onComplete} />
+    <TouchableOpacity onPress={onBackHome} style={{ borderRadius: 999, borderWidth: 1, borderColor: theme.colors.border, paddingVertical: 14, alignItems: 'center' }} activeOpacity={0.7}>
+      <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.foreground }}>Back to home</Text>
+    </TouchableOpacity>
   </View>;
 };
 
